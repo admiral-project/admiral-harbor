@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="csrf-token" content="{{ csrf_token() }}">
+ <title>{% block title %}Admin - Admiral Harbor{% endblock %}</title>
+ <link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@6.5.2/patternfly.min.css" crossorigin="anonymous">
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous">
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+ {% block extra_css %}{% endblock %}
+</head>
+<body>
+ <div class="pf-c-page admiral-shell"
+ {% if current_user.is_authenticated %}
+ id="admiral-shell"
+ {% endif %}>
+ {% if current_user.is_authenticated %}
+ {# Mobile top bar #}
+ <header class="mobile-topbar">
+ <button class="mobile-menu-button" type="button" onclick="toggleSidebar()" aria-label="Toggle navigation">
+ <i class="fas fa-bars"></i>
+ </button>
+ <div class="mobile-topbar-title">
+ <img src="{{ url_for('static', filename='img/admiral-harbor.png') }}" alt="Harbor" class="mobile-topbar-logo">
+ <span>Harbor</span>
+ </div>
+ <form method="post" action="{{ url_for('admin.logout') }}" style="margin:0;display:contents;">
+ <button class="mobile-logout-button" type="submit" aria-label="Logout">
+ <i class="fas fa-sign-out-alt"></i>
+ </button>
+ </form>
+ </header>
+
+ {# Sidebar #}
+ <aside class="pf-c-page__sidebar pf-m-dark admiral-shell__sidebar">
+ <div class="sidebar-brand">
+ <img src="{{ url_for('static', filename='img/admiral-harbor.png') }}" alt="Harbor" class="sidebar-brand-logo">
+ <div>
+ <div class="sidebar-brand-text">Harbor</div>
+ <div class="sidebar-brand-version">Admin Console</div>
+ </div>
+ <button class="sidebar-collapse-button" type="button" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+ <i class="fas fa-chevron-left"></i>
+ </button>
+ </div>
+
+ <nav class="pf-c-nav" aria-label="Harbor navigation">
+ <ul class="pf-c-nav__list">
+ {# Dashboard #}
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.dashboard') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.dashboard' %}pf-m-current{% endif %}">
+ <i class="fas fa-home pf-u-mr-sm"></i><span>Dashboard</span>
+ </a>
+ </li>
+
+ {# Platform Status #}
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.status_overview') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.status_overview' %}pf-m-current{% endif %}">
+ <i class="fas fa-traffic-light pf-u-mr-sm"></i><span>Platform Status</span>
+ </a>
+ </li>
+
+  {# Catalog #}
+  <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.apps_list', 'admin.catalog_sync_history', 'admin.integration_status') %}pf-m-expanded{% endif %}">
+  <a class="pf-c-nav__link" href="#" onclick="toggleSubnav(event)">
+  <i class="fas fa-cubes pf-u-mr-sm"></i><span>Marketplace</span>
+  <span class="pf-c-nav__toggle"><i class="fas fa-angle-right"></i></span>
+  </a>
+  <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.apps_list', 'admin.catalog_sync_history', 'admin.integration_status') %}{% else %}hidden{% endif %}>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.apps_list') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.apps_list' %}pf-m-current{% endif %}">Catálogo de apps</a>
+  </li>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.catalog_sync_history') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.catalog_sync_history' %}pf-m-current{% endif %}">Historial de sincronización</a>
+  </li>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.integration_status') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.integration_status' %}pf-m-current{% endif %}">Estado de integración</a>
+  </li>
+  </ul>
+  </li>
+
+ {# Operations #}
+ <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.instances_list', 'admin.instance_detail', 'admin.backups_list', 'admin.backup_detail') %}pf-m-expanded{% endif %}">
+ <a class="pf-c-nav__link" href="#" onclick="toggleSubnav(event)">
+ <i class="fas fa-cogs pf-u-mr-sm"></i><span>Operations</span>
+ <span class="pf-c-nav__toggle"><i class="fas fa-angle-right"></i></span>
+ </a>
+ <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.instances_list', 'admin.instance_detail', 'admin.backups_list', 'admin.backup_detail') %}{% else %}hidden{% endif %}>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.instances_list') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.instances_list', 'admin.instance_detail') %}pf-m-current{% endif %}">Instancias</a>
+ </li>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.backups_list') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.backups_list', 'admin.backup_detail') %}pf-m-current{% endif %}">Backups</a>
+ </li>
+ </ul>
+ </li>
+
+ {# Commercial #}
+ <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.subscriptions_list', 'admin.payments_list', 'admin.billing', 'admin.metrics') %}pf-m-expanded{% endif %}">
+ <a class="pf-c-nav__link" href="#" onclick="toggleSubnav(event)">
+ <i class="fas fa-dollar-sign pf-u-mr-sm"></i><span>Commercial</span>
+ <span class="pf-c-nav__toggle"><i class="fas fa-angle-right"></i></span>
+ </a>
+ <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.subscriptions_list', 'admin.payments_list', 'admin.billing', 'admin.metrics') %}{% else %}hidden{% endif %}>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.subscriptions_list') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.subscriptions_list' %}pf-m-current{% endif %}">Suscripciones</a>
+ </li>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.payments_list') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.payments_list' %}pf-m-current{% endif %}">Pagos</a>
+ </li>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.billing') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.billing' %}pf-m-current{% endif %}">Facturación</a>
+ </li>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.metrics') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.metrics' %}pf-m-current{% endif %}">Métricas</a>
+ </li>
+ </ul>
+ </li>
+
+ {# Support #}
+ <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.tickets_list', 'admin.ticket_detail', 'admin.sla_dashboard') %}pf-m-expanded{% endif %}">
+ <a class="pf-c-nav__link" href="#" onclick="toggleSubnav(event)">
+ <i class="fas fa-headset pf-u-mr-sm"></i><span>Support</span>
+ <span class="pf-c-nav__toggle"><i class="fas fa-angle-right"></i></span>
+ </a>
+ <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.tickets_list', 'admin.ticket_detail', 'admin.sla_dashboard') %}{% else %}hidden{% endif %}>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.tickets_list') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.tickets_list', 'admin.ticket_detail') %}pf-m-current{% endif %}">Tickets</a>
+ </li>
+ <li class="pf-c-nav__item">
+ <a href="{{ url_for('admin.sla_dashboard') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.sla_dashboard' %}pf-m-current{% endif %}">SLA Dashboard</a>
+ </li>
+ </ul>
+ </li>
+
+  {# Administration #}
+  <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail', 'admin.list_users', 'admin.user_detail', 'admin.user_edit', 'admin.paypal_config', 'admin.harbor_settings', 'admin.audit_log') %}pf-m-expanded{% endif %}">
+  <a class="pf-c-nav__link" href="#" onclick="toggleSubnav(event)">
+  <i class="fas fa-cog pf-u-mr-sm"></i><span>Administration</span>
+  <span class="pf-c-nav__toggle"><i class="fas fa-angle-right"></i></span>
+  </a>
+  <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail', 'admin.list_users', 'admin.user_detail', 'admin.user_edit', 'admin.paypal_config', 'admin.harbor_settings', 'admin.audit_log') %}{% else %}hidden{% endif %}>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.customers_list') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail') %}pf-m-current{% endif %}">Clientes</a>
+  </li>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.list_users') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.list_users', 'admin.user_detail', 'admin.user_edit') %}pf-m-current{% endif %}">Usuarios</a>
+  </li>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.paypal_config') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.paypal_config' %}pf-m-current{% endif %}">PayPal Config</a>
+  </li>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.harbor_settings') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.harbor_settings' %}pf-m-current{% endif %}">Settings</a>
+  </li>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.audit_log') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.audit_log' %}pf-m-current{% endif %}">Auditoría</a>
+  </li>
+  </ul>
+  </li>
+ </ul>
+ </nav>
+
+ <div class="pf-c-page__sidebar-body pf-m-dark">
+ <div class="sidebar-user-name"><i class="fas fa-user-circle"></i>{{ current_user.display_name }}</div>
+ <form method="post" action="{{ url_for('admin.logout') }}" style="margin:0;">
+ <button type="submit" class="sidebar-logout" style="background:none;border:none;cursor:pointer;padding:0;font:inherit;display:inline-flex;align-items:center;gap:0.375rem;color:rgba(255,255,255,0.48);font-size:0.75rem;text-decoration:none;white-space:nowrap;">
+ <i class="fas fa-sign-out-alt"></i><span>Cerrar Sesión</span>
+ </button>
+ </form>
+ </div>
+ </aside>
+ {% endif %}
+
+ {# Main content #}
+ <main class="pf-c-page__main admiral-shell__main">
+ <header class="admin-header">
+ <div>
+ <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+ <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+ </div>
+ </header>
+
+ <div class="pf-c-page__main-section">
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ {% for category, message in messages %}
+ <div class="alert alert-{{ category }}">{{ message }}</div>
+ {% endfor %}
+ {% endif %}
+ {% endwith %}
+
+ {% block content %}{% endblock %}
+ </div>
+ </main>
+ </div>
+
+ <script>
+ function toggleSidebar() {
+ var shell = document.getElementById('admiral-shell');
+ if (!shell) return;
+ if (window.innerWidth <= 768) {
+ shell.classList.toggle('sidebar-open');
+ } else {
+ shell.classList.toggle('sidebar-collapsed');
+ }
+ }
+
+ function toggleSubnav(event) {
+ event.preventDefault();
+ var item = event.currentTarget.closest('.pf-c-nav__item.pf-m-expandable');
+ if (!item) return;
+ item.classList.toggle('pf-m-expanded');
+ var subnav = item.querySelector('.pf-c-nav__subnav');
+ if (subnav) {
+ subnav.hidden = !subnav.hidden;
+ }
+ }
+
+ {% if current_user.is_authenticated %}
+ document.addEventListener('click', function(e) {
+ var shell = document.getElementById('admiral-shell');
+ if (!shell) return;
+ if (window.innerWidth <= 768 && shell.classList.contains('sidebar-open')) {
+ var sidebar = shell.querySelector('.pf-c-page__sidebar');
+ if (sidebar && !sidebar.contains(e.target) && !e.target.closest('.mobile-menu-button') && !e.target.closest('.mobile-topbar')) {
+ shell.classList.remove('sidebar-open');
+ }
+ }
+ });
+ {% endif %}
+
+ (function () {
+ var meta = document.querySelector('meta[name="csrf-token"]');
+ var token = meta ? meta.getAttribute("content") : "";
+ if (!token) return;
+
+ function addToken(form) {
+ if (!form) return;
+ var method = (form.getAttribute("method") || "get").toUpperCase();
+ if (method === "GET" || form.dataset.csrf === "false") return;
+ if (form.querySelector('input[name="csrf_token"]')) return;
+ var input = document.createElement("input");
+ input.type = "hidden";
+ input.name = "csrf_token";
+ input.value = token;
+ form.appendChild(input);
+ }
+
+ document.querySelectorAll("form").forEach(addToken);
+ document.addEventListener("submit", function (event) {
+ addToken(event.target);
+ }, true);
+ })();
+ </script>
+</body>
+</html>

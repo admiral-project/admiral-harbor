@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard - {{ portal_name }}{% endblock %}
+{% block body %}
+<header class="page-header">
+ <div>
+ <h1>Your managed apps</h1>
+ </div>
+ <a class="primary page-cta" href="{{ url_for('main.index') }}">Deploy New App</a>
+</header>
+
+<section class="panel">
+ <div class="stats">
+ <div><strong>{{ customer_apps|length }}</strong><span>Active apps</span></div>
+ <div><strong>${{ "%.2f"|format(monthly_total_cents / 100) }}</strong><span>Monthly total</span></div>
+ <div><strong>{{ subscriptions|length }}</strong><span>Subscriptions</span></div>
+ </div>
+</section>
+
+<section class="panel">
+ <h2>My Applications</h2>
+ <div class="grid app-grid">
+ {% for instance in customer_apps %}
+ <article class="card app-card">
+ <h3>{{ instance.app_slug }}</h3>
+ <p class="status-line"><span class="status-pill">{{ instance.status }}</span></p>
+  {% if instance.domain and not instance.domain.startswith('inst_') %}
+  <p><a href="https://{{ instance.domain }}">{{ instance.domain }}</a></p>
+  {% elif instance.domain %}
+  <p class="meta">Provisioning…</p>
+  {% endif %}
+ <p class="meta">Tier: {{ instance.tier_name }} · Next billing: {{ instance.next_billing_at or "-" }}</p>
+ <a href="{{ url_for('main.instance_detail', instance_id=instance.instance_id) }}" class="secondary">Manage</a>
+ </article>
+ {% else %}
+ <p class="meta">No active apps yet.</p>
+ {% endfor %}
+ </div>
+</section>
+{% endblock %}

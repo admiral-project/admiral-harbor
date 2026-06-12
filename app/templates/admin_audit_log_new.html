@@ -1,0 +1,88 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Auditoría - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Auditoría Administrativa{% endblock %}
+{% block page_subtitle %}Registro completo de cambios y acciones administrativas{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-clipboard-list pf-u-mr-sm"></i> Registro de Auditoría</h2>
+ 
+ {% if entries %}
+ <table>
+ <thead>
+ <tr>
+ <th>Fecha/Hora</th>
+ <th>Actor</th>
+ <th>Acción</th>
+ <th>Recurso</th>
+ <th>Detalles</th>
+ <th>IP</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for entry in entries %}
+ <tr>
+ <td style="font-size: 0.85rem; white-space: nowrap;">{{ entry.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+ <td>
+ <code style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">
+ {{ entry.actor }}
+ </code>
+ </td>
+ <td>
+ <span class="status-badge info">{{ entry.action|replace("_", " ")|title }}</span>
+ </td>
+ <td style="font-size: 0.85rem; color: #7f8c8d;">
+ {% if entry.resource_type %}
+ {{ entry.resource_type }}:<code style="background: #f0f0f0; padding: 0.1rem 0.3rem; border-radius: 2px;">{{ entry.resource_id }}</code>
+ {% else %}
+ <span style="color: #bbb;">-</span>
+ {% endif %}
+ </td>
+ <td style="font-size: 0.9rem; max-width: 400px;">
+ {{ entry.detail[:100] }}{% if entry.detail|length > 100 %}<span title="{{ entry.detail }}">...</span>{% endif %}
+ </td>
+ <td style="font-size: 0.85rem; color: #7f8c8d; white-space: nowrap;">
+ {{ entry.ip_address or "-" }}
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ 
+ {# Paginación #}
+ {% if pages > 1 %}
+ <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+ {% if page > 1 %}
+ <a href="{{ url_for('admin.audit_log', page=1) }}" class="btn btn-secondary">Primera</a>
+ <a href="{{ url_for('admin.audit_log', page=page-1) }}" class="btn btn-secondary">« Anterior</a>
+ {% endif %}
+ 
+ <span style="padding: 0.75rem; font-weight: bold;">Página {{ page }} de {{ pages }}</span>
+ 
+ {% if page < pages %}
+ <a href="{{ url_for('admin.audit_log', page=page+1) }}" class="btn btn-secondary">Siguiente »</a>
+ <a href="{{ url_for('admin.audit_log', page=pages) }}" class="btn btn-secondary">Última</a>
+ {% endif %}
+ </div>
+ {% endif %}
+ {% else %}
+ <p style="color: #7f8c8d; text-align: center; padding: 2rem;">Sin registros de auditoría</p>
+ {% endif %}
+</div>
+
+<div class="panel">
+ <h2>ℹ️ Información</h2>
+ <p>La auditoría registra:</p>
+ <ul style="margin-left: 1.5rem; margin-top: 1rem; color: #7f8c8d;">
+ <li>Inicios/cierres de sesión administrativos</li>
+ <li>Cambios en configuración (PayPal, LMS, apps)</li>
+ <li>Sincronizaciones de catálogo</li>
+ <li>Creación de instancias de prueba</li>
+ <li>Cambios en usuarios administrativos</li>
+ <li>IP de origen de cada acción</li>
+ </ul>
+</div>
+
+{% endblock %}

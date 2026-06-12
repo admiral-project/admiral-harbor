@@ -1,0 +1,80 @@
+{% extends "customer_layout.html" %}
+
+{% block title %}Subscriptions - {{ portal_name }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+ <h1>Subscriptions</h1>
+ <p>Manage your active subscriptions and billing.</p>
+</div>
+
+<div style="margin-bottom: 20px;">
+ <form method="GET" action="{{ url_for('customer.subscriptions_list') }}" style="display: flex; gap: 10px; align-items: center;">
+ <select name="status" class="form-select">
+ <option value="">All Status</option>
+ <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+ <option value="paused" {% if status_filter == 'paused' %}selected{% endif %}>Paused</option>
+ <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+ </select>
+ <button type="submit" class="btn btn-primary">Filter</button>
+ </form>
+</div>
+
+{% if subscriptions %}
+ <table class="table">
+ <thead>
+ <tr>
+ <th>App</th>
+ <th>Tier</th>
+ <th>Status</th>
+ <th>Renewal Date</th>
+ <th>Monthly Cost</th>
+ <th>Action</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for sub in subscriptions %}
+ <tr>
+ <td>{{ sub.app_id or 'N/A' }}</td>
+ <td><strong>{{ sub.tier }}</strong></td>
+ <td>
+ <span class="badge {% if sub.status == 'active' %}badge-success{% elif sub.status == 'paused' %}badge-warning{% else %}badge-danger{% endif %}">
+ {{ sub.status }}
+ </span>
+ </td>
+ <td>{{ sub.renewal_date.strftime('%Y-%m-%d') if sub.renewal_date else 'N/A' }}</td>
+ <td>${{ "%.2f"|format(sub.amount_cents / 100) if sub.amount_cents else '0.00' }}</td>
+ <td>
+ <a href="{{ url_for('customer.subscription_detail', subscription_id=sub.id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Details</a>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ 
+ <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+ <div>
+ {% if paginated.has_prev %}
+ <a href="{{ url_for('customer.subscriptions_list', page=paginated.prev_num, status=status_filter) }}" class="btn btn-primary">← Previous</a>
+ {% endif %}
+ 
+ <span style="color: #7f8c8d; margin: 0 10px;">Page {{ paginated.page }} of {{ paginated.pages }}</span>
+ 
+ {% if paginated.has_next %}
+ <a href="{{ url_for('customer.subscriptions_list', page=paginated.next_num, status=status_filter) }}" class="btn btn-primary">Next →</a>
+ {% endif %}
+ </div>
+ </div>
+{% else %}
+ <p style="color: #7f8c8d; text-align: center; padding: 40px 0;">No subscriptions found.</p>
+{% endif %}
+
+<style>
+ .form-select {
+ padding: 10px;
+ border: 1px solid #ddd;
+ border-radius: 4px;
+ font-size: 14px;
+ }
+</style>
+{% endblock %}

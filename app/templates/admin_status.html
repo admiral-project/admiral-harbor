@@ -1,0 +1,159 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Platform Status - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Platform Status Overview{% endblock %}
+{% block page_subtitle %}Real-time operational health indicator{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-traffic-light pf-u-mr-sm"></i> Operational Status</h2>
+ 
+ <div style="display: flex; align-items: center; gap: 2rem; padding: 2rem; background: #f8f9fa; border-radius: 8px;">
+ <!-- Traffic Light Indicator -->
+ <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+ <div style="
+ width: 120px;
+ height: 120px;
+ border-radius: 50%;
+ background: {{ status.color }};
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+ ">
+ <span style="
+ color: white;
+ font-size: 3rem;
+ text-align: center;
+ font-weight: bold;
+ ">
+ {% if status.severity == 0 %}{% elif status.severity == 1 %}!{% elif status.severity == 2 %}<i class="fas fa-exclamation-triangle pf-u-mr-sm"></i>{% else %}{% endif %}
+ </span>
+ </div>
+ <div style="text-align: center;">
+ <h3 style="margin: 0.5rem 0; font-size: 1.2rem;">
+ {{ status.status | replace('_', ' ') | title }}
+ </h3>
+ <p style="color: #7f8c8d; margin: 0; font-size: 0.9rem;">
+ Last updated: {{ status.last_updated.strftime("%H:%M:%S") }}
+ </p>
+ </div>
+ </div>
+ 
+ <!-- Status Mapping Explanation -->
+ <div style="flex: 1;">
+ <table style="width: 100%; border-collapse: collapse;">
+ <tr style="background: #ecf0f1;">
+ <td style="padding: 0.75rem; font-weight: bold; border-bottom: 1px solid #bdc3c7;">Status</td>
+ <td style="padding: 0.75rem; font-weight: bold; border-bottom: 1px solid #bdc3c7;">Meaning</td>
+ <td style="padding: 0.75rem; font-weight: bold; border-bottom: 1px solid #bdc3c7;">Action</td>
+ </tr>
+ <tr>
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">
+ <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #27ae60; margin-right: 0.5rem;"></span>
+ <strong>Operativo</strong>
+ </td>
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">All systems healthy</td>
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">Continue normal ops</td>
+ </tr>
+ <tr style="background: #fef9e7;">
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">
+ <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #f39c12; margin-right: 0.5rem;"></span>
+ <strong>Atención Requerida</strong>
+ </td>
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">Minor issues present</td>
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">Investigate and resolve</td>
+ </tr>
+ <tr style="background: #fdebd0;">
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">
+ <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #e67e22; margin-right: 0.5rem;"></span>
+ <strong>Degradado</strong>
+ </td>
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">Reduced functionality</td>
+ <td style="padding: 0.75rem; border-bottom: 1px solid #ecf0f1;">Immediate intervention</td>
+ </tr>
+ <tr style="background: #fadbd8;">
+ <td style="padding: 0.75rem;">
+ <span style="display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #e74c3c; margin-right: 0.5rem;"></span>
+ <strong>Incidente Crítico</strong>
+ </td>
+ <td style="padding: 0.75rem;">Critical failure</td>
+ <td style="padding: 0.75rem;">Emergency response</td>
+ </tr>
+ </table>
+ </div>
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-chart-bar pf-u-mr-sm"></i> Condition Details</h2>
+ 
+ {% if status.conditions %}
+ <table>
+ <thead>
+ <tr>
+ <th>Condition</th>
+ <th>Severity</th>
+ <th>Description</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for condition in status.conditions %}
+ <tr>
+ <td><strong>{{ condition.issue | replace('_', ' ') | title }}</strong></td>
+ <td>
+ <span class="status-badge {% if condition.severity == 0 %}success{% elif condition.severity == 1 %}warning{% elif condition.severity == 2 %}danger{% else %}danger{% endif %}">
+ {% if condition.severity == 0 %}OK{% elif condition.severity == 1 %}<i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Warning{% elif condition.severity == 2 %} Alert{% else %} Critical{% endif %}
+ </span>
+ </td>
+ <td>{{ condition.description }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% endif %}
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-search pf-u-mr-sm"></i> Quick Facts</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Control Plane</p>
+ <p style="font-size: 1.2rem;">
+ {% if admirald_connected %}
+ <span style="color: #27ae60;">Connected</span>
+ {% else %}
+ <span style="color: #e74c3c;">Disconnected</span>
+ {% endif %}
+ </p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Subscriptions</p>
+ <p style="font-size: 1.2rem;">
+ <strong>{{ active_subs }}</strong> / {{ total_subs }} active
+ </p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Failed Payments</p>
+ <p style="font-size: 1.2rem; {% if failed_payments > 0 %}color: #e74c3c;{% else %}color: #27ae60;{% endif %}">
+ {{ failed_payments }}
+ </p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Open Tickets</p>
+ <p style="font-size: 1.2rem;">{{ open_tickets }}</p>
+ </div>
+ </div>
+</div>
+
+<div class="quick-actions">
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
+ <a href="{{ url_for('admin.metrics') }}" class="btn btn-secondary">View detailed metrics</a>
+</div>
+
+{% endblock %}

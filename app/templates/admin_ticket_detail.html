@@ -1,0 +1,172 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}{{ ticket.incident_id }} - Detalle{% endblock %}
+{% block page_title %}Detalles del Ticket{% endblock %}
+{% block page_subtitle %}{{ ticket.incident_id }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-ticket-alt"></i> Ticket Information</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Ticket ID</p>
+ <code>{{ ticket.incident_id }}</code>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Customer</p>
+ {{ ticket.customer_email }}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Priority</p>
+ <span class="status-badge {% if ticket.priority == 'critical' %}danger{% elif ticket.priority == 'high' %}danger{% elif ticket.priority == 'medium' %}warning{% else %}info{% endif %}">
+ {{ ticket.priority|title }}
+ </span>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Status</p>
+ <span class="status-badge {% if ticket.status == 'open' %}danger{% elif ticket.status == 'pending' %}warning{% else %}success{% endif %}">
+ {{ ticket.status|title }}
+ </span>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Assigned To</p>
+ {% if ticket.assigned_to %}
+ <code>{{ ticket.assigned_to }}</code>
+ {% else %}
+ <span style="color: #e74c3c;">Unassigned</span>
+ {% endif %}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Created</p>
+ {{ ticket.created_at.strftime("%Y-%m-%d %H:%M") }}
+ </div>
+ </div>
+</div>
+
+{% if sla_status %}
+<div class="panel" style="border-left: 5px solid {% if sla_status.sla_status == 'violated' %}#e74c3c{% elif sla_status.sla_status == 'warning' %}#f39c12{% else %}#27ae60{% endif %}; background: {% if sla_status.sla_status == 'violated' %}#fadbd8{% elif sla_status.sla_status == 'warning' %}#fef9e7{% else %}#d5f4e6{% endif %};">
+ <h2><i class="fas fa-clock pf-u-mr-sm"></i> SLA Status</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Status</p>
+ <span class="status-badge {% if sla_status.sla_status == 'violated' %}danger{% elif sla_status.sla_status == 'warning' %}warning{% else %}success{% endif %}">
+ {% if sla_status.sla_status == 'violated' %}
+ Violated
+ {% elif sla_status.sla_status == 'warning' %}
+ <i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Warning
+ {% elif sla_status.sla_status == 'resolved' %}
+ Resolved within SLA
+ {% else %}
+ Compliant
+ {% endif %}
+ </span>
+ </p>
+ 
+ <div class="card">
+ <p class="metric-label">Detail</p>
+ {{ sla_status.detail }}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Time Remaining</p>
+ <strong>{{ time_remaining_formatted }}</strong>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">SLA Usage</p>
+ <div style="background: #ecf0f1; border-radius: 4px; height: 24px; overflow: hidden;">
+ <div style="background: {% if sla_status.percent_used > 75 %}#e74c3c{% elif sla_status.percent_used > 50 %}#f39c12{% else %}#27ae60{% endif %}; height: 100%; width: {{ sla_status.percent_used }}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem;">
+ {{ sla_status.percent_used }}%
+ </div>
+ </div>
+ </div>
+ </div>
+ 
+ {% if ticket.response_deadline %}
+ <p style="margin-top: 1rem; font-size: 0.9rem; color: #7f8c8d;">
+ Response deadline: <strong>{{ ticket.response_deadline.strftime("%Y-%m-%d %H:%M") }}</strong>
+ </p>
+ {% endif %}
+ {% if ticket.resolution_deadline %}
+ <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #7f8c8d;">
+ Resolution deadline: <strong>{{ ticket.resolution_deadline.strftime("%Y-%m-%d %H:%M") }}</strong>
+ </p>
+ {% endif %}
+</div>
+{% endif %}
+
+<div class="panel">
+ <h2><i class="fas fa-edit pf-u-mr-sm"></i> Asunto</h2>
+ <h3 style="margin: 0; color: #2c3e50;">{{ ticket.subject }}</h3>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-file pf-u-mr-sm"></i> Descripción</h2>
+ <div style="white-space: pre-wrap; background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+ {{ ticket.description }}
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-cog pf-u-mr-sm"></i> Acciones</h2>
+ 
+ <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+ <!-- Cambiar estado -->
+ <form method="post" action="{{ url_for('admin.ticket_update_status', ticket_id=ticket.incident_id) }}">
+ <h3 style="font-size: 1rem; margin-bottom: 1rem;">Cambiar Estado</h3>
+ <div class="form-group" style="margin: 0;">
+ <select name="status" required style="max-width: none;">
+ <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Abierto</option>
+ <option value="pending" {% if ticket.status == 'pending' %}selected{% endif %}>Pendiente</option>
+ <option value="resolved" {% if ticket.status == 'resolved' %}selected{% endif %}>Resuelto</option>
+ <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>Cerrado</option>
+ </select>
+ </div>
+ <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Actualizar estado</button>
+ </form>
+ 
+ <!-- Asignar -->
+ <form method="post" action="{{ url_for('admin.ticket_assign', ticket_id=ticket.incident_id) }}">
+ <h3 style="font-size: 1rem; margin-bottom: 1rem;">Asignar a</h3>
+ <div class="form-group" style="margin: 0;">
+ <input type="text" name="assigned_to" placeholder="Nombre de usuario" value="{{ ticket.assigned_to or '' }}" style="max-width: none;">
+ </div>
+ <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Asignar</button>
+ </form>
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-clipboard-list pf-u-mr-sm"></i> Notas Internas</h2>
+ 
+ <form method="post" action="{{ url_for('admin.ticket_add_note', ticket_id=ticket.incident_id) }}">
+ <div class="form-group">
+ <textarea name="note" rows="4" placeholder="Agregar una nota interna (no visible al cliente)" style="max-width: none;"></textarea>
+ </div>
+ <button type="submit" class="btn btn-success">Agregar nota</button>
+ </form>
+ 
+ {% if ticket.internal_notes %}
+ <div style="margin-top: 1.5rem; background: #f8f9fa; padding: 1rem; border-radius: 4px;">
+ <div style="white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;">
+{{ ticket.internal_notes }}
+ </div>
+ </div>
+ {% else %}
+ <p style="color: #7f8c8d; margin-top: 1rem;">Sin notas internas</p>
+ {% endif %}
+</div>
+
+<div class="quick-actions">
+ <a href="{{ url_for('admin.tickets_list') }}" class="btn btn-secondary">Volver a tickets</a>
+</div>
+
+{% endblock %}

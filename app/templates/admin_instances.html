@@ -1,0 +1,68 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Instancias - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Instancias de Aplicaciones{% endblock %}
+{% block page_subtitle %}Monitoreo de aplicaciones desplegadas en admirald{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-rocket pf-u-mr-sm"></i> Instancias ({{ total }} total)</h2>
+ 
+ {% if instances %}
+ <table>
+ <thead>
+ <tr>
+ <th>Instance ID</th>
+ <th>App</th>
+ <th>Cliente</th>
+ <th>Tier</th>
+ <th>Estado BD</th>
+ <th>Estado admirald</th>
+ <th>Acciones</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for item in instances %}
+ <tr>
+ <td>
+ <code style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">
+ {{ item.subscription.instance_id[:12] }}...
+ </code>
+ </td>
+ <td>
+ <strong>{{ item.subscription.app_slug }}</strong>
+ </td>
+ <td style="font-size: 0.9rem;">{{ item.subscription.customer_email }}</td>
+ <td>{{ item.subscription.tier_name }}</td>
+ <td>
+ <span class="status-badge {% if item.subscription.status == 'active' %}success{% elif item.subscription.status == 'paused' %}warning{% else %}danger{% endif %}">
+ {{ item.subscription.status }}
+ </span>
+ </td>
+ <td>
+ {% if item.error %}
+ <span class="status-badge danger">Error: {{ item.error[:30] }}...</span>
+ {% elif item.admirald %}
+ <span class="status-badge {% if item.admirald.get('status') == 'running' %}success{% else %}info{% endif %}">
+ {{ item.admirald.get('status', 'unknown') }}
+ </span>
+ {% else %}
+ <span class="status-badge info">N/A</span>
+ {% endif %}
+ </td>
+ <td>
+ <a href="{{ url_for('admin.instance_detail', instance_id=item.subscription.instance_id) }}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+ Ver
+ </a>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color: #7f8c8d; text-align: center; padding: 2rem;">Sin instancias desplegadas</p>
+ {% endif %}
+</div>
+
+{% endblock %}

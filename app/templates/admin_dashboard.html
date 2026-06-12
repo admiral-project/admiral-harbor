@@ -1,0 +1,113 @@
+{% extends "admin_layout.html" %}
+{% block title %}Admin Dashboard - Admiral Harbor{% endblock %}
+{% block content %}
+<header class="page-header">
+ <div>
+ <h1>Harbor administration</h1>
+ <p class="lede">Commercial content, incidents and NOW-LMS settings.</p>
+ </div>
+ <form method="post" action="{{ url_for('admin.logout') }}"><button class="secondary page-cta" type="submit">Logout</button></form>
+</header>
+
+<section class="panel">
+ <h2>Worker health</h2>
+ {% if worker_healthy %}
+ <p class="status-pill tone-ok">Healthy</p>
+ <p class="meta">Last run: {{ worker_last_seen }}</p>
+ {% else %}
+ <p class="status-pill tone-danger">Unhealthy</p>
+ <p class="meta">Last run: {{ worker_last_seen or "never" }}</p>
+ <p class="meta">The reconciliation worker has not reported recently. Check systemd timer.</p>
+ {% endif %}
+</section>
+
+<section class="panel">
+ <h2>Billing overview</h2>
+ <div class="grid">
+ <article class="card">
+ <h3>{{ subscriptions_active }} / {{ subscriptions_total }}</h3>
+ <p class="meta">Active subscriptions</p>
+ </article>
+ <article class="card">
+ <h3>{{ subscriptions_past_due }}</h3>
+ <p class="meta">Past due</p>
+ </article>
+ <article class="card">
+ <h3>${{ "%.2f"|format(invoices_paid * 100 / 100) }}</h3>
+ <p class="meta">Paid invoices</p>
+ </article>
+ </div>
+ <a class="secondary" href="{{ url_for('admin.billing') }}">View billing details</a>
+ <a class="secondary" style="margin-left:0.5rem" href="{{ url_for('admin.audit_log') }}">Audit log</a>
+ <a class="secondary" style="margin-left:0.5rem" href="{{ url_for('admin.test_instances') }}">Test instances</a>
+</section>
+
+<section class="panel">
+ <h2>Test instances</h2>
+ <div style="margin-bottom:0.5rem">
+ <a class="secondary" href="{{ url_for('admin.create_test_instance') }}">New test instance</a>
+ </div>
+ {% if test_instances %}
+ <table class="table">
+ <thead>
+ <tr>
+ <th>Instance</th>
+ <th>App</th>
+ <th>Tier</th>
+ <th>Status</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for sub in test_instances %}
+ <tr>
+ <td><code>{{ sub.instance_id or "-" }}</code></td>
+ <td>{{ sub.app_slug }}</td>
+ <td>{{ sub.tier_name }}</td>
+ <td><span class="status-pill tone-{{ 'ok' if sub.status == 'active' else 'warn' }}">{{ sub.status }}</span></td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p class="meta">No test instances yet.</p>
+ {% endif %}
+</section>
+
+<section class="panel">
+ <h2>Catalog content</h2>
+ <div class="grid">
+ {% for app in apps %}
+ <article class="card">
+ <h3>{{ app.name }}</h3>
+ <p>{{ app.one_liner }}</p>
+ <a class="secondary" href="{{ url_for('admin.app_content', slug=app.slug) }}">Edit content</a>
+ </article>
+ {% endfor %}
+ </div>
+</section>
+
+<section class="panel">
+ <h2>NOW-LMS</h2>
+ <p class="meta">Status: {{ "enabled" if lms_settings.enabled else "disabled" }}</p>
+ <a class="secondary" href="{{ url_for('admin.lms_settings') }}">Settings</a>
+ <a class="secondary" href="{{ url_for('admin.portal_branding') }}" style="margin-left:0.5rem">Portal branding</a>
+ <form method="post" action="{{ url_for('admin.sync_catalog') }}" style="display:inline;margin-left:0.5rem">
+ <button class="secondary" type="submit">Sync catalog from admirald</button>
+ </form>
+</section>
+
+<section class="panel">
+ <h2>Recent incidents</h2>
+ <div class="grid">
+ {% for incident in incidents %}
+ <article class="card">
+ <h3>{{ incident.subject }}</h3>
+ <p>{{ incident.instance_id }}</p>
+ <p class="meta">{{ incident.priority }} · {{ incident.status }}</p>
+ </article>
+ {% else %}
+ <p class="meta">No incidents yet.</p>
+ {% endfor %}
+ </div>
+</section>
+{% endblock %}

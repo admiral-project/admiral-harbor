@@ -1,0 +1,184 @@
+{% extends "layout.html" %}
+{% block title %}{{ instance.domain }} - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="panel page-header detail-header">
+ <div>
+ <p class="eyebrow"><a href="{{ url_for('main.dashboard') }}">Back to dashboard</a></p>
+ <h1>{{ instance.domain }}</h1>
+ <p class="lede">App: {{ app.name if app else instance.app_slug }}</p>
+ <p class="meta">Tier: {{ instance.tier_name }} · Next billing: {{ instance.next_billing_at or "-" }}</p>
+ </div>
+ <div class="detail-actions compact-actions">
+ {% if instance.status in ["running", "provisioning", "backup_running", "restoring"] %}
+ <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+ <input type="hidden" name="action" value="pause">
+ <button class="secondary action-alert" type="submit">Pause</button>
+ </form>
+ {% endif %}
+
+ {% if instance.status in ["paused", "stopped"] %}
+ <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+ <input type="hidden" name="action" value="resume">
+ <button class="secondary action-success" type="submit">Resume</button>
+ </form>
+ {% endif %}
+
+ {% if instance.status not in ["deprovisioning", "deprovisioned", "cancelled"] %}
+ <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+ <input type="hidden" name="action" value="restart">
+ <button class="secondary action-warning" type="submit">Restart</button>
+ </form>
+ {% endif %}
+ </div>
+</section>
+
+<section class="panel">
+ <h2>Status</h2>
+ <dl class="details">
+ <div><dt>Operational</dt><dd><span class="status-pill tone-{{ operational_tone }}">{{ operational_label }}</span></dd></div>
+ <div><dt>Storage</dt><dd><span class="status-pill tone-{{ storage_tone }}">{{ storage_label }}</span></dd></div>
+ <div><dt>Backups</dt><dd><span class="status-pill tone-{{ backup_tone }}">{{ backup_label }}</span></dd></div>
+ <div><dt>Remote state</dt><dd>{% if remote_state %}<span class="status-pill tone-{{ remote_tone }}">{{ remote_state.technical_status }}</span>{% else %}-{% endif %}</dd></div>
+ </dl>
+</section>
+
+<section class="instance-layout">
+ <div class="instance-main">
+ <section class="panel">
+ <div class="section-head compact-head">
+ <div>
+ <h2>Backups & Restore</h2>
+ <p class="meta">Create backups, upload external archives and request restore operations.</p>
+ </div>
+ <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+ <input type="hidden" name="action" value="backup">
+ <input type="hidden" name="service" value="db">
+ <button class="secondary page-cta" type="submit">Request backup</button>
+ </form>
+ </div>
+
+ <div class="subsection">
+ <h3>Remote backups</h3>
+ <div class="grid app-grid">
+ {% for backup in backups %}
+ <article class="card compact-card">
+ <h3>{{ backup.id }}</h3>
+ <p class="status-line"><span class="status-pill">{{ backup.status }}</span></p>
+ <p class="meta">{{ backup.backup_type }} · {{ backup.created_at }}</p>
+ </article>
+ {% else %}
+ <div class="empty-state">No remote backups listed yet.</div>
+ {% endfor %}
+ </div>
+ </div>
+
+ <div class="two-col">
+ <section class="subpanel">
+ <h3>Upload external backup</h3>
+ <form method="post" enctype="multipart/form-data" action="{{ url_for('main.upload_backup', instance_id=instance.instance_id) }}" class="stack">
+ <label class="upload-field">Backup file
+ <span class="upload-shell"><input type="file" name="backup_file"></span>
+ </label>
+ <button class="secondary page-cta" type="submit">Upload backup</button>
+ </form>
+ <div class="stack compact-list">
+ {% for backup in uploaded_backups %}
+ <article class="card compact-card">
+ <h3>{{ backup.original_filename }}</h3>
+ <p class="meta">{{ backup.size_bytes }} bytes</p>
+ <p class="meta">SHA256: {{ backup.checksum_sha256 }}</p>
+ <a class="secondary page-cta" href="{{ url_for('main.download_uploaded_backup', backup_id=backup.backup_id) }}">Download</a>
+ </article>
+ {% else %}
+ <div class="empty-state">No uploaded backups yet.</div>
+ {% endfor %}
+ </div>
+ </section>
+
+ <section class="subpanel">
+ <h3>Request restore</h3>
+ <p class="meta">Type the application slug to confirm a destructive restore request.</p>
+ <form method="post" action="{{ url_for('main.request_restore', instance_id=instance.instance_id) }}" class="stack">
+ <label>Source kind
+ <select name="source_kind">
+ <option value="uploaded">Uploaded backup</option>
+ <option value="remote">Remote backup</option>
+ </select>
+ </label>
+ <label>Source backup ID <input name="source_backup_id"></label>
+ <label>Service <input name="service_name" value="db"></label>
+ <label>Confirm text <input name="confirm_text"></label>
+ <button class="secondary page-cta" type="submit">Request restore</button>
+ </form>
+ </section>
+ </div>
+ </section>
+ </div>
+
+ <aside class="instance-side">
+ <section class="panel">
+ <h2>Tier change</h2>
+ <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}" class="stack">
+ <input type="hidden" name="action" value="resize">
+ <label>Target tier <input name="tier_name" value="{{ instance.tier_name }}"></label>
+ <button class="secondary page-cta" type="submit">Request tier change</button>
+ </form>
+ </section>
+
+ {% if instance.status not in ["deprovisioning", "deprovisioned", "cancelled"] %}
+ <section class="panel">
+ <h2>Cancel service</h2>
+ <p class="meta">Type <strong>{{ instance.app_slug }}</strong> to confirm cancellation.</p>
+ <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}" class="stack">
+ <input type="hidden" name="action" value="cancel">
+ <label>Confirm text <input name="confirm_text"></label>
+ <button class="secondary action-danger page-cta" type="submit">Cancel service</button>
+ </form>
+ </section>
+ {% endif %}
+
+ <section class="panel">
+ <h2>Support incident</h2>
+ <form method="post" enctype="multipart/form-data" action="{{ url_for('main.create_incident', instance_id=instance.instance_id) }}" class="stack">
+ <label>Subject <input name="subject"></label>
+ <label>Description <textarea name="description"></textarea></label>
+ <label>Priority
+ <select name="priority">
+ <option value="low">Low</option>
+ <option value="medium">Medium</option>
+ <option value="high">High</option>
+ </select>
+ </label>
+ <label class="upload-field">Attachment
+ <span class="upload-shell"><input type="file" name="attachment"></span>
+ </label>
+ <button class="secondary page-cta" type="submit">Report incident</button>
+ </form>
+ <div class="stack compact-list">
+ {% for incident in incidents %}
+ <article class="card compact-card">
+ <h3>{{ incident.subject }}</h3>
+ <p class="status-line"><span class="status-pill">{{ incident.status }}</span></p>
+ <p class="meta">{{ incident.priority }} · {{ incident.created_at }}</p>
+ </article>
+ {% endfor %}
+ </div>
+ </section>
+
+ <section class="panel">
+ <h2>Event history</h2>
+ <div class="stack compact-list">
+ {% for event in events %}
+ <article class="card compact-card">
+ <h3>{{ event.event_type }}</h3>
+ <p>{{ event.message }}</p>
+ <p class="meta">{{ event.created_at }}</p>
+ </article>
+ {% else %}
+ <div class="empty-state">No events yet.</div>
+ {% endfor %}
+ </div>
+ </section>
+ </aside>
+</section>
+{% endblock %}

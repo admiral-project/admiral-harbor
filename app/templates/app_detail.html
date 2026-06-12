@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block title %}{{ app.name }} - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="detail-intro">
+  <p class="breadcrumb"><a href="{{ url_for('main.index') }}">Catalog</a> / {{ app.name }}</p>
+  <div class="detail-head">
+    <div class="logo-well detail-logo">
+    {% if app.logo_url %}
+      <img src="{{ app.logo_url }}" alt="{{ app.name }} logo" class="app-logo">
+    {% else %}
+      <span class="logo-fallback">{{ app.name[:1] }}</span>
+    {% endif %}
+    </div>
+    <div>
+      <h1>{{ app.name }}</h1>
+      <p class="lede">{{ app.one_liner }}</p>
+    </div>
+  </div>
+  <div class="detail-links">
+    {% if app.homepage_url %}<a class="link" href="{{ app.homepage_url }}">Homepage</a>{% endif %}
+    {% if app.repository_url %}<a class="link" href="{{ app.repository_url }}">Repository</a>{% endif %}
+    {% if app.documentation_url %}<a class="link" href="{{ app.documentation_url }}">Documentation</a>{% endif %}
+    {% if app.bug_tracker_url %}<a class="link" href="{{ app.bug_tracker_url }}">Bug tracker</a>{% endif %}
+    {% if app.support_url %}<a class="link" href="{{ app.support_url }}">Support</a>{% endif %}
+  </div>
+</section>
+
+{% if app.description_md %}
+<section class="detail-section">
+  <h2>About</h2>
+  <div class="markdown">{{ app.description_md }}</div>
+</section>
+{% endif %}
+
+<section class="detail-section">
+  <h2>Plans</h2>
+  <div class="plans-grid">
+  {% for tier in remote.tiers %}
+    <article class="plan-card">
+      <h3>{{ tier.name }}</h3>
+      {% if tier.free %}
+      <p class="price free">Free</p>
+      {% else %}
+      <p class="price">${{ "%.2f"|format(tier.price_monthly_cents / 100) }}<span class="period">/month</span></p>
+      {% endif %}
+      <ul class="specs">
+        <li>{{ tier.cpu }} CPU</li>
+        <li>{{ tier.memory }} RAM</li>
+        <li>{{ tier.storage }} storage</li>
+      </ul>
+      {% if customer %}
+      <form method="post" action="{{ url_for('main.deploy_app', slug=app.slug) }}">
+        <input type="hidden" name="tier_name" value="{{ tier.name }}">
+        <button type="submit" class="btn primary">{% if tier.free %}Deploy{% else %}Subscribe{% endif %}</button>
+      </form>
+      {% else %}
+      <a href="{{ url_for('auth.login_page') }}" class="btn">Sign in to deploy</a>
+      {% endif %}
+    </article>
+  {% endfor %}
+  </div>
+</section>
+
+{% if lms_enabled and courses %}
+<section class="detail-section">
+  <h2>Associated courses</h2>
+  <div class="plans-grid">
+  {% for course in courses %}
+    <article class="plan-card">
+      <h3>{{ course.course_code }}</h3>
+      <p>{{ course.course_type }}</p>
+      <p class="meta">${{ "%.2f"|format(course.base_price_cents / 100) }}</p>
+    </article>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

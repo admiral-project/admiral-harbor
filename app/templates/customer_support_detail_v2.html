@@ -1,0 +1,93 @@
+{% extends "customer_layout.html" %}
+
+{% block title %}Ticket #{{ ticket.id }} - {{ portal_name }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+ <h1>Ticket #{{ ticket.id }}</h1>
+ <p>{{ ticket.subject }}</p>
+</div>
+
+<div class="dashboard-grid">
+ <div class="metric-card">
+ <h3>Status</h3>
+ <div style="font-size: 18px; margin-top: 10px;">
+ <span class="badge {% if ticket.status == 'open' %}badge-warning{% elif ticket.status == 'in_progress' %}badge-info{% else %}badge-success{% endif %}">
+ {{ ticket.status }}
+ </span>
+ </div>
+ </div>
+ 
+ <div class="metric-card">
+ <h3>Priority</h3>
+ <div style="font-size: 18px; margin-top: 10px;">
+ <span class="badge {% if ticket.priority == 'critical' %}badge-danger{% elif ticket.priority == 'high' %}badge-warning{% elif ticket.priority == 'medium' %}badge-info{% else %}badge-info{% endif %}">
+ {{ ticket.priority }}
+ </span>
+ </div>
+ </div>
+ 
+ <div class="metric-card">
+ <h3>Created</h3>
+ <div style="font-size: 14px; margin-top: 10px;">{{ ticket.created_at.strftime('%B %d, %Y %H:%M') if ticket.created_at else 'N/A' }}</div>
+ </div>
+ 
+ {% if sla_status %}
+ <div class="metric-card {% if sla_status.status == 'overdue' %}alert{% else %}success{% endif %}">
+ <h3>SLA Status</h3>
+ <div style="font-size: 14px; margin-top: 10px;">
+ {% if sla_status.status == 'overdue' %}
+ <strong style="color: #e74c3c;"><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Overdue</strong>
+ {% else %}
+ <strong style="color: #27ae60;"> On Track</strong>
+ {% if sla_status.hours_remaining %}
+ <br><span style="font-size: 12px;">~{{ sla_status.hours_remaining }}h remaining</span>
+ {% endif %}
+ {% endif %}
+ </div>
+ </div>
+ {% endif %}
+</div>
+
+<div style="margin-top: 40px; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+ <h2 style="margin-bottom: 20px; color: #2c3e50;">Conversation</h2>
+ 
+ <div style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+ {% for msg in conversation %}
+ <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: {% if msg.is_customer %}#f0f7ff{% else %}#f9f9f9{% endif %};">
+ <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">
+ {{ msg.author }}
+ {% if msg.is_customer %}
+ <span style="font-size: 12px; color: #27ae60;">(You)</span>
+ {% endif %}
+ </div>
+ <div style="color: #666; font-size: 12px; margin-bottom: 10px;">{{ msg.timestamp.strftime('%B %d, %Y %H:%M') if msg.timestamp else 'N/A' }}</div>
+ <div style="line-height: 1.5;">{{ msg.message }}</div>
+ </div>
+ {% endfor %}
+ </div>
+ 
+ {% if ticket.status != 'closed' %}
+ <div style="border-top: 2px solid #ddd; padding-top: 20px;">
+ <h3 style="margin-bottom: 15px; color: #2c3e50;">Add Reply</h3>
+ 
+ <form method="POST" action="{{ url_for('customer.support_reply', ticket_id=ticket.id) }}">
+ <div style="margin-bottom: 15px;">
+ <textarea id="message" name="message" required placeholder="Type your reply..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; height: 100px; resize: vertical;"></textarea>
+ </div>
+ 
+ <button type="submit" class="btn btn-success">Send Reply</button>
+ </form>
+ </div>
+ {% else %}
+ <div style="border-top: 2px solid #ddd; padding-top: 20px; text-align: center;">
+ <p style="color: #666; font-size: 14px;">This ticket is closed. Replies are not accepted.</p>
+ <a href="{{ url_for('customer.support_create_page') }}" class="btn btn-primary" style="display: inline-block;">Create New Ticket</a>
+ </div>
+ {% endif %}
+</div>
+
+<div style="margin-top: 20px;">
+ <a href="{{ url_for('customer.support_list') }}" class="btn btn-primary">← Back to Tickets</a>
+</div>
+{% endblock %}

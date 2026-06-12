@@ -1,0 +1,118 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Tickets de Soporte - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Tickets de Soporte{% endblock %}
+{% block page_subtitle %}Seguimiento y gestión de solicitudes de clientes{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-search"></i> Filtros</h2>
+ 
+ <form method="get" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+ <select name="status" style="max-width: 150px;">
+ <option value="">Estado: Todos</option>
+ <option value="open" {% if status_filter == "open" %}selected{% endif %}>Abiertos</option>
+ <option value="pending" {% if status_filter == "pending" %}selected{% endif %}>Pendientes</option>
+ <option value="resolved" {% if status_filter == "resolved" %}selected{% endif %}>Resueltos</option>
+ <option value="closed" {% if status_filter == "closed" %}selected{% endif %}>Cerrados</option>
+ </select>
+ 
+ <select name="priority" style="max-width: 150px;">
+ <option value="">Prioridad: Todas</option>
+ <option value="low" {% if priority_filter == "low" %}selected{% endif %}>Baja</option>
+ <option value="medium" {% if priority_filter == "medium" %}selected{% endif %}>Media</option>
+ <option value="high" {% if priority_filter == "high" %}selected{% endif %}>Alta</option>
+ </select>
+ 
+ <select name="assigned" style="max-width: 150px;">
+ <option value="">Asignación: Todos</option>
+ <option value="unassigned" {% if assigned_filter == "unassigned" %}selected{% endif %}>Sin asignar</option>
+ </select>
+ 
+ <button type="submit" class="btn btn-primary">Filtrar</button>
+ {% if status_filter or priority_filter or assigned_filter %}
+ <a href="{{ url_for('admin.tickets_list') }}" class="btn btn-secondary">Limpiar</a>
+ {% endif %}
+ </form>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-ticket-alt"></i> Tickets ({{ total }} total)</h2>
+ 
+ {% if tickets %}
+ <table>
+ <thead>
+ <tr>
+ <th>Ticket ID</th>
+ <th>Asunto</th>
+ <th>Cliente</th>
+ <th>Prioridad</th>
+ <th>Estado</th>
+ <th>Asignado a</th>
+ <th>Creado</th>
+ <th>Acciones</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for ticket in tickets %}
+ <tr>
+ <td>
+ <code style="font-size: 0.85rem;">{{ ticket.incident_id[:12] }}</code>
+ </td>
+ <td style="max-width: 300px;">
+ <strong>{{ ticket.subject[:50] }}</strong>{% if ticket.subject|length > 50 %}...{% endif %}
+ </td>
+ <td style="font-size: 0.9rem;">{{ ticket.customer_email }}</td>
+ <td>
+ <span class="status-badge {% if ticket.priority == 'high' %}danger{% elif ticket.priority == 'medium' %}warning{% else %}info{% endif %}">
+ {{ ticket.priority|title }}
+ </span>
+ </td>
+ <td>
+ <span class="status-badge {% if ticket.status == 'open' %}danger{% elif ticket.status == 'pending' %}warning{% else %}success{% endif %}">
+ {{ ticket.status|title }}
+ </span>
+ </td>
+ <td style="font-size: 0.9rem;">
+ {% if ticket.assigned_to %}
+ <code>{{ ticket.assigned_to }}</code>
+ {% else %}
+ <span style="color: #e74c3c;">Sin asignar</span>
+ {% endif %}
+ </td>
+ <td style="font-size: 0.85rem; color: #7f8c8d;">
+ {{ ticket.created_at.strftime("%Y-%m-%d") }}
+ </td>
+ <td>
+ <a href="{{ url_for('admin.ticket_detail', ticket_id=ticket.incident_id) }}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+ Ver
+ </a>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ 
+ {# Paginación #}
+ {% if pages > 1 %}
+ <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+ {% if page > 1 %}
+ <a href="{{ url_for('admin.tickets_list', page=1, status=status_filter, priority=priority_filter, assigned=assigned_filter) }}" class="btn btn-secondary">Primera</a>
+ <a href="{{ url_for('admin.tickets_list', page=page-1, status=status_filter, priority=priority_filter, assigned=assigned_filter) }}" class="btn btn-secondary">« Anterior</a>
+ {% endif %}
+ 
+ <span style="padding: 0.75rem; font-weight: bold;">Página {{ page }} de {{ pages }}</span>
+ 
+ {% if page < pages %}
+ <a href="{{ url_for('admin.tickets_list', page=page+1, status=status_filter, priority=priority_filter, assigned=assigned_filter) }}" class="btn btn-secondary">Siguiente »</a>
+ <a href="{{ url_for('admin.tickets_list', page=pages, status=status_filter, priority=priority_filter, assigned=assigned_filter) }}" class="btn btn-secondary">Última</a>
+ {% endif %}
+ </div>
+ {% endif %}
+ {% else %}
+ <p style="color: #7f8c8d; text-align: center; padding: 2rem;">Sin tickets con los filtros aplicados</p>
+ {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}{{ customer_app.instance_id }} - Detalle{% endblock %}
+{% block page_title %}Detalles de Instancia{% endblock %}
+{% block page_subtitle %}{{ customer_app.instance_id }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-chart-bar pf-u-mr-sm"></i> Instance Information</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Instance ID</p>
+ <code style="background: #f0f0f0; padding: 0.5rem; border-radius: 3px; word-break: break-all;">
+ {{ customer_app.instance_id }}
+ </code>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Aplicación</p>
+ <strong>{{ customer_app.app_slug }}</strong>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Cliente</p>
+ {{ customer_app.customer_email }}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Tier</p>
+ {{ customer_app.tier_name }}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Estado local</p>
+ <span class="status-badge {% if customer_app.status == 'active' %}success{% elif customer_app.status == 'paused' %}warning{% else %}danger{% endif %}">
+ {{ customer_app.status }}
+ </span>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Dominio</p>
+ <code>{{ customer_app.domain }}</code>
+ </div>
+ </div>
+</div>
+
+{% if subscription %}
+ <div class="panel">
+ <h2><i class="fas fa-credit-card pf-u-mr-sm"></i> Suscripción Asociada</h2>
+ 
+ <table>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Referencia</td>
+ <td>{{ subscription.external_id }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Estado</td>
+ <td>
+ <span class="status-badge {% if subscription.status == 'active' %}success{% else %}info{% endif %}">
+ {{ subscription.status }}
+ </span>
+ </td>
+ </tr>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Precio mensual</td>
+ <td>${{ "%.2f"|format(subscription.monthly_price_cents / 100) }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Próxima facturación</td>
+ <td>{{ subscription.next_billing_at.strftime("%Y-%m-%d") if subscription.next_billing_at else "-" }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Creada</td>
+ <td>{{ subscription.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+ </tr>
+ </table>
+ </div>
+{% endif %}
+
+{% if admirald %}
+ <div class="panel">
+ <h2><i class="fas fa-tools pf-u-mr-sm"></i> Estado en admirald</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Status</p>
+ <span class="status-badge {% if admirald.get('status') == 'running' %}success{% else %}info{% endif %}">
+ {{ admirald.get('status', 'unknown') }}
+ </span>
+ </div>
+ 
+ {% if admirald.get('pod_name') %}
+ <div class="card">
+ <p class="metric-label">Pod</p>
+ <code>{{ admirald.get('pod_name') }}</code>
+ </div>
+ {% endif %}
+ 
+ {% if admirald.get('health_status') %}
+ <div class="card">
+ <p class="metric-label">Health</p>
+ <span class="status-badge {% if admirald.get('health_status') == 'healthy' %}success{% else %}warning{% endif %}">
+ {{ admirald.get('health_status') }}
+ </span>
+ </div>
+ {% endif %}
+ 
+ {% if admirald.get('last_check_at') %}
+ <div class="card">
+ <p class="metric-label">Última revisión</p>
+ {{ admirald.get('last_check_at') }}
+ </div>
+ {% endif %}
+ </div>
+ </div>
+{% endif %}
+
+<div class="panel">
+ <h2><i class="fas fa-save"></i> Backups</h2>
+ 
+ {% if backups %}
+ <table>
+ <thead>
+ <tr>
+ <th>Backup ID</th>
+ <th>Servicio</th>
+ <th>Estado</th>
+ <th>Tamaño</th>
+ <th>Creado</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for backup in backups %}
+ <tr>
+ <td>
+ <code style="font-size: 0.85rem;">{{ backup.get('id', 'N/A')[:16] }}...</code>
+ </td>
+ <td>{{ backup.get('service', '-') }}</td>
+ <td>
+ <span class="status-badge {% if backup.get('status') == 'completed' %}success{% elif backup.get('status') == 'failed' %}danger{% else %}info{% endif %}">
+ {{ backup.get('status', 'unknown') }}
+ </span>
+ </td>
+ <td>{{ backup.get('size_bytes', 'N/A') }}</td>
+ <td style="font-size: 0.9rem;">{{ backup.get('created_at', 'N/A')[:10] }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color: #7f8c8d;">Sin backups</p>
+ {% endif %}
+</div>
+
+<div class="quick-actions">
+ <a href="{{ url_for('admin.instances_list') }}" class="btn btn-secondary">Volver a instancias</a>
+</div>
+
+{% endblock %}

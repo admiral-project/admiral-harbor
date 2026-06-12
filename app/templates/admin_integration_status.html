@@ -1,0 +1,105 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Estado de Integración - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Estado de Integración con admirald{% endblock %}
+{% block page_subtitle %}Monitoreo de la conexión y sincronización con el control plane{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-plug"></i> Estado de Conexión</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <h3>
+ {% if admirald_status.status == "operativa" %}
+ <span style="color: #27ae60;">Operativa</span>
+ {% else %}
+ <span style="color: #e74c3c;">{{ admirald_status.status|replace("_", " ")|title }}</span>
+ {% endif %}
+ </h3>
+ <p class="metric-label">Conexión actual</p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Última consulta exitosa</p>
+ {% if admirald_status.last_check %}
+ <p>{{ admirald_status.last_check.strftime("%Y-%m-%d %H:%M:%S") }}</p>
+ <small style="color: #7f8c8d;">(hace {{ ((now - admirald_status.last_check).total_seconds() / 60)|int }} minutos)</small>
+ {% else %}
+ <p style="color: #e74c3c;">Sin consultas exitosas</p>
+ {% endif %}
+ </div>
+ 
+ {% if admirald_status.error %}
+ <div class="card" style="background: #fff0f0; border: 1px solid #ffcccc;">
+ <h3 style="color: #e74c3c;">Error</h3>
+ <p>{{ admirald_status.error }}</p>
+ </div>
+ {% endif %}
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-clipboard-list pf-u-mr-sm"></i> Última Sincronización de Catálogo</h2>
+ 
+ {% if last_sync %}
+ <div class="card" style="background: #d4edda; border: 1px solid #c3e6cb;">
+ <p><strong>Sincronizado hace:</strong> {{ last_sync.strftime("%Y-%m-%d %H:%M:%S") }}</p>
+ <p><strong>Tiempo transcurrido:</strong> {{ ((now - last_sync).total_seconds() / 3600)|int }} horas</p>
+ </div>
+ {% else %}
+ <div class="card" style="background: #fff3cd; border: 1px solid #ffeea5;">
+ <p style="color: #856404;">Nunca se ha sincronizado. Ejecutar sincronización manual.</p>
+ </div>
+ {% endif %}
+ 
+ <div style="margin-top: 1.5rem;">
+ <form method="post" action="{{ url_for('admin.sync_catalog') }}">
+ <button type="submit" class="btn btn-primary"><i class="fas fa-sync"></i> Sincronizar Ahora</button>
+ </form>
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-scroll"></i> Historial de Sincronizaciones</h2>
+ 
+ {% if sync_history %}
+ <table>
+ <thead>
+ <tr>
+ <th>Fecha/Hora</th>
+ <th>Actor</th>
+ <th>Estado</th>
+ <th>Detalles</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for event in sync_history %}
+ <tr>
+ <td style="font-size: 0.85rem;">{{ event.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+ <td><code style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 3px;">{{ event.actor or "-" }}</code></td>
+ <td>
+ {% if "failed" in event.action %}
+ <span class="status-badge danger">Fallido</span>
+ {% else %}
+ <span class="status-badge success">Exitoso</span>
+ {% endif %}
+ </td>
+ <td style="font-size: 0.9rem;">{{ event.detail }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color: #7f8c8d;">Sin historial de sincronizaciones</p>
+ {% endif %}
+</div>
+
+<script>
+function now() {
+ return new Date();
+}
+</script>
+
+{% endblock %}

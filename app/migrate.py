@@ -1,0 +1,84 @@
+# SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
+# SPDX-License-Identifier: Apache-2.0
+
+import logging
+
+from sqlalchemy import inspect, text
+
+from app.extensions import db
+
+logger = logging.getLogger("admiral-harbor")
+
+
+def run_migrations():
+    inspector = inspect(db.engine)
+    columns = {c["name"] for c in inspector.get_columns("catalog_app")}
+
+    with db.engine.begin() as conn:
+        if "revision" not in columns:
+            logger.info("Migration 0001: adding revision column to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN revision INTEGER NOT NULL DEFAULT 0"))
+        if "checksum" not in columns:
+            logger.info("Migration 0001: adding checksum column to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN checksum VARCHAR(64)"))
+        if "availability" not in columns:
+            logger.info("Migration 0001: adding availability column to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN availability VARCHAR(20) NOT NULL DEFAULT 'available'"))
+
+        if "technical_snapshot" not in columns:
+            logger.info("Migration 0002: adding technical_snapshot column to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN technical_snapshot TEXT"))
+
+    # Ensure catalog_app_tier table exists
+    tier_columns = {c["name"] for c in inspector.get_columns("catalog_app_tier")}
+    with db.engine.begin() as conn:
+        if "id" not in tier_columns:
+            logger.info("Migration 0002: creating catalog_app_tier table")
+            conn.execute(text("""
+                CREATE TABLE catalog_app_tier (
+                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    catalog_app_id INTEGER NOT NULL REFERENCES catalog_app(id),
+                    upstream_tier_id VARCHAR(120) NOT NULL,
+                    upstream_present BOOLEAN NOT NULL DEFAULT 1,
+                    upstream_availability VARCHAR(20) NOT NULL DEFAULT 'available',
+                    technical_snapshot TEXT,
+                    display_name VARCHAR(255),
+                    commercial_description TEXT,
+                    display_order INTEGER NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (catalog_app_id, upstream_tier_id)
+                )
+            """))
+
+    # Ensure harbor_admin_user has new columns
+    admin_columns = {c["name"] for c in inspector.get_columns("harbor_admin_user")}
+    with db.engine.begin() as conn:
+        if "is_active" not in admin_columns:
+            logger.info("Migration 0003: adding is_active column to harbor_admin_user")
+            conn.execute(text("ALTER TABLE harbor_admin_user ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
+        if "updated_at" not in admin_columns:
+            logger.info("Migration 0003: adding updated_at column to harbor_admin_user")
+            conn.execute(text("ALTER TABLE harbor_admin_user ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"))
+
+    customer_columns = {c["name"] for c in inspector.get_columns("customer")}
+    # Migration 0005: add marketplace link columns to catalog_app
+    catalog_columns = {c["name"] for c in inspector.get_columns("catalog_app")}
+    with db.engine.begin() as conn:
+        if "repository_url" not in catalog_columns:
+            logger.info("Migration 0005: adding repository_url to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN repository_url VARCHAR(1024)"))
+        if "support_url" not in catalog_columns:
+            logger.info("Migration 0005: adding support_url to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN support_url VARCHAR(1024)"))
+
+    with db.engine.begin() as conn:
+        if "is_active" not in customer_columns:
+            logger.info("Migration 0004: adding is_active column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
+        if "blocked_at" not in customer_columns:
+            logger.info("Migration 0004: adding blocked_at column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN blocked_at DATETIME"))
+        if "updated_at" not in customer_columns:
+            logger.info("Migration 0004: adding updated_at column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"))

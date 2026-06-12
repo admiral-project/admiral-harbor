@@ -1,0 +1,36 @@
+{% extends "customer_layout.html" %}
+
+{% block title %}Cancel Subscription - {{ portal_name }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+ <h1>Cancel Subscription</h1>
+ <p>{{ subscription.app_id }} - This action cannot be undone.</p>
+</div>
+
+<div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-width: 600px;">
+ <div style="background: #ffebee; border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+ <strong style="color: #c0392b;"><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Warning</strong><br>
+ <span style="color: #666; font-size: 14px;">Cancelling your subscription will terminate all services immediately. All running instances will be stopped.</span>
+ </div>
+ 
+ <form method="POST" action="{{ url_for('customer.subscription_cancel', subscription_id=subscription.id) }}">
+ <div style="margin-bottom: 20px;">
+ <label for="reason" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Why are you cancelling? (Optional)</label>
+ <textarea id="reason" name="reason" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; height: 100px; resize: vertical;"></textarea>
+ </div>
+ 
+ <div style="margin-bottom: 20px;">
+ <label style="display: flex; align-items: center; gap: 10px;">
+ <input type="checkbox" id="confirm" name="confirm" required>
+ <span style="color: #666; font-size: 14px;">I understand that this will cancel my subscription and all services will be terminated.</span>
+ </label>
+ </div>
+ 
+ <div style="display: flex; gap: 10px;">
+ <button type="submit" class="btn btn-danger">Cancel Subscription</button>
+ <a href="{{ url_for('customer.subscription_detail', subscription_id=subscription.id) }}" class="btn btn-primary">Keep Subscription</a>
+ </div>
+ </form>
+</div>
+{% endblock %}

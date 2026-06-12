@@ -1,0 +1,50 @@
+{% extends "admin_layout.html" %}
+{% block title %}Portal Branding - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Portal Branding{% endblock %}
+{% block page_subtitle %}Branding y tasas del portal de clientes, persistidos en base de datos{% endblock %}
+
+{% block content %}
+<div class="panel">
+ <h2><i class="fas fa-palette pf-u-mr-sm"></i> Portal Branding</h2>
+ <form method="post" enctype="multipart/form-data">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+   <div class="form-group">
+    <label for="portal_name">Nombre del portal</label>
+    <input type="text" id="portal_name" name="portal_name" value="{{ settings.portal_name }}" required>
+   </div>
+   <div class="form-group">
+    <label for="portal_description">Descripción del portal</label>
+    <input type="text" id="portal_description" name="portal_description" value="{{ settings.portal_description }}" required>
+   </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+   <div class="form-group">
+    <label for="portal_logo">Logo</label>
+    <input type="file" id="portal_logo" name="portal_logo" accept="image/*">
+    {% if settings.portal_logo_url %}
+    <p class="meta" style="margin-top:0.5rem;"><img src="{{ settings.portal_logo_url }}" alt="Portal logo" style="max-height:72px;max-width:180px;"></p>
+    {% endif %}
+   </div>
+   <div class="form-group">
+    <label for="portal_favicon">Favicon</label>
+    <input type="file" id="portal_favicon" name="portal_favicon" accept="image/*,.ico">
+    {% if settings.portal_favicon_url %}
+    <p class="meta" style="margin-top:0.5rem;">Favicon current: {{ settings.portal_favicon_url }}</p>
+    {% endif %}
+   </div>
+  </div>
+
+  <div class="form-group">
+   <label for="tax_rates_json">Tax rates JSON</label>
+   <textarea id="tax_rates_json" name="tax_rates_json" rows="8" style="width:100%;font-family:monospace;">{{ tax_rates_json }}</textarea>
+   <p class="meta">Example: { "NI": 15 }</p>
+  </div>
+
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+   <button type="submit" class="btn btn-primary"><i class="fas fa-save pf-u-mr-sm"></i> Save settings</button>
+   <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">Back</a>
+  </div>
+ </form>
+</div>
+{% endblock %}

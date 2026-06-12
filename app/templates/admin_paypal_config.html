@@ -1,0 +1,53 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Configuración PayPal - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Configuración PayPal{% endblock %}
+{% block page_subtitle %}Gestione credenciales e integración PayPal{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-credit-card pf-u-mr-sm"></i> Configuración de PayPal</h2>
+ 
+ <form method="post">
+ <div class="form-group">
+ <label for="mode">Modo *</label>
+ <select id="mode" name="mode" required>
+ <option value="sandbox" {% if config.mode == "sandbox" %}selected{% endif %}>Sandbox (Pruebas)</option>
+ <option value="live" {% if config.mode == "live" %}selected{% endif %}>Live (Producción)</option>
+ </select>
+ </div>
+ 
+ <div class="form-group">
+ <label for="client_id">Client ID *</label>
+ <input type="text" id="client_id" name="client_id" required value="{{ config.client_id or '' }}" placeholder="Tu Client ID de PayPal">
+ </div>
+ 
+ <div class="form-group">
+ <label for="client_secret">Client Secret *</label>
+ <input type="password" id="client_secret" name="client_secret" required placeholder="Tu Client Secret de PayPal">
+ </div>
+ 
+ <div class="form-group">
+ <label for="webhook_id">Webhook ID (opcional)</label>
+ <input type="text" id="webhook_id" name="webhook_id" value="{{ config.webhook_id or '' }}" placeholder="ID del webhook PayPal">
+ </div>
+ 
+ <div style="display: flex; gap: 1rem;">
+ <button type="submit" class="btn btn-primary">Guardar configuración</button>
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancelar</a>
+ </div>
+ </form>
+</div>
+
+<div class="panel">
+ <h2>ℹ️ Información</h2>
+ <p>La configuración de PayPal se almacena de forma segura en la base de datos.</p>
+ <ul style="margin-left: 1.5rem; margin-top: 1rem; color: #7f8c8d;">
+ <li><strong>Modo Sandbox:</strong> Use para pruebas y desarrollo.</li>
+ <li><strong>Modo Live:</strong> Usar en producción (real money).</li>
+ <li>Obtén tus credenciales en <a href="https://developer.paypal.com" target="_blank" style="color: #3498db;">developer.paypal.com</a></li>
+ </ul>
+</div>
+
+{% endblock %}

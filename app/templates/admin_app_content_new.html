@@ -1,0 +1,303 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}{{ app.name }} - Editar App{% endblock %}
+{% block page_title %}{{ app.name }}{% endblock %}
+{% block page_subtitle %}Administre el contenido comercial y la configuración del catálogo{% endblock %}
+
+{% block content %}
+
+{# Breadcrumb navigation #}
+<div style="margin-bottom:1rem;font-size:0.85rem;color:var(--admiral-text-secondary);">
+ <a href="{{ url_for('admin.apps_list') }}" style="color:var(--pf-global--link--Color);text-decoration:none;">
+  <i class="fas fa-arrow-left pf-u-mr-sm"></i> Volver al catálogo
+ </a>
+</div>
+
+{# ===== Commercial Content ===== #}
+<div class="panel">
+ <h2><i class="fas fa-edit pf-u-mr-sm"></i> Contenido Comercial</h2>
+ <form method="post">
+  <div class="form-group">
+   <label for="name">Nombre público *</label>
+   <input type="text" id="name" name="name" value="{{ app.name }}" required placeholder="Ej: Mi App">
+   <p class="meta" style="margin-top:0.25rem;">Nombre visible en el catálogo. Sobrescribe el nombre técnico de admirald.</p>
+  </div>
+
+  <div class="form-group">
+   <label for="one_liner">Una línea descriptiva *</label>
+   <input type="text" id="one_liner" name="one_liner" value="{{ app.one_liner or '' }}" required placeholder="Ej: Plataforma de gestión de proyectos">
+  </div>
+
+ <div class="form-group">
+  <label for="description_md">Descripción (Markdown)</label>
+  <textarea id="description_md" name="description_md" rows="6" placeholder="Descripción detallada en formato Markdown">{{ app.description_md or '' }}</textarea>
+ </div>
+
+ <div class="form-group">
+  <label for="logo_url">URL del Logo</label>
+  <input type="url" id="logo_url" name="logo_url" value="{{ app.logo_url or '' }}" placeholder="https://ejemplo.com/logo.png">
+ </div>
+
+ <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr));">
+  <div class="form-group">
+   <label for="homepage_url">URL de Homepage</label>
+   <input type="url" id="homepage_url" name="homepage_url" value="{{ app.homepage_url or '' }}" placeholder="https://ejemplo.com">
+  </div>
+  <div class="form-group">
+   <label for="repository_url">URL del Repositorio</label>
+   <input type="url" id="repository_url" name="repository_url" value="{{ app.repository_url or '' }}" placeholder="https://github.com/org/app">
+  </div>
+  <div class="form-group">
+   <label for="documentation_url">URL de Documentación</label>
+   <input type="url" id="documentation_url" name="documentation_url" value="{{ app.documentation_url or '' }}" placeholder="https://docs.ejemplo.com">
+  </div>
+  <div class="form-group">
+   <label for="bug_tracker_url">URL de Bug Tracker</label>
+   <input type="url" id="bug_tracker_url" name="bug_tracker_url" value="{{ app.bug_tracker_url or '' }}" placeholder="https://issues.ejemplo.com">
+  </div>
+  <div class="form-group">
+   <label for="support_url">URL de Soporte</label>
+   <input type="url" id="support_url" name="support_url" value="{{ app.support_url or '' }}" placeholder="https://ejemplo.com/soporte">
+  </div>
+ </div>
+
+ <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(250px,1fr));">
+  <div class="form-group">
+   <label for="sort_order">Orden en catálogo</label>
+   <input type="number" id="sort_order" name="sort_order" value="{{ app.sort_order or 0 }}" min="0" step="1">
+  </div>
+  <div class="form-group">
+   <label class="checkbox-label" style="margin-top:1.5rem;">
+    <input type="checkbox" name="published" {% if app.catalog_enabled %}checked{% endif %}>
+    <span><strong>Publicada en catálogo</strong> — visible para clientes</span>
+   </label>
+  </div>
+ </div>
+
+ <div style="display:flex;gap:1rem;margin-top:2rem;">
+  <button type="submit" class="btn btn-primary"><i class="fas fa-save pf-u-mr-sm"></i> Guardar cambios</button>
+  <a href="{{ url_for('admin.apps_list') }}" class="btn btn-secondary">Cancelar</a>
+ </div>
+ </form>
+</div>
+
+{# ===== Tiers ===== #}
+<div class="panel">
+ <h2><i class="fas fa-layer-group pf-u-mr-sm"></i> Tiers de Suscripción ({{ tiers|length }})</h2>
+ {% if tiers %}
+ <div class="table-container" style="overflow-x:auto;">
+ <table class="data-table">
+ <thead>
+ <tr>
+  <th>Tier</th>
+  <th>Display Name</th>
+  <th>CPU</th>
+  <th>Memoria</th>
+  <th>Almacenamiento</th>
+  <th>Precio</th>
+  <th>Upstream</th>
+  <th>Descripción comercial</th>
+  <th>PayPal Plan ID</th>
+</tr>
+</thead>
+ <tbody>
+  {% for tier in tiers %}
+  {% set snap = tier.technical_snapshot|from_json if tier.technical_snapshot else {} %}
+  <tr>
+   <td><code>{{ tier.upstream_tier_id }}</code></td>
+   <td>{{ tier.display_name or tier.upstream_tier_id }}</td>
+   <td>{{ snap.get('cpu', '-') }}</td>
+   <td>{{ snap.get('memory', '-') }}</td>
+   <td>{{ snap.get('storage', '-') }}</td>
+   <td>
+    {% if snap.get('price_monthly') %}
+    ${{ "%.2f"|format(snap['price_monthly']) }}/mo
+    {% elif snap.get('price_monthly_cents') %}
+    ${{ "%.2f"|format(snap['price_monthly_cents'] / 100) }}/mo
+    {% else %}
+    -
+    {% endif %}
+   </td>
+   <td>
+    {% if tier.upstream_present %}
+     {% if tier.upstream_availability == 'available' %}
+     <span class="status-badge success"><i class="fas fa-check-circle"></i></span>
+     {% else %}
+     <span class="status-badge error">{{ tier.upstream_availability }}</span>
+     {% endif %}
+    {% else %}
+    <span class="status-badge warning">ausente</span>
+    {% endif %}
+   </td>
+   <td>
+    <input type="hidden" name="tier_id" value="{{ tier.id }}">
+    <input type="text" name="tier_commercial_description" value="{{ tier.commercial_description or '' }}" placeholder="Descripción comercial" style="min-width:180px;">
+   </td>
+   <td>
+    <form method="post" action="{{ url_for('admin.update_tier_paypal_plan', upstream_app_id=app.upstream_app_id, tier_id=tier.id) }}" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <input type="text" name="paypal_plan_id" value="{{ tier.paypal_plan_id or '' }}" placeholder="P-..." style="min-width:240px;">
+     <button type="submit" class="btn btn-primary" style="padding:0.5rem 0.75rem;">Guardar</button>
+    </form>
+   </td>
+  </tr>
+ {% endfor %}
+</tbody>
+ </table>
+ </div>
+ {% else %}
+ <p style="color:var(--admiral-text-secondary);padding:1rem 0;">
+  No hay tiers sincronizados para esta app. Sincronice el catálogo.
+ </p>
+ {% endif %}
+</div>
+
+{# ===== Sync & Technical Info ===== #}
+<div class="panel">
+ <h2><i class="fas fa-code pf-u-mr-sm"></i> Información Técnica y Sincronización</h2>
+
+ <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+  <div class="card" style="padding:1rem;">
+   <p class="metric-label">Sync Status</p>
+   <p>
+    {% if app.sync_status == 'synced' %}
+    <span class="status-badge success"><i class="fas fa-check-circle"></i> synced</span>
+    {% elif app.sync_status == 'sync_error' %}
+    <span class="status-badge error"><i class="fas fa-exclamation-circle"></i> error</span>
+    {% else %}
+    <span class="status-badge info">{{ app.sync_status }}</span>
+    {% endif %}
+   </p>
+  </div>
+  <div class="card" style="padding:1rem;">
+   <p class="metric-label">Upstream Availability</p>
+   <p>
+    {% if app.upstream_availability == 'available' %}
+    <span class="status-badge success">{{ app.upstream_availability }}</span>
+    {% else %}
+    <span class="status-badge error">{{ app.upstream_availability }}</span>
+    {% endif %}
+   </p>
+  </div>
+  <div class="card" style="padding:1rem;">
+   <p class="metric-label">Revision</p>
+   <p><code>v{{ app.upstream_revision }}</code></p>
+  </div>
+  <div class="card" style="padding:1rem;">
+   <p class="metric-label">Checksum</p>
+   <p><code style="font-size:0.7rem;">{{ app.upstream_checksum[:24] or '-' }}{% if app.upstream_checksum and app.upstream_checksum|length > 24 %}…{% endif %}</code></p>
+  </div>
+  <div class="card" style="padding:1rem;">
+   <p class="metric-label">Última sincronización</p>
+   <p>{% if app.synced_at %}{{ app.synced_at.strftime('%Y-%m-%d %H:%M') }}{% else %}Nunca{% endif %}</p>
+  </div>
+  <div class="card" style="padding:1rem;">
+   <p class="metric-label">Upstream Present</p>
+   <p>{% if app.upstream_present %}<span class="status-badge success">Sí</span>{% else %}<span class="status-badge warning">No</span>{% endif %}</p>
+  </div>
+ </div>
+
+ {% if app.sync_last_error %}
+ <div style="margin-top:1rem;padding:1rem;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--admiral-radius);">
+  <strong style="color:var(--pf-global--danger-color--100);"><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Último error de sincronización:</strong>
+  <pre style="margin-top:0.5rem;font-size:0.85rem;white-space:pre-wrap;">{{ app.sync_last_error }}</pre>
+ </div>
+ {% endif %}
+</div>
+
+{# ===== Toggle Upstream Availability ===== #}
+<div class="panel">
+ <h2><i class="fas fa-toggle-on pf-u-mr-sm"></i> Disponibilidad en admirald</h2>
+ <p style="margin-bottom:1rem;color:var(--admiral-text-secondary);">
+  Cambia si esta app está disponible para nuevas instancias en admirald.
+ </p>
+ <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+  <form method="post" action="{{ url_for('admin.app_set_availability', upstream_app_id=app.upstream_app_id) }}" style="display:inline;">
+   <input type="hidden" name="availability" value="available">
+   <button type="submit" class="btn btn-success" onclick="return confirm('¿Marcar {{ app.name }} como disponible en admirald?')">
+    <i class="fas fa-check-circle pf-u-mr-sm"></i> Marcar disponible
+   </button>
+  </form>
+  <form method="post" action="{{ url_for('admin.app_set_availability', upstream_app_id=app.upstream_app_id) }}" style="display:inline;">
+   <input type="hidden" name="availability" value="unavailable">
+   <div style="display:flex;gap:0.5rem;align-items:center;">
+    <input type="text" name="reason" placeholder="Razón (opcional)" style="max-width:300px;">
+    <button type="submit" class="btn btn-danger" onclick="return confirm('¿Marcar {{ app.name }} como no disponible en admirald?')">
+     <i class="fas fa-ban pf-u-mr-sm"></i> Marcar no disponible
+    </button>
+   </div>
+  </form>
+ </div>
+</div>
+
+{# ===== Courses ===== #}
+<div class="panel">
+ <h2><i class="fas fa-school pf-u-mr-sm"></i> Cursos Asociados</h2>
+
+ <div style="margin-bottom:2rem;">
+  <h3 style="font-size:1rem;margin-bottom:1rem;">Agregar nuevo curso</h3>
+  <form method="post" action="{{ url_for('admin.add_course', slug=app.upstream_app_id) }}">
+   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+    <div class="form-group" style="margin:0;">
+     <label for="course_code">Código de curso *</label>
+     <input type="text" id="course_code" name="course_code" required placeholder="Ej: PROJ101">
+    </div>
+    <div class="form-group" style="margin:0;">
+     <label for="course_type">Tipo *</label>
+     <input type="text" id="course_type" name="course_type" value="course">
+    </div>
+    <div class="form-group" style="margin:0;">
+     <label for="base_price_cents">Precio base (centavos)</label>
+     <input type="number" id="base_price_cents" name="base_price_cents" value="0">
+    </div>
+   </div>
+   <div class="form-group">
+    <label class="checkbox-label">
+     <input type="checkbox" name="active" checked>
+     <span><strong>Activo</strong></span>
+    </label>
+   </div>
+   <button type="submit" class="btn btn-success"><i class="fas fa-plus pf-u-mr-sm"></i> Agregar curso</button>
+  </form>
+ </div>
+
+ {% if courses %}
+ <div class="grid">
+ {% for course in courses %}
+ <div class="card">
+  <h3 style="font-size:1.1rem;">{{ course.course_code }}</h3>
+  <p>
+   <strong>Tipo:</strong> {{ course.course_type }}<br>
+   <strong>Precio:</strong> ${{ "%.2f"|format(course.base_price_cents / 100) }}<br>
+   <strong>Estado:</strong>
+   {% if course.active %}<span style="color:#3e8635;">Activo</span>{% else %}<span style="color:#c9190b;">Inactivo</span>{% endif %}
+  </p>
+
+  <h4 style="font-size:0.95rem;margin-top:1rem;margin-bottom:0.75rem;border-top:1px solid var(--admiral-border-soft);padding-top:0.75rem;">Descuentos por tier</h4>
+
+  <form method="post" action="{{ url_for('admin.add_course_discount', course_id=course.id) }}" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+   <input type="text" name="tier_name" placeholder="Tier name" style="max-width:none;flex:1;">
+   <input type="number" name="discount_percent" value="0" placeholder="%" style="max-width:80px;">
+   <button type="submit" class="btn btn-success" style="padding:0.5rem 1rem;">+ Descuento</button>
+  </form>
+
+  {% if discounts %}
+  {% for disc in discounts %}
+  {% if disc.app_course_id == course.id %}
+  <div style="background:#f0f0f0;padding:0.5rem;border-radius:3px;margin-bottom:0.25rem;">
+   <strong>{{ disc.tier_name }}</strong>: {{ disc.discount_percent }}% descuento
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+ </div>
+ {% endfor %}
+ </div>
+ {% else %}
+ <p style="color:var(--admiral-text-secondary);background:var(--admiral-bg);padding:1.5rem;border-radius:var(--admiral-radius);">
+  Sin cursos asociados. Agregue uno usando el formulario superior.
+ </p>
+ {% endif %}
+</div>
+
+{% endblock %}

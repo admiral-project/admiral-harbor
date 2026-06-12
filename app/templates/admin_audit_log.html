@@ -1,0 +1,44 @@
+{% extends "admin_layout.html" %}
+{% block title %}Audit Log - Admin - Admiral Harbor{% endblock %}
+{% block content %}
+<header class="page-header">
+ <div>
+ <h1>Audit log</h1>
+ <p class="lede">Tracked actions for compliance and troubleshooting.</p>
+ </div>
+ <a class="secondary" href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+</header>
+
+<section class="panel">
+ <table>
+ <thead>
+ <tr><th>When</th><th>Actor</th><th>Action</th><th>Resource</th><th>Detail</th><th>IP</th></tr>
+ </thead>
+ <tbody>
+ {% for entry in entries %}
+ <tr>
+ <td class="meta">{{ entry.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+ <td>{{ entry.actor }}</td>
+ <td><span class="status-pill">{{ entry.action }}</span></td>
+ <td class="meta">{% if entry.resource_type %}{{ entry.resource_type }}:{{ entry.resource_id }}{% else %}-{% endif %}</td>
+ <td>{{ entry.detail }}</td>
+ <td class="meta">{{ entry.ip_address or "-" }}</td>
+ </tr>
+ {% else %}
+ <tr><td colspan="6" class="meta">No audit entries yet.</td></tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% if pages > 1 %}
+ <nav class="pagination">
+ {% if page > 1 %}
+ <a href="{{ url_for('admin.audit_log', page=page-1) }}">« Previous</a>
+ {% endif %}
+ <span class="meta">Page {{ page }} of {{ pages }}</span>
+ {% if page < pages %}
+ <a href="{{ url_for('admin.audit_log', page=page+1) }}">Next »</a>
+ {% endif %}
+ </nav>
+ {% endif %}
+</section>
+{% endblock %}

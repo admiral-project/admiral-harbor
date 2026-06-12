@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}Register - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="form-page">
+ <section class="panel form-panel">
+ <p class="eyebrow">{{ portal_description }}</p>
+ <h1>Create Account</h1>
+ <p class="meta">Create a Harbor account to deploy and manage applications.</p>
+ <form method="post" action="{{ url_for('auth.register') }}" class="stack">
+ <label>Display name <input name="display_name"></label>
+ <label>Email <input name="email" type="email"></label>
+ <label>Password <input name="password" type="password"></label>
+ <label>Country
+ <select name="country">
+ <option value="">Select country</option>
+ {% for code, name in countries %}
+ <option value="{{ code }}">{{ name }}</option>
+ {% endfor %}
+ </select>
+ </label>
+ <label class="checkbox-row"><input name="accept_terms" type="checkbox" value="1"> Accept terms</label>
+ <button class="primary" type="submit">Register</button>
+ </form>
+ </section>
+</section>
+{% endblock %}

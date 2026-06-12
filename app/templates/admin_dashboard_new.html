@@ -1,0 +1,252 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Dashboard - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Dashboard Administrativo{% endblock %}
+{% block page_subtitle %}Vista ejecutiva y operativa del estado de Harbor{% endblock %}
+
+{% block content %}
+
+{# Platform Status #}
+<div style="margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #f8f9fa 0%, #ecf0f1 100%); border-radius: 8px; border-left: 5px solid; border-left-color: {{ platform_status.color }};;">
+ <div style="display: flex; align-items: center; gap: 1.5rem;">
+ <div style="
+ width: 80px;
+ height: 80px;
+ border-radius: 50%;
+ background: {{ platform_status.color }};
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ color: white;
+ font-size: 2.5rem;
+ font-weight: bold;
+ flex-shrink: 0;
+ ">
+ {% if platform_status.severity == 0 %}{% elif platform_status.severity == 1 %}!{% elif platform_status.severity == 2 %}<i class="fas fa-exclamation-triangle pf-u-mr-sm"></i>{% else %}{% endif %}
+ </div>
+ <div>
+ <h3 style="margin: 0 0 0.5rem 0;">
+ Platform Status: <strong style="color: {{ platform_status.color }};">{{ platform_status.status | replace('_', ' ') | title }}</strong>
+ </h3>
+ <p style="margin: 0; color: #7f8c8d; font-size: 0.9rem;">
+ {{ platform_status.conditions | length }} condition(s) evaluated • 
+ <a href="{{ url_for('admin.status_overview') }}" style="color: #3498db; text-decoration: none;">View details →</a>
+ </p>
+ </div>
+ </div>
+</div>
+
+{# Bloque A: Estado general de la plataforma #}
+<div class="panel">
+ <h2><i class="fas fa-tools pf-u-mr-sm"></i> Estado General de la Plataforma</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <h3>
+ {% if admirald_status.status == "operativa" %}
+ <span style="color: #27ae60;"></span>
+ {% else %}
+ <span style="color: #e74c3c;"></span>
+ {% endif %}
+ </h3>
+ <p class="metric-label">Conexión con admirald: {{ admirald_status.status|replace("_", " ")|title }}</p>
+ {% if admirald_status.error %}
+ <small style="color: #e74c3c;">{{ admirald_status.error }}</small>
+ {% endif %}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Última consulta exitosa</p>
+ <p>{{ admirald_status.last_check.strftime("%Y-%m-%d %H:%M") if admirald_status.last_check else "N/A" }}</p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Última sincronización de catálogo</p>
+ <p>{{ last_sync.strftime("%Y-%m-%d %H:%M") if last_sync else "Nunca" }}</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">{{ published_apps }}</div>
+ <p class="metric-label">Apps publicadas</p>
+ </div>
+ </div>
+ 
+ <div class="quick-actions">
+ <a href="{{ url_for('admin.integration_status') }}" class="btn btn-secondary">Ver estado de integración</a>
+ <form method="post" action="{{ url_for('admin.sync_catalog') }}" style="display: inline;">
+ <button type="submit" class="btn btn-primary">Refrescar catálogo</button>
+ </form>
+ </div>
+</div>
+
+{# Bloque B: Resumen comercial mensual #}
+<div class="panel">
+ <h2><i class="fas fa-money-bill-wave pf-u-mr-sm"></i> Resumen Comercial Mensual</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <div class="metric-value">${{ "%.2f"|format(current_month_revenue / 100) }}</div>
+ <p class="metric-label">Facturación del mes</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">${{ "%.2f"|format(last_month_revenue / 100) }}</div>
+ <p class="metric-label">Mes anterior</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">
+ {% if last_month_revenue > 0 %}
+ {{ "%.1f"|format(((current_month_revenue - last_month_revenue) / last_month_revenue * 100)) }}%
+ {% else %}
+ N/A
+ {% endif %}
+ </div>
+ <p class="metric-label">Variación mensual</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">{{ subscriptions_active }} / {{ subscriptions_total }}</div>
+ <p class="metric-label">Suscripciones activas</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">{{ subscriptions_new }}</div>
+ <p class="metric-label">Nuevas suscripciones</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">{{ subscriptions_cancelled }}</div>
+ <p class="metric-label">Cancelaciones</p>
+ </div>
+ 
+ {% if pending_payments_total > 0 %}
+ <div class="card" style="background: #fffacd; border: 1px solid #f0e68c;">
+ <div class="metric-value">${{ "%.2f"|format(pending_payments_total / 100) }}</div>
+ <p class="metric-label">Pagos pendientes</p>
+ </div>
+ {% endif %}
+ 
+ {% if failed_payments_total > 0 %}
+ <div class="card" style="background: #fff0f0; border: 1px solid #ffcccc;">
+ <div class="metric-value">${{ "%.2f"|format(failed_payments_total / 100) }}</div>
+ <p class="metric-label">Pagos fallidos ({{ failed_payments_count }})</p>
+ </div>
+ {% endif %}
+ </div>
+ 
+ <div class="quick-actions">
+ {% if failed_payments_count > 0 %}
+ <a href="{{ url_for('admin.payments_list', status='failed') }}" class="btn btn-danger">Ver pagos fallidos</a>
+ {% endif %}
+ <a href="{{ url_for('admin.billing') }}" class="btn btn-secondary">Ver facturación completa</a>
+ <a href="{{ url_for('admin.billing') }}" class="btn btn-secondary">Ver suscripciones</a>
+ </div>
+</div>
+
+{# Bloque C: Operaciones técnicas #}
+<div class="panel">
+ <h2><i class="fas fa-cog pf-u-mr-sm"></i> Operaciones Técnicas</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <div class="metric-value">{{ instances_active }}</div>
+ <p class="metric-label">Instancias activas</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">{{ instances_paused }}</div>
+ <p class="metric-label">Pausadas</p>
+ </div>
+ 
+ <div class="card">
+ <div class="metric-value">{{ instances_provisioning }}</div>
+ <p class="metric-label">En aprovisionamiento</p>
+ </div>
+ 
+ {% if instances_error > 0 %}
+ <div class="card" style="background: #fff0f0; border: 1px solid #ffcccc;">
+ <div class="metric-value">{{ instances_error }}</div>
+ <p class="metric-label">Con error</p>
+ </div>
+ {% endif %}
+ </div>
+ 
+ <div class="quick-actions">
+ {% if instances_error > 0 %}
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-danger">Ver instancias con error</a>
+ {% endif %}
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Ver todos los backups</a>
+ </div>
+</div>
+
+{# Bloque D: Soporte #}
+<div class="panel">
+ <h2><i class="fas fa-ticket-alt"></i> Soporte</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <div class="metric-value">{{ tickets_open }}</div>
+ <p class="metric-label">Tickets abiertos</p>
+ </div>
+ 
+ {% if tickets_unassigned > 0 %}
+ <div class="card" style="background: #fffacd; border: 1px solid #f0e68c;">
+ <div class="metric-value">{{ tickets_unassigned }}</div>
+ <p class="metric-label">Sin asignar</p>
+ </div>
+ {% endif %}
+ 
+ {% if tickets_high_priority > 0 %}
+ <div class="card" style="background: #fff0f0; border: 1px solid #ffcccc;">
+ <div class="metric-value">{{ tickets_high_priority }}</div>
+ <p class="metric-label">Alta prioridad</p>
+ </div>
+ {% endif %}
+ </div>
+ 
+ <div class="quick-actions">
+ {% if tickets_unassigned > 0 %}
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-warning">Ver tickets sin asignar</a>
+ {% endif %}
+ {% if tickets_high_priority > 0 %}
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-danger">Ver alta prioridad</a>
+ {% endif %}
+ </div>
+</div>
+
+{# Bloque E: Actividad reciente #}
+<div class="panel">
+ <h2><i class="fas fa-edit pf-u-mr-sm"></i> Actividad Reciente</h2>
+ 
+ {% if recent_events %}
+ <table>
+ <thead>
+ <tr>
+ <th>Hora</th>
+ <th>Actor</th>
+ <th>Acción</th>
+ <th>Detalles</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for event in recent_events[:10] %}
+ <tr>
+ <td style="font-size: 0.85rem;">{{ event.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+ <td><code style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 3px;">{{ event.actor }}</code></td>
+ <td><strong>{{ event.action|replace("_", " ")|title }}</strong></td>
+ <td style="font-size: 0.9rem; color: #7f8c8d;">{{ event.detail[:80] }}{% if event.detail|length > 80 %}...{% endif %}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color: #7f8c8d;">Sin eventos recientes</p>
+ {% endif %}
+ 
+ <div class="quick-actions">
+ <a href="{{ url_for('admin.audit_log') }}" class="btn btn-secondary">Ver auditoría completa</a>
+ </div>
+</div>
+
+{% endblock %}

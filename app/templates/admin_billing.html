@@ -1,0 +1,83 @@
+{% extends "admin_layout.html" %}
+{% block title %}Billing - Admin - Admiral Harbor{% endblock %}
+{% block content %}
+<header class="page-header">
+ <div>
+ <h1>Billing</h1>
+ <p class="lede">Subscriptions, invoices and billing events.</p>
+ </div>
+ <a class="secondary" href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+</header>
+
+<section class="panel">
+ <h2>Subscriptions ({{ subscriptions|length }})</h2>
+ <table>
+ <thead>
+ <tr><th>External ID</th><th>Customer</th><th>App</th><th>Tier</th><th>Price</th><th>Tax</th><th>Status</th><th>PayPal ID</th></tr>
+ </thead>
+ <tbody>
+ {% for sub in subscriptions %}
+ <tr>
+ <td>{{ sub.external_id }}</td>
+ <td>{{ sub.customer_email }}</td>
+ <td>{{ sub.app_slug }}</td>
+ <td>{{ sub.tier_name }}</td>
+ <td>${{ "%.2f"|format(sub.monthly_price_cents / 100) }}</td>
+ <td>{{ sub.tax_percent }}%</td>
+ <td><span class="status-pill">{{ sub.status }}</span></td>
+ <td class="meta">{{ sub.paypal_subscription_id or "-" }}</td>
+ </tr>
+ {% else %}
+ <tr><td colspan="8" class="meta">No subscriptions.</td></tr>
+ {% endfor %}
+ </tbody>
+ </table>
+</section>
+
+<section class="panel">
+ <h2>Invoices ({{ invoices|length }})</h2>
+ <table>
+ <thead>
+ <tr><th>Invoice ID</th><th>Customer</th><th>App</th><th>Subtotal</th><th>Tax</th><th>Total</th><th>Status</th><th>Date</th></tr>
+ </thead>
+ <tbody>
+ {% for inv in invoices %}
+ <tr>
+ <td><a href="{{ url_for('admin.invoice_detail', invoice_id=inv.invoice_id) }}">{{ inv.invoice_id }}</a></td>
+ <td>{{ inv.customer_email }}</td>
+ <td>{{ inv.app_slug }}</td>
+ <td>${{ "%.2f"|format(inv.subtotal_cents / 100) }}</td>
+ <td>${{ "%.2f"|format(inv.tax_cents / 100) }}</td>
+ <td><strong>${{ "%.2f"|format(inv.total_cents / 100) }}</strong></td>
+ <td><span class="status-pill">{{ inv.status }}</span></td>
+ <td class="meta">{{ inv.created_at.strftime("%Y-%m-%d") }}</td>
+ </tr>
+ {% else %}
+ <tr><td colspan="8" class="meta">No invoices.</td></tr>
+ {% endfor %}
+ </tbody>
+ </table>
+</section>
+
+<section class="panel">
+ <h2>Recent billing events</h2>
+ <table>
+ <thead>
+ <tr><th>Event ID</th><th>Type</th><th>Status</th><th>Subscription</th><th>Date</th></tr>
+ </thead>
+ <tbody>
+ {% for ev in events %}
+ <tr>
+ <td class="meta">{{ ev.event_id[:24] }}...</td>
+ <td>{{ ev.event_type }}</td>
+ <td><span class="status-pill">{{ ev.status }}</span></td>
+ <td class="meta">{{ ev.subscription_external_id or "-" }}</td>
+ <td class="meta">{{ ev.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+ </tr>
+ {% else %}
+ <tr><td colspan="5" class="meta">No events.</td></tr>
+ {% endfor %}
+ </tbody>
+ </table>
+</section>
+{% endblock %}

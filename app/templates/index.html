@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block title %}{{ portal_name }}{% endblock %}
+{% block body %}
+<section class="catalog-header">
+  <h1>Catalog</h1>
+  <p class="lede">Deploy managed applications for your customers.</p>
+</section>
+
+<section class="app-grid">
+  {% for app in apps %}
+  <article class="card">
+    <div class="card-head">
+      <div class="logo-well">
+      {% if app.logo_url %}
+        <img src="{{ app.logo_url }}" alt="{{ app.name }} logo" class="app-logo">
+      {% else %}
+        <span class="logo-fallback">{{ app.name[:1] }}</span>
+      {% endif %}
+      </div>
+      <div>
+        <h3>{{ app.name }}</h3>
+        <p class="tagline">{{ app.one_liner }}</p>
+      </div>
+    </div>
+    {% if app.description_md %}
+    <p class="desc">{{ app.description_md[:200] }}{% if app.description_md|length > 200 %}…{% endif %}</p>
+    {% endif %}
+    <div class="card-footer">
+      <div class="card-links">
+      {% if app.homepage_url %}<a href="{{ app.homepage_url }}" class="link">Homepage</a>{% endif %}
+      {% if app.documentation_url %}<a href="{{ app.documentation_url }}" class="link">Docs</a>{% endif %}
+      {% if app.repository_url %}<a href="{{ app.repository_url }}" class="link">Repo</a>{% endif %}
+      </div>
+      <a href="{{ url_for('main.app_detail', slug=app.upstream_app_id) }}" class="btn">View plan</a>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

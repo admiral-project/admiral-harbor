@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Receipt - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="page-header compact">
+ <div>
+ <h1>Payment Confirmed</h1>
+ <p class="lede">Thank you, your subscription is active and provisioning has been queued.</p>
+ </div>
+</section>
+
+<section class="panel">
+ <h2>Invoice {{ invoice.invoice_id }}</h2>
+ <table>
+ <tr><td>App</td><td>{{ invoice.app_slug }}</td></tr>
+ <tr><td>Tier</td><td>{{ invoice.tier_name }}</td></tr>
+ <tr><td>Subtotal</td><td>${{ "%.2f"|format(invoice.subtotal_cents / 100) }}</td></tr>
+ {% if invoice.tax_percent > 0 %}
+ <tr><td>Tax ({{ invoice.tax_percent }}%)</td><td>${{ "%.2f"|format(invoice.tax_cents / 100) }}</td></tr>
+ {% endif %}
+ <tr><td><strong>Total</strong></td><td><strong>${{ "%.2f"|format(invoice.total_cents / 100) }}</strong></td></tr>
+ <tr><td>Status</td><td><span class="status-pill ok">{{ invoice.status }}</span></td></tr>
+ <tr><td>Date</td><td>{{ invoice.created_at.strftime("%Y-%m-%d %H:%M UTC") }}</td></tr>
+ </table>
+</section>
+
+<section class="panel">
+ <div class="grid">
+ <a class="primary" href="{{ url_for('main.dashboard') }}">Go to Dashboard</a>
+ <a class="secondary" href="{{ url_for('main.billing') }}">Billing History</a>
+ </div>
+</section>
+{% endblock %}

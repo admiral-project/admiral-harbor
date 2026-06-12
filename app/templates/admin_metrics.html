@@ -1,0 +1,147 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Metrics - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Operational Metrics{% endblock %}
+{% block page_subtitle %}MRR, revenue trends, and performance indicators{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-chart-bar pf-u-mr-sm"></i> Monthly Recurring Revenue (MRR)</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Current MRR</p>
+ <p class="metric-value" style="font-size: 1.8rem; font-weight: bold; color: #27ae60;">
+ ${{ "%.2f"|format(mrr_data.current_mrr_dollars) }}
+ </p>
+ <p class="metric-label" style="font-size: 0.9rem;">{{ mrr_data.current_mrr_cents | int }} cents</p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Previous Month</p>
+ <p class="metric-value" style="font-size: 1.8rem;">
+ ${{ "%.2f"|format(mrr_data.previous_month_dollars) }}
+ </p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Growth</p>
+ <p class="metric-value" style="font-size: 1.8rem; {% if mrr_data.growth_pct >= 0 %}color: #27ae60;{% else %}color: #e74c3c;{% endif %}">
+ {% if mrr_data.growth_pct >= 0 %}+{% endif %}{{ "%.1f"|format(mrr_data.growth_pct) }}%
+ </p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Active Subscriptions</p>
+ <p class="metric-value" style="font-size: 1.8rem;">{{ active_subs }} / {{ total_subs }}</p>
+ <p class="metric-label" style="font-size: 0.9rem; color: #7f8c8d;">
+ Churn: {{ "%.1f"|format(churn_rate) }}%
+ </p>
+ </div>
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-chart-line pf-u-mr-sm"></i> Revenue Trend (Last 6 Months)</h2>
+ 
+ <table style="width: 100%;">
+ <thead>
+ <tr>
+ <th>Month</th>
+ <th>Revenue</th>
+ <th>vs Previous</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% set prev_revenue = 0 %}
+ {% for month_key in monthly_revenue | dictsort | reverse %}
+ <tr>
+ <td><strong>{{ monthly_revenue | list | last if loop.first else month_key }}</strong></td>
+ <td>${{ "%.2f"|format(monthly_revenue[month_key]) }}</td>
+ <td>
+ {% if loop.first %}
+ —
+ {% else %}
+ {% set diff = monthly_revenue[month_key] - prev_revenue %}
+ <span style="{% if diff >= 0 %}color: #27ae60;{% else %}color: #e74c3c;{% endif %}">
+ {% if diff >= 0 %}+{% endif %}${{ "%.2f"|format(diff) }}
+ </span>
+ {% endif %}
+ </td>
+ </tr>
+ {% set prev_revenue = monthly_revenue[month_key] %}
+ {% endfor %}
+ </tbody>
+ </table>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Payment Issues</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Failed Payments</p>
+ <p class="metric-value" style="font-size: 1.8rem; color: #e74c3c;">{{ failed_payments_count }}</p>
+ <p class="metric-label" style="font-size: 0.9rem;">Total: ${{ "%.2f"|format(failed_payments_total_dollars) }}</p>
+ </div>
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-clipboard-list pf-u-mr-sm"></i> Recent Activity</h2>
+ 
+ {% if recent_activity %}
+ <table>
+ <thead>
+ <tr>
+ <th>Timestamp</th>
+ <th>Type</th>
+ <th>Action</th>
+ <th>Resource</th>
+ <th>Detail</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for item in recent_activity %}
+ <tr>
+ <td style="font-size: 0.85rem; color: #7f8c8d;">{{ item.timestamp.strftime("%Y-%m-%d %H:%M") }}</td>
+ <td>
+ <span class="status-badge {% if item.type == 'audit' %}info{% elif item.type == 'ticket' %}warning{% else %}secondary{% endif %}">
+ {{ item.type | title }}
+ </span>
+ </td>
+ <td style="font-size: 0.9rem;">{{ item.action | replace('_', ' ') | title }}</td>
+ <td style="font-size: 0.9rem;">
+ <code>{{ item.resource_type }}</code>
+ {% if item.resource_id %}
+ : {{ item.resource_id[:16] }}
+ {% endif %}
+ </td>
+ <td style="max-width: 300px; font-size: 0.9rem;">{{ item.detail[:80] }}</td>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-inbox"></i> Export Data</h2>
+ 
+ <p style="margin-bottom: 1.5rem; color: #7f8c8d;">Download operational data as CSV for external analysis.</p>
+ 
+ <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+ <a href="{{ url_for('admin.export_subscriptions') }}" class="btn btn-primary">
+ <i class="fas fa-chart-bar pf-u-mr-sm"></i> Subscriptions CSV
+ </a>
+ <a href="{{ url_for('admin.export_payments') }}" class="btn btn-primary">
+ <i class="fas fa-credit-card pf-u-mr-sm"></i> Payments CSV
+ </a>
+ <a href="{{ url_for('admin.export_tickets') }}" class="btn btn-primary">
+ <i class="fas fa-ticket-alt"></i> Tickets CSV
+ </a>
+ </div>
+</div>
+
+<div class="quick-actions">
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
+</div>
+
+{% endblock %}
+

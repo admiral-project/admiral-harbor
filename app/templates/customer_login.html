@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <link rel="icon" href="{{ portal_favicon_url }}">
+ <title>{{ portal_name }} - {{ portal_description }}</title>
+ <style>
+ * {
+ margin: 0;
+ padding: 0;
+ box-sizing: border-box;
+ }
+ 
+ body {
+ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+ min-height: 100vh;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ }
+ 
+ .login-container {
+ background: white;
+ border-radius: 8px;
+ box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+ width: 100%;
+ max-width: 400px;
+ padding: 40px;
+ }
+ 
+ .login-logo {
+ text-align: center;
+ margin-bottom: 30px;
+ }
+ 
+ .login-logo h1 {
+ font-size: 28px;
+ color: #333;
+ margin-bottom: 10px;
+ }
+ 
+ .login-logo p {
+ color: #666;
+ font-size: 14px;
+ }
+ 
+ .form-group {
+ margin-bottom: 20px;
+ }
+ 
+ .form-group label {
+ display: block;
+ margin-bottom: 8px;
+ color: #333;
+ font-weight: 500;
+ font-size: 14px;
+ }
+ 
+ .form-group input {
+ width: 100%;
+ padding: 12px;
+ border: 1px solid #ddd;
+ border-radius: 4px;
+ font-size: 14px;
+ transition: border-color 0.3s;
+ }
+ 
+ .form-group input:focus {
+ outline: none;
+ border-color: #667eea;
+ box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+ }
+ 
+ .login-button {
+ width: 100%;
+ padding: 12px;
+ background: #667eea;
+ color: white;
+ border: none;
+ border-radius: 4px;
+ font-size: 16px;
+ font-weight: 600;
+ cursor: pointer;
+ transition: background 0.3s;
+ }
+ 
+ .login-button:hover {
+ background: #5568d3;
+ }
+ 
+ .alerts {
+ margin-bottom: 20px;
+ }
+ 
+ .alert {
+ padding: 12px;
+ border-radius: 4px;
+ margin-bottom: 10px;
+ font-size: 14px;
+ }
+ 
+ .alert-error {
+ background: #fee;
+ color: #c33;
+ border: 1px solid #fcc;
+ }
+ 
+ .alert-success {
+ background: #efe;
+ color: #3c3;
+ border: 1px solid #cfc;
+ }
+ 
+ .alert-warning {
+ background: #ffd;
+ color: #666;
+ border: 1px solid #ffb;
+ }
+ </style>
+</head>
+<body>
+ <div class="login-container">
+ <div class="login-logo">
+ <h1>{{ portal_name }}</h1>
+ <p>{{ portal_description }}</p>
+ </div>
+ 
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ <div class="alerts">
+ {% for category, message in messages %}
+ <div class="alert alert-{{ category }}">{{ message }}</div>
+ {% endfor %}
+ </div>
+ {% endif %}
+ {% endwith %}
+ 
+ <form method="POST" action="{{ url_for('customer.login') }}">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ <div class="form-group">
+ <label for="email">Email</label>
+ <input type="email" id="email" name="email" required autofocus>
+ </div>
+ 
+ <div class="form-group">
+ <label for="password">Password</label>
+ <input type="password" id="password" name="password" required>
+ </div>
+ 
+ <button type="submit" class="login-button">Sign In</button>
+ </form>
+ </div>
+</body>
+</html>

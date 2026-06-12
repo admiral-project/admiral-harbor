@@ -1,0 +1,43 @@
+{% extends "admin_layout.html" %}
+{% block title %}Test instances - Admin - Admiral Harbor{% endblock %}
+{% block content %}
+<header class="page-header">
+ <div>
+ <h1>Test instances</h1>
+ <p class="lede">Instances created for testing, without billing.</p>
+ </div>
+ <a class="secondary page-cta" href="{{ url_for('admin.dashboard') }}">Back to admin</a>
+</header>
+
+<section class="panel">
+ <div style="margin-bottom:1rem">
+ <a class="primary" href="{{ url_for('admin.create_test_instance') }}">New test instance</a>
+ </div>
+ {% if subscriptions %}
+ <table class="table">
+ <thead>
+ <tr>
+ <th>Instance ID</th>
+ <th>App</th>
+ <th>Tier</th>
+ <th>Status</th>
+ <th>Created</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for sub in subscriptions %}
+ <tr>
+ <td><code>{{ sub.instance_id or "-" }}</code></td>
+ <td>{{ sub.app_slug }}</td>
+ <td>{{ sub.tier_name }}</td>
+ <td><span class="status-pill tone-{{ 'ok' if sub.status == 'active' else 'warn' }}">{{ sub.status }}</span></td>
+ <td class="meta">{{ sub.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p class="meta">No test instances yet.</p>
+ {% endif %}
+</section>
+{% endblock %}

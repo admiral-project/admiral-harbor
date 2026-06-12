@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block title %}Help - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="page-header compact">
+ <div>
+ <h1>Help</h1>
+ <p class="lede">Support incidents for your managed applications.</p>
+ </div>
+ <a class="primary page-cta" href="{{ url_for('main.dashboard') }}">Nueva Incidencia</a>
+</section>
+
+<section class="panel">
+ <div class="stack compact-list">
+ {% for incident in incidents %}
+ <article class="card compact-card">
+ <h3>{{ incident.subject }}</h3>
+ <p class="meta">{{ incident.instance_id }} · {{ incident.created_at }}</p>
+ <p class="status-line"><span class="status-pill">{{ incident.status }}</span></p>
+ <p>{{ incident.description }}</p>
+ <p class="meta">Priority: {{ incident.priority }}</p>
+ </article>
+ {% else %}
+ <p class="meta">No incidents reported yet.</p>
+ {% endfor %}
+ </div>
+</section>
+{% endblock %}

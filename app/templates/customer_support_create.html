@@ -1,0 +1,49 @@
+{% extends "customer_layout.html" %}
+
+{% block title %}Create Support Ticket - {{ portal_name }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+ <h1>Create Support Ticket</h1>
+ <p>Tell us how we can help you.</p>
+</div>
+
+<div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-width: 600px;">
+ <form method="POST" action="{{ url_for('customer.support_create') }}">
+ <div style="margin-bottom: 20px;">
+ <label for="subject" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Subject *</label>
+ <input type="text" id="subject" name="subject" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+ </div>
+ 
+ <div style="margin-bottom: 20px;">
+ <label for="description" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Description *</label>
+ <textarea id="description" name="description" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; height: 150px; resize: vertical;"></textarea>
+ </div>
+ 
+ <div style="margin-bottom: 20px;">
+ <label for="priority" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Priority</label>
+ <select id="priority" name="priority" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+ <option value="low">Low</option>
+ <option value="medium" selected>Medium</option>
+ <option value="high">High</option>
+ <option value="critical">Critical</option>
+ </select>
+ </div>
+ 
+ <div style="margin-bottom: 20px;">
+ <label for="subscription_id" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Related Subscription (Optional)</label>
+ <select id="subscription_id" name="subscription_id" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+ <option value="">None</option>
+ {% for sub in subscriptions %}
+ <option value="{{ sub.id }}">{{ sub.app_id }} ({{ sub.tier }})</option>
+ {% endfor %}
+ </select>
+ </div>
+ 
+ <div style="display: flex; gap: 10px;">
+ <button type="submit" class="btn btn-success">Create Ticket</button>
+ <a href="{{ url_for('customer.support_list') }}" class="btn btn-primary">Cancel</a>
+ </div>
+ </form>
+</div>
+{% endblock %}

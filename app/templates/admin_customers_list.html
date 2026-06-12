@@ -1,0 +1,83 @@
+{% extends "admin_layout.html" %}
+{% block title %}Clientes - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+{% block page_subtitle %}Gestión de cuentas de clientes{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2>Buscar Clientes</h2>
+ <form method="get" action="{{ url_for('admin.customers_list') }}">
+ <div style="display: flex; gap: 0.5rem; align-items: center;">
+ <input type="text" name="q" value="{{ q }}" placeholder="Buscar por email, nombre o ID..." style="max-width: 400px;">
+ <button type="submit" class="btn btn-primary">Buscar</button>
+ {% if q %}
+ <a href="{{ url_for('admin.customers_list') }}" class="btn btn-secondary">Limpiar</a>
+ {% endif %}
+ </div>
+ </form>
+</div>
+
+<div class="panel">
+ <h2>Clientes{% if q %} (filtrados){% endif %}</h2>
+ 
+ {% if customers %}
+ <table>
+ <thead>
+ <tr>
+ <th>ID</th>
+ <th>Email</th>
+ <th>Nombre</th>
+ <th>País</th>
+ <th>Estado</th>
+ <th>Registrado</th>
+ <th>Acciones</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for c in customers %}
+ <tr>
+ <td><code>{{ c.public_id }}</code></td>
+ <td>{{ c.email }}</td>
+ <td>{{ c.display_name }}</td>
+ <td>{{ c.country or "-" }}</td>
+ <td>
+ {% if c.is_active %}
+ <span class="status-badge success">Activo</span>
+ {% else %}
+ <span class="status-badge danger">Bloqueado</span>
+ {% endif %}
+ </td>
+ <td style="font-size: 0.9rem;">{{ c.created_at.strftime("%Y-%m-%d") }}</td>
+ <td>
+ <a href="{{ url_for('admin.customer_detail', customer_id=c.id) }}" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Ver</a>
+ <form method="post" action="{{ url_for('admin.toggle_customer_active', customer_id=c.id) }}" style="display: inline;">
+ {% if c.is_active %}
+ <button type="submit" class="btn btn-warning" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Bloquear</button>
+ {% else %}
+ <button type="submit" class="btn btn-success" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Desbloquear</button>
+ {% endif %}
+ </form>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ 
+ {% if pages > 1 %}
+ <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center;">
+ {% if page > 1 %}
+ <a href="{{ url_for('admin.customers_list', page=page-1, q=q) }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem;">← Anterior</a>
+ {% endif %}
+ <span style="padding: 0.4rem 0.8rem;">Página {{ page }} de {{ pages }}</span>
+ {% if page < pages %}
+ <a href="{{ url_for('admin.customers_list', page=page+1, q=q) }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem;">Siguiente →</a>
+ {% endif %}
+ </div>
+ {% endif %}
+ {% else %}
+ <p style="color: #7f8c8d;">{% if q %}No se encontraron clientes con "{{ q }}"{% else %}No hay clientes registrados aún{% endif %}</p>
+ {% endif %}
+</div>
+
+{% endblock %}

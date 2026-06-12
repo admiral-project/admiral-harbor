@@ -1,0 +1,119 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Historial de Sincronización - Admiral Harbor{% endblock %}
+{% block page_title %}Historial de Sincronización del Catálogo{% endblock %}
+{% block page_subtitle %}Registro de todas las sincronizaciones con admirald{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+  <h2 style="margin:0;"><i class="fas fa-sync pf-u-mr-sm"></i> Sincronizaciones ({{ total }} total)</h2>
+  <form method="post" action="{{ url_for('admin.sync_catalog') }}" style="display:inline;">
+   <button type="submit" class="btn btn-primary"><i class="fas fa-sync pf-u-mr-sm"></i> Sincronizar ahora</button>
+  </form>
+ </div>
+
+ {% if syncs %}
+ <div class="table-container" style="overflow-x:auto;">
+ <table class="data-table">
+ <thead>
+ <tr>
+  <th>Execution ID</th>
+  <th>Estado</th>
+  <th>Inicio</th>
+  <th>Fin</th>
+  <th>Origen</th>
+  <th>Procesados</th>
+  <th>Detalles</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for sync in syncs %}
+ <tr>
+  <td><code style="font-size:0.8rem;">{{ sync.execution_id }}</code></td>
+  <td>
+   {% if sync.status == 'success' %}
+   <span class="status-badge success"><i class="fas fa-check-circle"></i> éxito</span>
+   {% elif sync.status == 'failure' %}
+   <span class="status-badge error"><i class="fas fa-exclamation-circle"></i> fallo</span>
+   {% elif sync.status == 'in_progress' %}
+   <span class="status-badge warning"><i class="fas fa-spinner pf-u-mr-sm"></i> en progreso</span>
+   {% else %}
+   <span class="status-badge info">{{ sync.status }}</span>
+   {% endif %}
+  </td>
+  <td>{{ sync.started_at.strftime('%Y-%m-%d %H:%M:%S') if sync.started_at else '-' }}</td>
+  <td>{{ sync.completed_at.strftime('%Y-%m-%d %H:%M:%S') if sync.completed_at else 'En ejecución' }}</td>
+  <td>
+   <span class="status-badge info">{{ sync.origin }}</span>
+   {% if sync.actor %}
+   <br><small style="color:var(--admiral-text-secondary);">por {{ sync.actor }}</small>
+   {% endif %}
+  </td>
+  <td style="text-align:center;">
+   {% if sync.status == 'success' %}
+   <span title="Nuevas: {{ sync.apps_synced }}, Actualizadas: {{ sync.apps_updated }}, Ausentes: {{ sync.apps_marked_missing }}">
+    {{ sync.total_apps_processed or '-' }}
+   </span>
+   {% else %}
+    -
+   {% endif %}
+  </td>
+  <td>
+   {% if sync.status == 'success' %}
+   <small style="color:var(--admiral-text-secondary);">
+    {{ sync.apps_synced }} nuevas,
+    {{ sync.apps_updated }} actualizadas,
+    {{ sync.apps_marked_missing }} ausentes
+   </small>
+   {% elif sync.status == 'failure' and sync.error_message %}
+   <details style="font-size:0.85rem;">
+    <summary style="cursor:pointer;color:var(--pf-global--danger-color--100);">Ver error</summary>
+    <pre style="margin-top:0.5rem;padding:0.75rem;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--admiral-radius);font-size:0.8rem;white-space:pre-wrap;max-width:400px;">{{ sync.error_message }}</pre>
+   </details>
+   {% endif %}
+  </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+
+ {# Pagination #}
+ {% if pages > 1 %}
+ <div style="margin-top:1.5rem;display:flex;justify-content:center;gap:0.5rem;flex-wrap:wrap;">
+  {% if page > 1 %}
+  <a href="{{ url_for('admin.catalog_sync_history', page=1) }}" class="btn btn-secondary">Primera</a>
+  <a href="{{ url_for('admin.catalog_sync_history', page=page-1) }}" class="btn btn-secondary">« Anterior</a>
+  {% endif %}
+  <span style="padding:0.75rem;font-weight:bold;">Página {{ page }} de {{ pages }}</span>
+  {% if page < pages %}
+  <a href="{{ url_for('admin.catalog_sync_history', page=page+1) }}" class="btn btn-secondary">Siguiente »</a>
+  <a href="{{ url_for('admin.catalog_sync_history', page=pages) }}" class="btn btn-secondary">Última</a>
+  {% endif %}
+ </div>
+ {% endif %}
+
+ {% else %}
+ <div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-history"></i></div>
+  <h3>Sin sincronizaciones</h3>
+  <p>No hay registros de sincronización. Sincronice con admirald para crear el primer registro.</p>
+  <form method="post" action="{{ url_for('admin.sync_catalog') }}">
+   <button type="submit" class="btn btn-primary"><i class="fas fa-sync pf-u-mr-sm"></i> Sincronizar ahora</button>
+  </form>
+ </div>
+ {% endif %}
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-info-circle pf-u-mr-sm"></i> Orígenes de Sincronización</h2>
+ <ul style="margin-left:1.5rem;color:var(--admiral-text-secondary);line-height:1.8;">
+  <li><strong>startup</strong> — Sincronización automática al iniciar Harbor</li>
+  <li><strong>systemd_timer</strong> — Sincronización programada vía systemd timer</li>
+  <li><strong>manual</strong> — Sincronización iniciada por un administrador</li>
+ </ul>
+</div>
+
+{% endblock %}

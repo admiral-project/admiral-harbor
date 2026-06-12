@@ -1,0 +1,89 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Backup Detail - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Detalles de Backup{% endblock %}
+{% block page_subtitle %}{{ backup.get('id', 'N/A')[:16] }}...{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-save"></i> Información del Backup</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Backup ID</p>
+ <code style="background: #f0f0f0; padding: 0.5rem; border-radius: 3px; word-break: break-all;">
+ {{ backup.get('id', 'N/A') }}
+ </code>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Estado</p>
+ <span class="status-badge {% if backup.get('status') == 'completed' %}success{% elif backup.get('status') == 'failed' %}danger{% else %}info{% endif %}">
+ {{ backup.get('status', 'unknown') }}
+ </span>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Servicio</p>
+ {{ backup.get('service', 'N/A') }}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Tamaño</p>
+ {% if backup.get('size_bytes') %}
+ <strong>{{ (backup.get('size_bytes') / 1024 / 1024)|int }} MB</strong>
+ {% else %}
+ N/A
+ {% endif %}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Fecha de creación</p>
+ {{ backup.get('created_at', 'N/A') }}
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Checksum</p>
+ <code style="font-size: 0.8rem; word-break: break-all;">
+ {{ backup.get('checksum', 'N/A')[:32] }}...
+ </code>
+ </div>
+ </div>
+</div>
+
+{% if subscription %}
+ <div class="panel">
+ <h2><i class="fas fa-rocket pf-u-mr-sm"></i> Instancia Asociada</h2>
+ 
+ <table>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Instance ID</td>
+ <td>
+ <code>{{ subscription.instance_id }}</code>
+ </td>
+ </tr>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Aplicación</td>
+ <td>{{ subscription.app_slug }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight: bold; padding: 0.5rem;">Cliente</td>
+ <td>{{ subscription.customer_email }}</td>
+ </tr>
+ </table>
+ </div>
+{% endif %}
+
+{% if backup.get('error') %}
+ <div class="panel" style="background: #fff0f0; border: 1px solid #ffcccc;">
+ <h2 style="color: #e74c3c;"><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Error</h2>
+ <p>{{ backup.get('error') }}</p>
+ </div>
+{% endif %}
+
+<div class="quick-actions">
+ <a href="{{ url_for('admin.backups_list') }}" class="btn btn-secondary">Volver a backups</a>
+</div>
+
+{% endblock %}

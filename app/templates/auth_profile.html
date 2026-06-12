@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block title %}Profile - {{ portal_name }}{% endblock %}
+{% block body %}
+<header class="page-header">
+ <div>
+ <h1>Your profile</h1>
+ <p class="lede">Manage your account details.</p>
+ </div>
+</header>
+
+<section class="panel">
+ <form method="post" action="{{ url_for('auth.profile') }}" class="stack">
+ <label>Email
+ <input type="email" value="{{ customer.email }}" disabled>
+ </label>
+ <label>Display name
+ <input type="text" name="display_name" value="{{ customer.display_name }}" required>
+ </label>
+ <label>Country
+ <select name="country">
+ <option value="">-- Select --</option>
+ {% for code, name in countries %}
+ <option value="{{ code }}" {% if customer.country == code %}selected{% endif %}>{{ name }}</option>
+ {% endfor %}
+ </select>
+ </label>
+ <hr>
+ <label>Current password
+ <input type="password" name="current_password" placeholder="Required to change password">
+ </label>
+ <label>New password
+ <input type="password" name="new_password" placeholder="Leave blank to keep current">
+ </label>
+ <button type="submit" class="primary">Save changes</button>
+ </form>
+</section>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "admin_layout.html" %}
+{% block title %}New test instance - Admin - Admiral Harbor{% endblock %}
+{% block content %}
+<header class="page-header">
+ <div>
+ <h1>New test instance</h1>
+ <p class="lede">Provision a test instance without customer or billing.</p>
+ </div>
+ <a class="secondary page-cta" href="{{ url_for('admin.test_instances') }}">Back to test instances</a>
+</header>
+
+<section class="panel">
+ <form method="post" action="{{ url_for('admin.create_test_instance') }}">
+ <div>
+ <label for="app_slug">App</label>
+ <select id="app_slug" name="app_slug" required>
+ <option value="">— Select app —</option>
+ {% for app in apps %}
+ <option value="{{ app.name }}">{{ app.display_name or app.name }}</option>
+ {% endfor %}
+ </select>
+ </div>
+ <div>
+ <label for="tier_name">Tier</label>
+ <select id="tier_name" name="tier_name" required disabled>
+ <option value="">— Select app first —</option>
+ </select>
+ </div>
+ <p class="meta" style="margin-top:1rem">The instance will be provisioned immediately. No customer email or billing required.</p>
+ <button type="submit" class="primary">Create test instance</button>
+ </form>
+</section>
+
+<script>
+document.getElementById('app_slug').addEventListener('change', function () {
+ var slug = this.value;
+ var tierSelect = document.getElementById('tier_name');
+ tierSelect.innerHTML = '<option value="">— Select tier —</option>';
+ tierSelect.disabled = true;
+ if (!slug) return;
+ fetch('/api/catalog/apps/' + slug + '/tiers')
+ .then(function (r) { return r.json(); })
+ .then(function (tiers) {
+ if (!tiers || tiers.length === 0) {
+ tierSelect.innerHTML = '<option value="">— No tiers available —</option>';
+ return;
+ }
+ tiers.forEach(function (t) {
+ var opt = document.createElement('option');
+ opt.value = t.name;
+ opt.textContent = t.name + (t.price_monthly ? ' ($' + t.price_monthly + '/mo)' : '') + ' | CPU ' + (t.cpu || '-') + ' | RAM ' + (t.memory || '-');
+ tierSelect.appendChild(opt);
+ });
+ tierSelect.disabled = false;
+ })
+ .catch(function () {
+ tierSelect.innerHTML = '<option value="">— Failed to load tiers —</option>';
+ });
+});
+</script>
+{% endblock %}

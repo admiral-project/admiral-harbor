@@ -1,0 +1,38 @@
+{% extends "customer_layout.html" %}
+
+{% block title %}Profile - {{ portal_name }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+ <h1>Profile</h1>
+ <p>Manage your account information.</p>
+</div>
+
+<div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-width: 600px;">
+ <form method="POST" action="{{ url_for('customer.profile_edit') }}">
+ <div style="margin-bottom: 20px;">
+ <label for="email" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Email (Read-only)</label>
+ <input type="email" id="email" value="{{ customer.email }}" disabled style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background: #f5f5f5;">
+ </div>
+ 
+ <div style="margin-bottom: 20px;">
+ <label for="display_name" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Display Name *</label>
+ <input type="text" id="display_name" name="display_name" value="{{ customer.display_name }}" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+ </div>
+ 
+ <div style="margin-bottom: 20px;">
+ <label for="country" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Country</label>
+ <input type="text" id="country" name="country" value="{{ customer.country or '' }}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+ </div>
+ 
+ <div style="margin-bottom: 20px; padding: 15px; background: #f0f7ff; border-left: 4px solid #3498db; border-radius: 4px;">
+ <strong style="color: #0c5460;">Member Since</strong><br>
+ <span style="color: #666; font-size: 14px;">{{ customer.created_at.strftime('%B %d, %Y') if customer.created_at else 'N/A' }}</span>
+ </div>
+ 
+ <div style="display: flex; gap: 10px;">
+ <button type="submit" class="btn btn-success">Save Changes</button>
+ </div>
+ </form>
+</div>
+{% endblock %}

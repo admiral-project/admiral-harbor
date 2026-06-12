@@ -1,0 +1,59 @@
+{% extends "admin_layout.html" %}
+{% block title %}Settings - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Harbor Settings{% endblock %}
+{% block page_subtitle %}Commercial settings — stored in database, no shell access required{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+  <h2><i class="fas fa-envelope pf-u-mr-sm"></i> Notifications</h2>
+  <form method="post">
+  <div class="form-group">
+    <label for="smtp_from">SMTP from address</label>
+    <input type="email" id="smtp_from" name="smtp_from" value="{{ smtp_from }}" placeholder="noreply@example.com">
+    <p class="meta" style="margin-top:0.25rem;">Used as the sender for automated emails.</p>
+  </div>
+
+  <h2 style="margin-top:1.5rem;"><i class="fas fa-globe pf-u-mr-sm"></i> Portal</h2>
+  <div class="form-group">
+    <label for="external_url">External URL</label>
+    <input type="url" id="external_url" name="external_url" value="{{ external_url }}" placeholder="https://portal.example.com">
+    <p class="meta" style="margin-top:0.25rem;">Public URL where this portal is reachable (used for webhook return URLs).</p>
+  </div>
+
+  <div class="form-group">
+    <label for="max_backup_upload_bytes">Max backup upload size (bytes)</label>
+    <input type="number" id="max_backup_upload_bytes" name="max_backup_upload_bytes" value="{{ max_backup_upload_bytes }}" min="1048576">
+    <p class="meta" style="margin-top:0.25rem;">Maximum file size for backup uploads. Default: 512 MB.</p>
+  </div>
+
+  <h2 style="margin-top:1.5rem;"><i class="fas fa-clock pf-u-mr-sm"></i> Overdue Policy</h2>
+  <div class="form-group">
+    <label for="overdue_policy_version">Policy version identifier</label>
+    <input type="text" id="overdue_policy_version" name="overdue_policy_version" value="{{ overdue_policy_version }}" placeholder="overdue-policy-v1">
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+  <div class="form-group">
+    <label for="overdue_suspend_after_days">Suspend after (days)</label>
+    <input type="number" id="overdue_suspend_after_days" name="overdue_suspend_after_days" value="{{ overdue_suspend_after_days }}" min="1">
+  </div>
+  <div class="form-group">
+    <label for="overdue_deprovision_after_days">Deprovision after (days)</label>
+    <input type="number" id="overdue_deprovision_after_days" name="overdue_deprovision_after_days" value="{{ overdue_deprovision_after_days }}" min="1">
+  </div>
+  <div class="form-group">
+    <label for="overdue_last_backup_retention_days">Last backup retention (days)</label>
+    <input type="number" id="overdue_last_backup_retention_days" name="overdue_last_backup_retention_days" value="{{ overdue_last_backup_retention_days }}" min="1">
+  </div>
+  </div>
+  <p class="meta">Learn more about the overdue policy in the <a href="{{ overdue_policy_doc_url }}" target="_blank">documentation</a>.</p>
+
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.5rem;">
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save pf-u-mr-sm"></i> Save settings</button>
+    <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">Back</a>
+  </div>
+  </form>
+</div>
+
+{% endblock %}

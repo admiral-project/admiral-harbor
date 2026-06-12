@@ -1,0 +1,93 @@
+{% extends "customer_layout.html" %}
+
+{% block title %}Dashboard - {{ portal_name }}{% endblock %}
+
+{% block content %}
+<div class="page-title">
+ <h1>Dashboard</h1>
+ <p>Welcome {{ customer.display_name }}. Here's your account overview.</p>
+</div>
+
+<div class="dashboard-grid">
+ <div class="metric-card {% if subscriptions|length == 0 %}alert{% else %}success{% endif %}">
+ <h3>Active Subscriptions</h3>
+ <div class="value">{{ subscriptions|length }}</div>
+ </div>
+ 
+ <div class="metric-card {% if instances|length == 0 %}alert{% else %}success{% endif %}">
+ <h3>Deployed Instances</h3>
+ <div class="value">{{ instances|length }}</div>
+ </div>
+ 
+ <div class="metric-card {% if open_tickets > 0 %}alert{% else %}success{% endif %}">
+ <h3>Open Tickets</h3>
+ <div class="value">{{ open_tickets }}</div>
+ </div>
+ 
+ <div class="metric-card {% if failed_payments > 0 %}alert{% else %}success{% endif %}">
+ <h3>Failed Payments</h3>
+ <div class="value">{{ failed_payments }}</div>
+ </div>
+ 
+ <div class="metric-card {% if pending_payments > 0 %}alert{% else %}success{% endif %}">
+ <h3>Pending Payments</h3>
+ <div class="value">{{ pending_payments }}</div>
+ </div>
+ 
+ <div class="metric-card success">
+ <h3>This Month Charged</h3>
+ <div class="value">${{ "%.2f"|format(total_charged_cents / 100) }}</div>
+ </div>
+</div>
+
+<div style="margin-top: 40px;">
+ <h2 style="margin-bottom: 20px; color: #2c3e50;">Recent Subscriptions</h2>
+ 
+ {% if subscriptions %}
+ <table class="table">
+ <thead>
+ <tr>
+ <th>App</th>
+ <th>Tier</th>
+ <th>Status</th>
+ <th>Renewal Date</th>
+ <th>Action</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for sub in subscriptions[:5] %}
+ <tr>
+ <td>{{ sub.app_id or 'N/A' }}</td>
+ <td>{{ sub.tier }}</td>
+ <td>
+ <span class="badge {% if sub.status == 'active' %}badge-success{% elif sub.status == 'paused' %}badge-warning{% else %}badge-danger{% endif %}">
+ {{ sub.status }}
+ </span>
+ </td>
+ <td>{{ sub.renewal_date.strftime('%Y-%m-%d') if sub.renewal_date else 'N/A' }}</td>
+ <td>
+ <a href="{{ url_for('customer.subscription_detail', subscription_id=sub.id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">View</a>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ 
+ <div style="margin-top: 15px;">
+ <a href="{{ url_for('customer.subscriptions_list') }}" class="btn btn-primary">View All Subscriptions</a>
+ </div>
+ {% else %}
+ <p style="color: #7f8c8d;">No subscriptions yet.</p>
+ {% endif %}
+</div>
+
+<div style="margin-top: 40px;">
+ <h2 style="margin-bottom: 20px; color: #2c3e50;">Quick Actions</h2>
+ 
+ <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+ <a href="{{ url_for('customer.support_create_page') }}" class="btn btn-success">Create Support Ticket</a>
+ <a href="{{ url_for('customer.subscriptions_list') }}" class="btn btn-primary">Manage Subscriptions</a>
+ <a href="{{ url_for('customer.support_list') }}" class="btn btn-primary">View Tickets</a>
+ </div>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com> -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="icon" href="{{ portal_favicon_url }}">
+<title>{% block title %}{{ portal_name }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+ <main class="shell">
+ <header class="site-header">
+ <a class="brand" href="{{ url_for('main.index') }}">
+ <img src="{{ portal_logo_url }}" alt="{{ portal_name }} logo">
+ <span class="brand-text">
+ <strong>{{ portal_name }}</strong>
+ <span>{{ portal_description }}</span>
+ </span>
+ </a>
+ <button
+ class="nav-toggle"
+ type="button"
+ aria-expanded="false"
+ aria-controls="topnav"
+ aria-label="Toggle navigation"
+ >
+ Menu
+ </button>
+ <nav class="topnav" id="topnav">
+ <a href="{{ url_for('main.index') }}">Catalog</a>
+ {% if customer %}
+ <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+ <a href="{{ url_for('main.billing') }}">Billing</a>
+ <a href="{{ url_for('main.help_center') }}">Help</a>
+ <a href="{{ url_for('auth.profile') }}">Profile</a>
+ <form method="post" action="{{ url_for('auth.logout') }}"><button type="submit" class="linkish">Logout</button></form>
+ {% else %}
+ <a href="{{ url_for('auth.login_page') }}">Login</a>
+ <a href="{{ url_for('auth.register_page') }}">Register</a>
+ {% endif %}
+ {% if admin_user %}
+ <a href="{{ url_for('admin.dashboard') }}">Admin</a>
+ {% endif %}
+ </nav>
+ </header>
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ <section class="flash-stack">
+ {% for category, message in messages %}
+ <div class="flash {{ category }}">{{ message }}</div>
+ {% endfor %}
+ </section>
+ {% endif %}
+ {% endwith %}
+ {% block body %}{% endblock %}
+ </main>
+ <script>
+ (function () {
+ const toggle = document.querySelector(".nav-toggle");
+ const nav = document.querySelector("#topnav");
+ if (!toggle || !nav) return;
+ toggle.addEventListener("click", function () {
+ const open = nav.classList.toggle("is-open");
+ toggle.setAttribute("aria-expanded", open ? "true" : "false");
+ });
+ })();
+ </script>
+ <script>
+ (function () {
+ const meta = document.querySelector('meta[name="csrf-token"]');
+ const token = meta ? meta.getAttribute("content") : "";
+ if (!token) return;
+
+ function addToken(form) {
+ if (!form) return;
+ const method = (form.getAttribute("method") || "get").toUpperCase();
+ if (method === "GET" || form.dataset.csrf === "false") return;
+ if (form.querySelector('input[name="csrf_token"]')) return;
+ const input = document.createElement("input");
+ input.type = "hidden";
+ input.name = "csrf_token";
+ input.value = token;
+ form.appendChild(input);
+ }
+
+ document.querySelectorAll("form").forEach(addToken);
+ document.addEventListener("submit", function (event) {
+ addToken(event.target);
+ }, true);
+ })();
+ </script>
+</body>
+</html>

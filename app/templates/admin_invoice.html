@@ -1,0 +1,41 @@
+{% extends "admin_layout.html" %}
+{% block title %}Invoice {{ invoice.invoice_id }} - Admin - Admiral Harbor{% endblock %}
+{% block content %}
+<header class="page-header">
+ <div>
+ <h1>Invoice {{ invoice.invoice_id }}</h1>
+ </div>
+ <a class="secondary" href="{{ url_for('admin.billing') }}">Back to billing</a>
+</header>
+
+<section class="panel">
+ <table>
+ <tr><td>Customer</td><td>{{ invoice.customer_email }}</td></tr>
+ <tr><td>App</td><td>{{ invoice.app_slug }}</td></tr>
+ <tr><td>Tier</td><td>{{ invoice.tier_name }}</td></tr>
+ <tr><td>Subtotal</td><td>${{ "%.2f"|format(invoice.subtotal_cents / 100) }}</td></tr>
+ {% if invoice.tax_percent > 0 %}
+ <tr><td>Tax ({{ invoice.tax_percent }}%)</td><td>${{ "%.2f"|format(invoice.tax_cents / 100) }}</td></tr>
+ {% endif %}
+ <tr><td><strong>Total</strong></td><td><strong>${{ "%.2f"|format(invoice.total_cents / 100) }}</strong></td></tr>
+ <tr><td>Currency</td><td>{{ invoice.currency }}</td></tr>
+ <tr><td>Status</td><td><span class="status-pill">{{ invoice.status }}</span></td></tr>
+ <tr><td>PayPal transaction</td><td class="meta">{{ invoice.paypal_transaction_id or "-" }}</td></tr>
+ <tr><td>Period start</td><td>{{ invoice.period_start or "-" }}</td></tr>
+ <tr><td>Period end</td><td>{{ invoice.period_end or "-" }}</td></tr>
+ <tr><td>Created</td><td>{{ invoice.created_at.strftime("%Y-%m-%d %H:%M UTC") }}</td></tr>
+ </table>
+</section>
+
+{% if subscription %}
+<section class="panel">
+ <h2>Subscription</h2>
+ <table>
+ <tr><td>External ID</td><td>{{ subscription.external_id }}</td></tr>
+ <tr><td>Status</td><td><span class="status-pill">{{ subscription.status }}</span></td></tr>
+ <tr><td>PayPal ID</td><td class="meta">{{ subscription.paypal_subscription_id or "-" }}</td></tr>
+ <tr><td>Next billing</td><td>{{ subscription.next_billing_at or "-" }}</td></tr>
+ </table>
+</section>
+{% endif %}
+{% endblock %}

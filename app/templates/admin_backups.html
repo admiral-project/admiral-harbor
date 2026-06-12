@@ -1,0 +1,97 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Backups - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Backups de Aplicaciones{% endblock %}
+{% block page_subtitle %}Monitoreo de backups desde admirald{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-save"></i> Filtros</h2>
+ 
+ <form method="get" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+ <select name="status" style="max-width: 200px;">
+ <option value="">Todos los estados</option>
+ <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completados</option>
+ <option value="failed" {% if status_filter == "failed" %}selected{% endif %}>Fallidos</option>
+ <option value="in_progress" {% if status_filter == "in_progress" %}selected{% endif %}>En progreso</option>
+ </select>
+ <button type="submit" class="btn btn-primary">Filtrar</button>
+ {% if status_filter %}
+ <a href="{{ url_for('admin.backups_list') }}" class="btn btn-secondary">Limpiar filtros</a>
+ {% endif %}
+ </form>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-chart-bar pf-u-mr-sm"></i> Backups ({{ total }} total)</h2>
+ 
+ {% if backups %}
+ <table>
+ <thead>
+ <tr>
+ <th>Backup ID</th>
+ <th>Instancia</th>
+ <th>App</th>
+ <th>Servicio</th>
+ <th>Estado</th>
+ <th>Tamaño</th>
+ <th>Creado</th>
+ <th>Acciones</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for backup in backups %}
+ <tr>
+ <td>
+ <code style="font-size: 0.85rem;">
+ {{ backup.get('id', 'N/A')[:16] }}...
+ </code>
+ </td>
+ <td>
+ {% if backup.subscription %}
+ <code style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">
+ {{ backup.subscription.instance_id[:12] }}...
+ </code>
+ {% else %}
+ -
+ {% endif %}
+ </td>
+ <td>
+ {% if backup.subscription %}
+ <strong>{{ backup.subscription.app_slug }}</strong>
+ {% else %}
+ -
+ {% endif %}
+ </td>
+ <td>{{ backup.get('service', '-') }}</td>
+ <td>
+ <span class="status-badge {% if backup.get('status') == 'completed' %}success{% elif backup.get('status') == 'failed' %}danger{% else %}info{% endif %}">
+ {{ backup.get('status', 'unknown') }}
+ </span>
+ </td>
+ <td style="font-size: 0.9rem;">
+ {% if backup.get('size_bytes') %}
+ {{ (backup.get('size_bytes') / 1024 / 1024)|int }} MB
+ {% else %}
+ -
+ {% endif %}
+ </td>
+ <td style="font-size: 0.85rem; color: #7f8c8d;">
+ {{ backup.get('created_at', 'N/A')[:10] }}
+ </td>
+ <td>
+ <a href="{{ url_for('admin.backup_detail', backup_id=backup.get('id')) }}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+ Ver
+ </a>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color: #7f8c8d; text-align: center; padding: 2rem;">Sin backups registrados</p>
+ {% endif %}
+</div>
+
+{% endblock %}

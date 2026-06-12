@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Harbor Admin - Iniciar Sesión</title>
+ <link rel="stylesheet" href="https://unpkg.com/@patternfly/patternfly@6.5.2/patternfly.min.css" crossorigin="anonymous">
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous">
+ <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body class="login-page">
+ <div class="login-card">
+ <div class="login-card-header">
+ <img src="{{ url_for('static', filename='img/admiral-harbor.png') }}" alt="Admiral Harbor" class="login-logo">
+ <h1>Harbor Admin</h1>
+ <p class="login-subtitle">Portal administrativo del catálogo</p>
+ </div>
+ <div class="login-card-body">
+ {% with messages = get_flashed_messages(with_categories=true) %}
+ {% if messages %}
+ {% for category, message in messages %}
+ <div class="pf-c-alert pf-m-{{ 'danger' if category == 'error' else category }} pf-m-inline pf-u-mb-md" role="alert">
+ <div class="pf-c-alert__icon"><i class="fas fa-fw fa-{{ 'exclamation-circle' if category == 'error' else 'info-circle' }}" aria-hidden="true"></i></div>
+ <p class="pf-c-alert__title">{{ message }}</p>
+ </div>
+ {% endfor %}
+ {% endif %}
+ {% endwith %}
+
+ <form class="pf-c-form" method="post" action="{{ url_for('admin.login') }}">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ <div class="pf-c-form__group">
+ <label class="pf-c-form__label" for="username">
+ <span class="pf-c-form__label-text">Usuario</span>
+ </label>
+ <input id="username" class="pf-c-form-control" type="text" name="username" placeholder="Nombre de usuario" required autofocus autocomplete="username">
+ </div>
+ <div class="pf-c-form__group">
+ <label class="pf-c-form__label" for="password">
+ <span class="pf-c-form__label-text">Contraseña</span>
+ </label>
+ <input id="password" class="pf-c-form-control" type="password" name="password" placeholder="Contraseña" required autocomplete="current-password">
+ </div>
+ <div class="pf-c-form__group pf-m-action">
+ <button class="pf-c-button pf-m-primary pf-m-block" type="submit">
+ <i class="fas fa-sign-in-alt pf-u-mr-sm"></i> Ingresar
+ </button>
+ </div>
+ </form>
+ </div>
+ </div>
+</body>
+</html>

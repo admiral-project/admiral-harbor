@@ -1,0 +1,17 @@
+[build-system]
+requires = ["flit_core>=3.8"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "admiral-harbor"
+version = "0.0.1alpha2"
+description = "Admiral customer portal"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "flask-sqlalchemy>=3.1",
+    "flask-alembic>=3.1.1",
+    "psycopg[binary]>=3.1",
+    "requests>=2.31",
+    "argon2-cffi>=23.1",
+]

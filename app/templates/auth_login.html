@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Login - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="form-page">
+ <section class="panel form-panel">
+ <p class="eyebrow">{{ portal_description }}</p>
+ <h1>Customer Login</h1>
+ <p class="meta">Access your managed applications and billing.</p>
+ <form method="post" action="{{ url_for('auth.login') }}" class="stack">
+ <label>Email <input name="email" type="email"></label>
+ <label>Password <input name="password" type="password"></label>
+ <button class="primary" type="submit">Login</button>
+ </form>
+ </section>
+</section>
+{% endblock %}

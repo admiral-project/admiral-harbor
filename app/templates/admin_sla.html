@@ -1,0 +1,167 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}SLA Dashboard - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Support SLA Dashboard{% endblock %}
+{% block page_subtitle %}Service level compliance and violations tracking{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-chart-bar pf-u-mr-sm"></i> SLA Compliance Overview</h2>
+ 
+ <div class="grid">
+ <div class="card">
+ <p class="metric-label">Compliance Rate</p>
+ <p style="font-size: 2rem; font-weight: bold; color: #27ae60;">
+ {{ "%.1f"|format(compliance_pct) }}%
+ </p>
+ <p style="font-size: 0.9rem; color: #7f8c8d;">{{ sla_compliant }} / {{ total_tickets }} tickets</p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Compliant</p>
+ <p style="font-size: 1.8rem; color: #27ae60;"> {{ sla_compliant }}</p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Warning (>75% used)</p>
+ <p style="font-size: 1.8rem; color: #f39c12;"><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> {{ sla_warning }}</p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Violated</p>
+ <p style="font-size: 1.8rem; color: #e74c3c;"> {{ sla_violated }}</p>
+ </div>
+ 
+ <div class="card">
+ <p class="metric-label">Unknown/Unassigned</p>
+ <p style="font-size: 1.8rem; color: #95a5a6;">? {{ sla_unknown }}</p>
+ </div>
+ </div>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Violations by Priority</h2>
+ 
+ <table style="width: 100%;">
+ <thead>
+ <tr>
+ <th>Priority</th>
+ <th>Violations</th>
+ <th>Impact</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td><span class="status-badge danger">Critical</span></td>
+ <td><strong>{{ violations_by_priority.critical }}</strong></td>
+ <td>Highest priority - immediate action required</td>
+ </tr>
+ <tr>
+ <td><span class="status-badge danger">High</span></td>
+ <td><strong>{{ violations_by_priority.high }}</strong></td>
+ <td>Significant impact on customers</td>
+ </tr>
+ <tr>
+ <td><span class="status-badge warning">Medium</span></td>
+ <td><strong>{{ violations_by_priority.medium }}</strong></td>
+ <td>Standard priority</td>
+ </tr>
+ <tr>
+ <td><span class="status-badge info">Low</span></td>
+ <td><strong>{{ violations_by_priority.low }}</strong></td>
+ <td>Lowest priority</td>
+ </tr>
+ </tbody>
+ </table>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-clock pf-u-mr-sm"></i> Recent SLA Violations</h2>
+ 
+ {% if violations %}
+ <table>
+ <thead>
+ <tr>
+ <th>Ticket ID</th>
+ <th>Subject</th>
+ <th>Priority</th>
+ <th>Created</th>
+ <th>Deadline Missed</th>
+ <th>Details</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for violation in violations %}
+ <tr>
+ <td>
+ <a href="{{ url_for('admin.ticket_detail', ticket_id=violation.ticket.incident_id) }}" style="color: #3498db; text-decoration: none;">
+ <code>{{ violation.ticket.incident_id[:12] }}</code>
+ </a>
+ </td>
+ <td>{{ violation.ticket.subject[:50] }}</td>
+ <td>
+ <span class="status-badge {% if violation.ticket.priority == 'critical' %}danger{% elif violation.ticket.priority == 'high' %}danger{% elif violation.ticket.priority == 'medium' %}warning{% else %}info{% endif %}">
+ {{ violation.ticket.priority | title }}
+ </span>
+ </td>
+ <td style="font-size: 0.9rem;">{{ violation.ticket.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+ <td style="font-size: 0.9rem;">
+ {% if violation.ticket.resolution_deadline %}
+ {{ violation.ticket.resolution_deadline.strftime("%Y-%m-%d %H:%M") }}
+ {% else %}
+ —
+ {% endif %}
+ </td>
+ <td style="font-size: 0.9rem;">{{ violation.sla_status.detail }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color: #7f8c8d; text-align: center; padding: 2rem;">No SLA violations</p>
+ {% endif %}
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-info-circle pf-u-mr-sm"></i> SLA Levels</h2>
+ 
+ <table style="width: 100%;">
+ <thead>
+ <tr>
+ <th>Priority</th>
+ <th>Response Time</th>
+ <th>Resolution Time</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr>
+ <td><strong>Critical</strong></td>
+ <td>1 hour</td>
+ <td>8 hours</td>
+ </tr>
+ <tr>
+ <td><strong>High</strong></td>
+ <td>2 hours</td>
+ <td>24 hours</td>
+ </tr>
+ <tr>
+ <td><strong>Medium</strong></td>
+ <td>4 hours</td>
+ <td>72 hours</td>
+ </tr>
+ <tr>
+ <td><strong>Low</strong></td>
+ <td>8 hours</td>
+ <td>5 days (120 hours)</td>
+ </tr>
+ </tbody>
+ </table>
+</div>
+
+<div class="quick-actions">
+ <a href="{{ url_for('admin.tickets_list') }}" class="btn btn-secondary">View all tickets</a>
+ <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to dashboard</a>
+</div>
+
+{% endblock %}

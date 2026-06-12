@@ -1,0 +1,47 @@
+{% extends "admin_layout.html" %}
+{% block title %}{{ app.name }} Content - Admiral Harbor{% endblock %}
+{% block content %}
+<section class="page-header compact">
+ <div>
+ <h1>{{ app.name }}</h1>
+ <p class="lede">Commercial content, visibility and associated courses.</p>
+ </div>
+</section>
+
+<section class="panel">
+ <form method="post" class="stack">
+ <label>One liner <input name="one_liner" value="{{ app.one_liner }}"></label>
+ <label>Description <textarea name="description_md">{{ app.description_md }}</textarea></label>
+ <label>Homepage <input name="homepage_url" value="{{ app.homepage_url or '' }}"></label>
+ <label>Documentation <input name="documentation_url" value="{{ app.documentation_url or '' }}"></label>
+ <label>Bug tracker <input name="bug_tracker_url" value="{{ app.bug_tracker_url or '' }}"></label>
+ <label class="checkbox-row"><input type="checkbox" name="published" {% if app.catalog_enabled %}checked{% endif %}> Published</label>
+ <button class="primary page-cta" type="submit">Save content</button>
+ </form>
+</section>
+
+<section class="panel">
+ <h2>Associated courses</h2>
+ <form method="post" action="{{ url_for('admin.add_course', slug=app.slug) }}" class="stack">
+ <label>Course code <input name="course_code"></label>
+ <label>Course type <input name="course_type" value="course"></label>
+ <label>Base price cents <input name="base_price_cents" value="0"></label>
+ <label class="checkbox-row"><input type="checkbox" name="active" checked> Active</label>
+ <button class="secondary" type="submit">Add course</button>
+ </form>
+ <div class="grid">
+ {% for course in courses %}
+ <article class="card">
+ <h3>{{ course.course_code }}</h3>
+ <p>{{ course.course_type }}</p>
+ <p class="meta">${{ "%.2f"|format(course.base_price_cents / 100) }}</p>
+ <form method="post" action="{{ url_for('admin.add_course_discount', course_id=course.id) }}" class="stack">
+ <label>Tier name <input name="tier_name"></label>
+ <label>Discount % <input name="discount_percent" value="0"></label>
+ <button class="secondary" type="submit">Add discount</button>
+ </form>
+ </article>
+ {% endfor %}
+ </div>
+</section>
+{% endblock %}

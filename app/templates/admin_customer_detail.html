@@ -1,0 +1,83 @@
+{% extends "admin_layout.html" %}
+{% block title %}Cliente: {{ customer.email }} - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Cliente: {{ customer.email }}{% endblock %}
+{% block page_subtitle %}{{ customer.display_name }}{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+ <div>
+ <table style="width: auto;">
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">ID:</td><td>{{ customer.id }}</td></tr>
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Public ID:</td><td><code>{{ customer.public_id }}</code></td></tr>
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Email:</td><td>{{ customer.email }}</td></tr>
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Nombre:</td><td>{{ customer.display_name }}</td></tr>
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">País:</td><td>{{ customer.country or "-" }}</td></tr>
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Estado:</td>
+ <td>
+ {% if customer.is_active %}
+ <span class="status-badge success">Activo</span>
+ {% else %}
+ <span class="status-badge danger">Bloqueado</span>
+ {% endif %}
+ </td>
+ </tr>
+ {% if customer.blocked_at %}
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Bloqueado desde:</td><td>{{ customer.blocked_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+ {% endif %}
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Registrado:</td><td>{{ customer.created_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Actualizado:</td><td>{{ customer.updated_at.strftime("%Y-%m-%d %H:%M") if customer.updated_at else "N/A" }}</td></tr>
+ </table>
+ </div>
+ <div class="quick-actions">
+ <form method="post" action="{{ url_for('admin.toggle_customer_active', customer_id=customer.id) }}" style="display: inline;">
+ {% if customer.is_active %}
+ <button type="submit" class="btn btn-warning">Bloquear</button>
+ {% else %}
+ <button type="submit" class="btn btn-success">Desbloquear</button>
+ {% endif %}
+ </form>
+ </div>
+ </div>
+</div>
+
+<div class="panel">
+ <h2>Suscripciones ({{ subscriptions|length }})</h2>
+ {% if subscriptions %}
+ <table>
+ <thead>
+ <tr>
+ <th>App</th>
+ <th>Tier</th>
+ <th>Estado</th>
+ <th>Creada</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for sub in subscriptions %}
+ <tr>
+ <td>{{ sub.app_name }}</td>
+ <td>{{ sub.tier_name }}</td>
+ <td>
+ {% if sub.is_active %}
+ <span class="status-badge success">Activa</span>
+ {% else %}
+ <span class="status-badge warning">Inactiva</span>
+ {% endif %}
+ </td>
+ <td>{{ sub.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color: #7f8c8d;">Este cliente no tiene suscripciones.</p>
+ {% endif %}
+</div>
+
+<div style="margin-top: 1rem;">
+ <a href="{{ url_for('admin.customers_list') }}">← Volver a lista de clientes</a>
+</div>
+
+{% endblock %}

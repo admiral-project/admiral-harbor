@@ -1,0 +1,81 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Suscripciones - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Administración de Suscripciones{% endblock %}
+{% block page_subtitle %}Gestión comercial de suscripciones de clientes{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2><i class="fas fa-search pf-u-mr-sm"></i> Filtros</h2>
+ <form method="get" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+ <select name="status" style="max-width: 200px;">
+ <option value="">Todos los estados</option>
+ <option value="active" {% if status_filter == "active" %}selected{% endif %}>Activas</option>
+ <option value="paused" {% if status_filter == "paused" %}selected{% endif %}>Pausadas</option>
+ <option value="cancelled" {% if status_filter == "cancelled" %}selected{% endif %}>Canceladas</option>
+ <option value="provisioning" {% if status_filter == "provisioning" %}selected{% endif %}>En aprovisionamiento</option>
+ </select>
+ <button type="submit" class="btn btn-primary">Filtrar</button>
+ {% if status_filter %}
+ <a href="{{ url_for('admin.subscriptions_list') }}" class="btn btn-secondary">Limpiar filtros</a>
+ {% endif %}
+ </form>
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-chart-bar pf-u-mr-sm"></i> Suscripciones ({{ total }} total)</h2>
+
+ {% if subscriptions %}
+ <table>
+ <thead>
+ <tr>
+ <th>Cliente</th>
+ <th>App</th>
+ <th>Plan</th>
+ <th>Estado</th>
+ <th>Precio</th>
+ <th>Instancia</th>
+ <th>Creación</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for sub in subscriptions %}
+ <tr>
+ <td>{{ sub.customer_email }}</td>
+ <td>{{ sub.app_slug }}</td>
+ <td>{{ sub.tier_name }}</td>
+ <td>
+ {% if sub.status == "active" %}
+ <span class="badge badge-success">Activa</span>
+ {% elif sub.status == "paused" %}
+ <span class="badge badge-warning">Pausada</span>
+ {% elif sub.status == "cancelled" %}
+ <span class="badge badge-danger">Cancelada</span>
+ {% elif sub.status == "provisioning" %}
+ <span class="badge badge-info">En aprovisionamiento</span>
+ {% else %}
+ <span class="badge">{{ sub.status }}</span>
+ {% endif %}
+ </td>
+ <td>${{ "%.2f"|format(sub.monthly_price_cents / 100) if sub.monthly_price_cents else '0.00' }}</td>
+ <td>
+ {% if sub.instance_id %}
+ <code style="font-size: 0.8rem;">{{ sub.instance_id[:16] }}...</code>
+ {% else %}
+ <span style="color: #999;">—</span>
+ {% endif %}
+ </td>
+ <td>{{ sub.created_at.strftime("%Y-%m-%d") if sub.created_at else "—" }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <div class="empty-state">
+ <p>No se encontraron suscripciones.</p>
+ </div>
+ {% endif %}
+</div>
+
+{% endblock %}

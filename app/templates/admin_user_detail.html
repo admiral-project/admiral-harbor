@@ -1,0 +1,64 @@
+{% extends "admin_layout.html" %}
+{% block title %}Usuario: {{ user.username }} - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Usuario: {{ user.username }}{% endblock %}
+{% block page_subtitle %}Detalles del usuario administrativo{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+ <div>
+ <table style="width: auto;">
+ <tr>
+ <td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">ID:</td>
+ <td>{{ user.id }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Username:</td>
+ <td><code>{{ user.username }}</code></td>
+ </tr>
+ <tr>
+ <td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Display Name:</td>
+ <td>{{ user.display_name }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Estado:</td>
+ <td>
+ {% if user.is_active %}
+ <span class="status-badge success">Activo</span>
+ {% else %}
+ <span class="status-badge danger">Inactivo</span>
+ {% endif %}
+ </td>
+ </tr>
+ <tr>
+ <td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Creado:</td>
+ <td>{{ user.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+ </tr>
+ <tr>
+ <td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Actualizado:</td>
+ <td>{{ user.updated_at.strftime("%Y-%m-%d %H:%M") if user.updated_at else "N/A" }}</td>
+ </tr>
+ </table>
+ </div>
+ <div class="quick-actions">
+ <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-primary"><i class="fas fa-pencil-alt pf-u-mr-sm"></i> Editar</a>
+ <form method="post" action="{{ url_for('admin.toggle_user_active', user_id=user.id) }}" style="display: inline;">
+ {% if user.is_active %}
+ <button type="submit" class="btn btn-warning"><i class="fas fa-lock pf-u-mr-sm"></i> Desactivar</button>
+ {% else %}
+ <button type="submit" class="btn btn-success"><i class="fas fa-unlock pf-u-mr-sm"></i> Activar</button>
+ {% endif %}
+ </form>
+ <form method="post" action="{{ url_for('admin.delete_user', user_id=user.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this user?');">
+ <button type="submit" class="btn btn-danger"><i class="fas fa-trash pf-u-mr-sm"></i> Eliminar</button>
+ </form>
+ </div>
+ </div>
+</div>
+
+<div style="margin-top: 1rem;">
+ <a href="{{ url_for('admin.list_users') }}">← Volver a lista de usuarios</a>
+</div>
+
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}Catálogo de Apps - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Marketplace — Catálogo de Aplicaciones{% endblock %}
+{% block page_subtitle %}Administre el catálogo de apps disponibles en admirald{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+  <h2 style="margin:0;"><i class="fas fa-cubes pf-u-mr-sm"></i> Apps ({{ total }} total)</h2>
+  <div style="display:flex;gap:0.5rem;">
+   <form method="post" action="{{ url_for('admin.sync_catalog') }}" style="display:inline;">
+    <button type="submit" class="btn btn-primary"><i class="fas fa-sync pf-u-mr-sm"></i> Sincronizar desde admirald</button>
+   </form>
+  </div>
+ </div>
+
+ {% if apps %}
+ <div class="table-container" style="overflow-x:auto;">
+ <table class="data-table">
+ <thead>
+ <tr>
+  <th>App</th>
+  <th>Slug</th>
+  <th>Sync</th>
+  <th>Upstream</th>
+  <th>Tiers</th>
+  <th>Catálogo</th>
+  <th>Acciones</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for app in apps %}
+ <tr>
+  <td>
+   <strong>{{ app.name }}</strong>
+   {% if app.one_liner %}
+   <br><small style="color:var(--admiral-text-secondary);">{{ app.one_liner[:80] }}{% if app.one_liner|length > 80 %}…{% endif %}</small>
+   {% endif %}
+  </td>
+  <td><code>{{ app.upstream_app_id }}</code></td>
+  <td>
+   {% if app.sync_status == 'synced' %}
+   <span class="status-badge success"><i class="fas fa-check-circle"></i> synced</span>
+   {% elif app.sync_status == 'sync_error' %}
+   <span class="status-badge error"><i class="fas fa-exclamation-circle"></i> error</span>
+   {% else %}
+   <span class="status-badge info">{{ app.sync_status }}</span>
+   {% endif %}
+   {% if app.upstream_revision %}
+   <br><small style="color:var(--admiral-text-secondary);">rev {{ app.upstream_revision }}</small>
+   {% endif %}
+  </td>
+  <td>
+   {% if app.upstream_present %}
+    {% if app.upstream_availability == 'available' %}
+    <span class="status-badge success">disponible</span>
+    {% else %}
+    <span class="status-badge error"><i class="fas fa-ban"></i> {{ app.upstream_availability }}</span>
+    {% endif %}
+   {% else %}
+   <span class="status-badge warning"><i class="fas fa-question-circle"></i> ausente</span>
+   {% endif %}
+  </td>
+  <td style="text-align:center;">
+   {% set tier_count = app_tier_counts.get(app.id, 0) %}
+   {% if tier_count > 0 %}
+   <span class="status-badge info">{{ tier_count }}</span>
+   {% else %}
+   <span class="status-badge" style="background:#e0e0e0;color:#666;">0</span>
+   {% endif %}
+  </td>
+  <td>
+   {% if app.catalog_enabled %}
+   <span class="status-badge success"><i class="fas fa-check-circle"></i> Publicada</span>
+   {% else %}
+   <span class="status-badge warning"><i class="fas fa-eye-slash"></i> Oculta</span>
+   {% endif %}
+  </td>
+  <td>
+   <div style="display:flex;gap:0.375rem;flex-wrap:wrap;">
+    <a href="{{ url_for('admin.app_content', upstream_app_id=app.upstream_app_id) }}" class="btn btn-primary" style="padding:0.375rem 0.75rem;font-size:0.85rem;">
+     <i class="fas fa-edit"></i> Editar
+    </a>
+    {% if app.upstream_present and app.upstream_availability == 'available' and not app.catalog_enabled %}
+    <form method="post" action="{{ url_for('admin.app_content', upstream_app_id=app.upstream_app_id) }}" style="display:inline;">
+     <input type="hidden" name="published" value="on">
+     <button type="submit" class="btn btn-success" style="padding:0.375rem 0.75rem;font-size:0.85rem;" onclick="return confirm('¿Publicar {{ app.name }} en el catálogo?')">
+      <i class="fas fa-check"></i> Publicar
+     </button>
+    </form>
+    {% endif %}
+   </div>
+  </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+
+ {# Pagination #}
+ {% if pages > 1 %}
+ <div style="margin-top:1.5rem;display:flex;justify-content:center;gap:0.5rem;flex-wrap:wrap;">
+  {% if page > 1 %}
+  <a href="{{ url_for('admin.apps_list', page=1) }}" class="btn btn-secondary">Primera</a>
+  <a href="{{ url_for('admin.apps_list', page=page-1) }}" class="btn btn-secondary">« Anterior</a>
+  {% endif %}
+  <span style="padding:0.75rem;font-weight:bold;">Página {{ page }} de {{ pages }}</span>
+  {% if page < pages %}
+  <a href="{{ url_for('admin.apps_list', page=page+1) }}" class="btn btn-secondary">Siguiente »</a>
+  <a href="{{ url_for('admin.apps_list', page=pages) }}" class="btn btn-secondary">Última</a>
+  {% endif %}
+ </div>
+ {% endif %}
+
+ {% else %}
+ <div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-cubes"></i></div>
+  <h3>No hay apps en el catálogo</h3>
+  <p>No se encontraron aplicaciones. Sincronice con admirald para descubrir apps disponibles.</p>
+  <form method="post" action="{{ url_for('admin.sync_catalog') }}">
+   <button type="submit" class="btn btn-primary"><i class="fas fa-sync pf-u-mr-sm"></i> Sincronizar ahora</button>
+  </form>
+ </div>
+ {% endif %}
+</div>
+
+<div class="panel">
+ <h2><i class="fas fa-info-circle pf-u-mr-sm"></i> Acerca del Marketplace</h2>
+ <ul style="margin-left:1.5rem;color:var(--admiral-text-secondary);line-height:1.8;">
+  <li>Las apps se sincronizan desde <strong>admirald</strong>. Use el botón "Sincronizar" para refrescar.</li>
+  <li>Las apps nuevas aparecen como <strong>Ocultas</strong> por defecto. Debe publicarlas manualmente.</li>
+  <li>Puede editar descripciones, URLs, y gestionar los tiers desde la página de edición de cada app.</li>
+  <li>Use <strong>"Estado de integración"</strong> para verificar la conexión con admirald.</li>
+  <li>Consulte el <strong>Historial de sincronización</strong> para ver detalles de cada sincronización.</li>
+ </ul>
+</div>
+
+{% endblock %}
