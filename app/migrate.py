@@ -79,6 +79,28 @@ def run_migrations():
         if "blocked_at" not in customer_columns:
             logger.info("Migration 0004: adding blocked_at column to customer")
             conn.execute(text("ALTER TABLE customer ADD COLUMN blocked_at DATETIME"))
+        if "signup_status" not in customer_columns:
+            logger.info("Migration 0004: adding signup_status column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN signup_status VARCHAR(30) NOT NULL DEFAULT 'pending'"))
+            conn.execute(text("UPDATE customer SET signup_status = 'active'"))
+        if "email_confirmation_token_hash" not in customer_columns:
+            logger.info("Migration 0004: adding email_confirmation_token_hash column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN email_confirmation_token_hash VARCHAR(128)"))
+        if "email_confirmation_sent_at" not in customer_columns:
+            logger.info("Migration 0004: adding email_confirmation_sent_at column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN email_confirmation_sent_at DATETIME"))
+        if "email_confirmed_at" not in customer_columns:
+            logger.info("Migration 0004: adding email_confirmed_at column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN email_confirmed_at DATETIME"))
+        if "reviewed_at" not in customer_columns:
+            logger.info("Migration 0004: adding reviewed_at column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN reviewed_at DATETIME"))
+        if "reviewed_by" not in customer_columns:
+            logger.info("Migration 0004: adding reviewed_by column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN reviewed_by VARCHAR(255)"))
+        if "rejection_reason" not in customer_columns:
+            logger.info("Migration 0004: adding rejection_reason column to customer")
+            conn.execute(text("ALTER TABLE customer ADD COLUMN rejection_reason TEXT"))
         if "updated_at" not in customer_columns:
             logger.info("Migration 0004: adding updated_at column to customer")
             conn.execute(text("ALTER TABLE customer ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"))
