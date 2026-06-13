@@ -1,7 +1,12 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
+from datetime import datetime, timedelta
+from email.message import EmailMessage
+from hashlib import sha256
+import smtplib
+import ssl
+from secrets import token_urlsafe
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -23,6 +28,67 @@ def _login_customer(customer):
     session["customer_token"] = f"customer:{customer.public_id}"
     session["customer_email"] = customer.email
     session["customer_public_id"] = customer.public_id
+
+
+def _token_hash(token):
+    return sha256(token.encode("utf-8")).hexdigest()
+
+
+def _confirmation_url(token):
+    external_base = current_app.config.get("HARBOR_EXTERNAL_URL", "").rstrip("/")
+    path = url_for("auth.confirm_email", token=token)
+    if external_base:
+        return f"{external_base}{path}"
+    return path
+
+
+def _confirmation_is_expired(customer):
+    sent_at = customer.email_confirmation_sent_at
+    if sent_at is None:
+        return True
+    ttl_hours = current_app.config.get("HARBOR_EMAIL_CONFIRMATION_TTL_HOURS", 72)
+    return datetime.utcnow() > sent_at + timedelta(hours=ttl_hours)
+
+
+def _send_confirmation_email(customer, token):
+    host = (current_app.config.get("HARBOR_SMTP_HOST") or "").strip()
+    if not host:
+        return False
+
+    message = EmailMessage()
+    message["Subject"] = f"Confirm your Harbor account for {current_app.config['HARBOR_PORTAL_NAME']}"
+    message["From"] = current_app.config.get("HARBOR_SMTP_FROM", "noreply@example.com")
+    message["To"] = customer.email
+    message.set_content(
+        "Hello {name},\n\n"
+        "Your Harbor account was created.\n"
+        "Confirm your email with this link:\n\n"
+        "{url}\n\n"
+        "If you cannot use email confirmation, a Harbor administrator can approve your account manually.\n".format(
+            name=customer.display_name,
+            url=_confirmation_url(token),
+        )
+    )
+
+    port = int(current_app.config.get("HARBOR_SMTP_PORT", 587))
+    username = (current_app.config.get("HARBOR_SMTP_USERNAME") or "").strip()
+    password = current_app.config.get("HARBOR_SMTP_PASSWORD") or ""
+    use_tls = bool(current_app.config.get("HARBOR_SMTP_USE_TLS", True))
+    use_ssl = bool(current_app.config.get("HARBOR_SMTP_USE_SSL", False))
+    context = ssl.create_default_context()
+
+    if use_ssl:
+        smtp_factory = smtplib.SMTP_SSL
+    else:
+        smtp_factory = smtplib.SMTP
+
+    with smtp_factory(host, port, timeout=10) as smtp:
+        if use_tls and not use_ssl:
+            smtp.starttls(context=context)
+        if username:
+            smtp.login(username, password)
+        smtp.send_message(message)
+    return True
 
 
 @bp.route("/login", methods=["GET"])
@@ -64,6 +130,15 @@ def login():
         flash("Invalid credentials.", "error")
         return redirect(url_for("auth.login_page"))
 
+    if not customer.can_access():
+        if request.is_json:
+            return jsonify({"error": "account pending activation"}), 403
+        if customer.signup_status == "rejected":
+            flash("Your account was rejected by Harbor administration.", "error")
+        else:
+            flash("Your account is pending activation.", "warning")
+        return redirect(url_for("auth.login_page"))
+
     _login_customer(customer)
     if request.is_json:
         return jsonify({"status": "ok", "email": email, "public_id": customer.public_id})
@@ -102,16 +177,104 @@ def register():
         display_name=display_name,
         password_hash=ph.hash(password),
         country=country or None,
+        signup_status="pending",
+        email_confirmation_token_hash=None,
+        email_confirmation_sent_at=None,
+        email_confirmed_at=None,
         terms_policy_version=current_app.config["HARBOR_OVERDUE_POLICY_VERSION"],
         terms_accepted_at=datetime.utcnow(),
     )
+    confirmation_token = token_urlsafe(32)
+    customer.email_confirmation_token_hash = _token_hash(confirmation_token)
+    customer.email_confirmation_sent_at = datetime.utcnow()
     db.session.add(customer)
+    db.session.add(
+        AuditLog(
+            actor=email,
+            action="signup_requested",
+            detail=f"Signup requested for {email}",
+            ip_address=request.remote_addr or "",
+        )
+    )
     db.session.commit()
 
-    _login_customer(customer)
+    email_sent = False
+    email_error = None
+    try:
+        email_sent = _send_confirmation_email(customer, confirmation_token)
+    except Exception as exc:  # pragma: no cover - email transport failures are runtime dependent
+        email_error = str(exc)
+        current_app.logger.warning("Could not send Harbor confirmation email for %s: %s", email, exc)
+
+    if email_sent:
+        db.session.add(
+            AuditLog(
+                actor=email,
+                action="signup_confirmation_email_sent",
+                detail=f"Confirmation email sent to {email}",
+                ip_address=request.remote_addr or "",
+            )
+        )
+        db.session.commit()
+    elif email_error:
+        db.session.add(
+            AuditLog(
+                actor=email,
+                action="signup_confirmation_email_failed",
+                detail=f"Confirmation email failed for {email}: {email_error}",
+                ip_address=request.remote_addr or "",
+            )
+        )
+        db.session.commit()
+
     if request.is_json:
-        return jsonify({"status": "ok", "customer": customer.as_dict()}), 201
-    return redirect(url_for("main.dashboard"))
+        response = {"status": "pending", "customer": customer.as_dict(), "email_sent": email_sent}
+        if email_error:
+            response["email_error"] = email_error
+        return jsonify(response), 202
+
+    if email_sent:
+        flash("Cuenta creada. Revisa tu correo para confirmarla o espera la aprobación del admin de Harbor.", "success")
+    else:
+        flash("Cuenta creada. Harbor no pudo enviar el correo de confirmación, así que el admin de Harbor puede aprobarla manualmente.", "warning")
+    return redirect(url_for("auth.login_page"))
+
+
+@bp.route("/confirm/<token>", methods=["GET"])
+def confirm_email(token):
+    token = (token or "").strip()
+    if not token:
+        flash("Confirmation token is missing.", "error")
+        return redirect(url_for("auth.login_page"))
+
+    token_hash = _token_hash(token)
+    customer = db.session.query(Customer).filter_by(email_confirmation_token_hash=token_hash).one_or_none()
+    if customer is None:
+        flash("Confirmation link is invalid or expired.", "error")
+        return redirect(url_for("auth.login_page"))
+    if customer.signup_status == "rejected":
+        flash("This account was rejected by Harbor administration.", "error")
+        return redirect(url_for("auth.login_page"))
+    if _confirmation_is_expired(customer):
+        flash("Confirmation link expired. Ask Harbor administration to approve your account.", "error")
+        return redirect(url_for("auth.login_page"))
+
+    customer.email_confirmed_at = datetime.utcnow()
+    customer.email_confirmation_token_hash = None
+    customer.signup_status = "active"
+    customer.reviewed_at = customer.reviewed_at or datetime.utcnow()
+    customer.reviewed_by = customer.reviewed_by or "email-confirmation"
+    db.session.add(
+        AuditLog(
+            actor=customer.email,
+            action="email_confirmed",
+            detail=f"Email confirmed for {customer.email}",
+            ip_address=request.remote_addr or "",
+        )
+    )
+    db.session.commit()
+    flash("Email confirmed. You can now log in.", "success")
+    return redirect(url_for("auth.login_page"))
 
 
 @bp.route("/logout", methods=["POST"])
