@@ -309,7 +309,8 @@ def portal_asset(kind):
         stored = candidate
         break
     if stored is None:
-        stored = Path(current_app.static_folder) / "img" / "admiral-harbor.png"
+        fallback = "favicon.ico" if kind == "favicon" else "admiral-harbor.png"
+        stored = Path(current_app.static_folder) / "img" / fallback
     response = send_file(stored)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     return response

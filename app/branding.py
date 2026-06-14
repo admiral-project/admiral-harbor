@@ -120,7 +120,7 @@ def portal_asset_url(kind):
     filename = HarborMeta.get(f"portal_{kind}_file")
     if filename:
         return url_for("main.portal_asset", kind=kind)
-    return url_for("static", filename="img/admiral-harbor.png")
+    return url_for("static", filename="img/favicon.ico") if kind == "favicon" else url_for("static", filename="img/admiral-harbor.png")
 
 
 def get_portal_branding():
