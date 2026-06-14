@@ -135,17 +135,20 @@
  </li>
 
   {# Administration #}
-  <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail', 'admin.list_users', 'admin.user_detail', 'admin.user_edit', 'admin.paypal_config', 'admin.harbor_settings', 'admin.audit_log') %}pf-m-expanded{% endif %}">
+  <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail', 'admin.review_user', 'admin.list_users', 'admin.user_detail', 'admin.user_edit', 'admin.paypal_config', 'admin.harbor_settings', 'admin.audit_log') %}pf-m-expanded{% endif %}">
   <a class="pf-c-nav__link" href="#" onclick="toggleSubnav(event)">
   <i class="fas fa-cog pf-u-mr-sm"></i><span>Administration</span>
   <span class="pf-c-nav__toggle"><i class="fas fa-angle-right"></i></span>
   </a>
-  <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail', 'admin.list_users', 'admin.user_detail', 'admin.user_edit', 'admin.paypal_config', 'admin.harbor_settings', 'admin.audit_log') %}{% else %}hidden{% endif %}>
+  <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail', 'admin.review_user', 'admin.list_users', 'admin.user_detail', 'admin.user_edit', 'admin.paypal_config', 'admin.harbor_settings', 'admin.audit_log') %}{% else %}hidden{% endif %}>
   <li class="pf-c-nav__item">
   <a href="{{ url_for('admin.customers_list') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.customers_list', 'admin.customer_detail') %}pf-m-current{% endif %}">Clientes</a>
   </li>
   <li class="pf-c-nav__item">
-  <a href="{{ url_for('admin.list_users') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.list_users', 'admin.user_detail', 'admin.user_edit') %}pf-m-current{% endif %}">Usuarios</a>
+  <a href="{{ url_for('admin.review_user') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.review_user' %}pf-m-current{% endif %}">Revisión usuarios</a>
+  </li>
+  <li class="pf-c-nav__item">
+  <a href="{{ url_for('admin.list_users') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.list_users', 'admin.user_detail', 'admin.user_edit') %}pf-m-current{% endif %}">Admins</a>
   </li>
   <li class="pf-c-nav__item">
   <a href="{{ url_for('admin.paypal_config') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.paypal_config' %}pf-m-current{% endif %}">PayPal Config</a>

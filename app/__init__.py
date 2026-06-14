@@ -14,7 +14,6 @@ from app.customer import customer_bp
 from app.csrf import init_csrf_protection
 from app.extensions import alembic, db, login_manager
 from app.identity import current_admin, current_customer
-from app.migrate import run_migrations
 from app.models import HarborAdminUser
 from app.security import validate_production_config
 from app.routes import bp as main_bp
@@ -70,8 +69,7 @@ def create_app(config_object="app.config.Config"):
                 db.create_all()
             except Exception as e:
                 logger.warning(f"Database schema creation: {str(e)}")
-            
-            run_migrations()
+
             ensure_default_portal_settings()
             bootstrap_admin_user = app.config.get("HARBOR_BOOTSTRAP_ADMIN_USER", "")
             bootstrap_admin_password = app.config.get("HARBOR_BOOTSTRAP_ADMIN_PASSWORD", "")

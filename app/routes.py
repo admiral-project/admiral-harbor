@@ -307,6 +307,21 @@ def portal_asset(kind):
     return response
 
 
+@bp.route("/catalog-assets/<slug>/<filename>")
+def catalog_asset(slug, filename):
+    slug = secure_filename((slug or "").strip())
+    filename = secure_filename((filename or "").strip())
+    if not slug or not filename:
+        return jsonify({"error": "asset not found"}), 404
+    catalog_dir = Path(current_app.config["HARBOR_UPLOAD_DIR"]) / "catalog" / slug
+    stored = catalog_dir / filename
+    if not stored.exists() or not stored.is_file():
+        return jsonify({"error": "asset not found"}), 404
+    response = send_file(stored)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
 @bp.route("/dashboard")
 @login_required
 def dashboard():

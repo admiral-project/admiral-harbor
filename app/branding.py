@@ -14,6 +14,7 @@ DEFAULT_PORTAL_NAME = "Admiral Harbor"
 DEFAULT_PORTAL_DESCRIPTION = "Customer portal"
 DEFAULT_TAX_RATES = {"NI": 15}
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".svg"}
+CATALOG_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 
 PORTAL_NAME_KEY = "portal_name"
 PORTAL_DESCRIPTION_KEY = "portal_description"
@@ -91,6 +92,25 @@ def save_portal_asset(file_storage, kind):
     file_storage.save(target)
     _upsert_meta(f"portal_{kind}_file", stored_name)
     db.session.commit()
+    return stored_name
+
+
+def _catalog_dir(slug):
+    catalog_dir = Path(current_app.config["HARBOR_UPLOAD_DIR"]) / "catalog" / secure_filename(slug)
+    catalog_dir.mkdir(parents=True, exist_ok=True)
+    return catalog_dir
+
+
+def save_catalog_asset(file_storage, slug):
+    if file_storage is None or not file_storage.filename:
+        return None
+    filename = secure_filename(file_storage.filename)
+    suffix = Path(filename).suffix.lower()
+    if suffix not in CATALOG_IMAGE_EXTENSIONS:
+        raise ValueError("Unsupported catalog asset format")
+    stored_name = f"logo{suffix}"
+    target = _catalog_dir(slug) / stored_name
+    file_storage.save(target)
     return stored_name
 
 

@@ -43,11 +43,6 @@
       {% else %}
       <p class="price">${{ "%.2f"|format(tier.price_monthly_cents / 100) }}<span class="period">/month</span></p>
       {% endif %}
-      <ul class="specs">
-        <li>{{ tier.cpu }} CPU</li>
-        <li>{{ tier.memory }} RAM</li>
-        <li>{{ tier.storage }} storage</li>
-      </ul>
       {% if customer %}
       <form method="post" action="{{ url_for('main.deploy_app', slug=app.slug) }}">
         <input type="hidden" name="tier_name" value="{{ tier.name }}">

@@ -23,6 +23,13 @@
  {% endif %}
  </td>
  </tr>
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Signup:</td><td>{{ customer.signup_status }}</td></tr>
+ {% if customer.email_confirmed_at %}
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Correo confirmado:</td><td>{{ customer.email_confirmed_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
+ {% endif %}
+ {% if customer.reviewed_at %}
+ <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Revisado:</td><td>{{ customer.reviewed_at.strftime("%Y-%m-%d %H:%M") }}{% if customer.reviewed_by %} por {{ customer.reviewed_by }}{% endif %}</td></tr>
+ {% endif %}
  {% if customer.blocked_at %}
  <tr><td style="font-weight: 600; padding: 0.5rem 1rem 0.5rem 0;">Bloqueado desde:</td><td>{{ customer.blocked_at.strftime("%Y-%m-%d %H:%M") }}</td></tr>
  {% endif %}

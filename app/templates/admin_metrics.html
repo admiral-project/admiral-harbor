@@ -119,6 +119,13 @@
  {% endif %}
  </td>
  <td style="max-width: 300px; font-size: 0.9rem;">{{ item.detail[:80] }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color:#7f8c8d;">No recent activity.</p>
+ {% endif %}
 </div>
 
 <div class="panel">
@@ -144,4 +151,3 @@
 </div>
 
 {% endblock %}
-

@@ -1,0 +1,58 @@
+{% extends "admin_layout.html" %}
+{% block title %}Revisión de Usuarios - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Revisión de Usuarios{% endblock %}
+{% block page_subtitle %}Aprobación manual de cuentas pendientes{% endblock %}
+
+{% block content %}
+
+<div class="panel">
+ <h2>Cuentas pendientes</h2>
+ <p style="margin-bottom:1rem;color:#7f8c8d;">Estas cuentas pueden activarse por confirmación de correo o por aprobación manual.</p>
+
+ {% if customers %}
+ <table>
+ <thead>
+ <tr>
+ <th>Email</th>
+ <th>Nombre</th>
+ <th>País</th>
+ <th>Correo</th>
+ <th>Registrado</th>
+ <th>Acciones</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for customer in customers %}
+ <tr>
+ <td><code>{{ customer.email }}</code></td>
+ <td>{{ customer.display_name }}</td>
+ <td>{{ customer.country or "-" }}</td>
+ <td>
+ {% if customer.email_confirmed_at %}
+ <span class="status-badge success">Confirmado</span>
+ {% elif customer.email_confirmation_sent_at %}
+ <span class="status-badge warning">Pendiente</span>
+ {% else %}
+ <span class="status-badge warning">Sin enviar</span>
+ {% endif %}
+ </td>
+ <td style="font-size:0.9rem;">{{ customer.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+ <td>
+ <form method="post" action="{{ url_for('admin.approve_reviewed_user', customer_id=customer.id) }}" style="display:inline;">
+  <button type="submit" class="btn btn-success" style="padding:0.4rem 0.8rem;font-size:0.85rem;">Aprobar</button>
+ </form>
+ <form method="post" action="{{ url_for('admin.reject_reviewed_user', customer_id=customer.id) }}" style="display:inline;margin-left:0.5rem;">
+  <input type="text" name="rejection_reason" placeholder="Motivo opcional" style="min-width:180px;">
+  <button type="submit" class="btn btn-danger" style="padding:0.4rem 0.8rem;font-size:0.85rem;">Rechazar</button>
+ </form>
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% else %}
+ <p style="color:#7f8c8d;">No hay cuentas pendientes.</p>
+ {% endif %}
+</div>
+
+{% endblock %}

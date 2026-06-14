@@ -14,7 +14,7 @@ import io
 
 
 from app.extensions import db
-from app.branding import get_portal_branding, get_tax_rates, set_tax_rates, update_portal_branding
+from app.branding import get_portal_branding, get_tax_rates, save_catalog_asset, set_tax_rates, update_portal_branding
 from app.identity import admin_required
 from app.admiral_client import (
     AdmiralAPIError, get_operation, list_apps, provision_app,
@@ -811,7 +811,14 @@ def app_content(upstream_app_id):
         app.name = request.form.get("name", "").strip() or app.name
         app.one_liner = request.form.get("one_liner", "").strip() or app.one_liner
         app.description_md = request.form.get("description_md", "").strip() or app.description_md
-        app.logo_url = request.form.get("logo_url", "").strip() or None
+        logo_file = request.files.get("logo_file")
+        try:
+            if logo_file and logo_file.filename:
+                stored_name = save_catalog_asset(logo_file, app.upstream_app_id)
+                app.logo_url = url_for("main.catalog_asset", slug=app.upstream_app_id, filename=stored_name)
+        except ValueError as exc:
+            flash(f"Logo not updated: {exc}", "error")
+            return redirect(url_for("admin.app_content", upstream_app_id=upstream_app_id))
         app.homepage_url = request.form.get("homepage_url", "").strip() or None
         app.repository_url = request.form.get("repository_url", "").strip() or None
         app.documentation_url = request.form.get("documentation_url", "").strip() or None
@@ -1208,36 +1215,9 @@ def list_users():
 @bp.route("/users/create", methods=["GET", "POST"])
 @admin_required
 def create_user():
-    """Create new admin user."""
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-        
-        if not username or not password:
-            flash("Username and password are required.", "error")
-            return redirect(url_for("admin.create_user"))
-        
-        existing = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
-        if existing:
-            flash("Username already exists.", "error")
-            return redirect(url_for("admin.create_user"))
-        
-        user = HarborAdminUser(
-            username=username,
-            password_hash=ph.hash(password)
-        )
-        db.session.add(user)
-        db.session.add(AuditLog(
-            actor=session.get("admin_username", "admin"),
-            action="create_user",
-            detail=f"Created admin user {username}",
-            ip_address=request.remote_addr or "",
-        ))
-        db.session.commit()
-        flash(f"User {username} created successfully.", "success")
-        return redirect(url_for("admin.list_users"))
-    
-    return render_template("admin_user_create.html")
+    """Admin creation is disabled in the Harbor UI."""
+    flash("Harbor does not create admin users from the UI. Use the bootstrap CLI path instead.", "warning")
+    return redirect(url_for("admin.review_user"))
 
 
 @bp.route("/users/<int:user_id>")
@@ -1411,6 +1391,64 @@ def toggle_customer_active(customer_id):
     db.session.commit()
     flash(f"Customer {customer.email} {status}.", "success")
     return redirect(url_for("admin.customers_list"))
+
+
+@bp.route("/review_user")
+@bp.route("/review-user")
+@admin_required
+def review_user():
+    pending_customers = (
+        db.session.query(Customer)
+        .filter(Customer.signup_status == "pending")
+        .order_by(Customer.created_at.asc())
+        .all()
+    )
+    return render_template("admin_review_user.html", customers=pending_customers)
+
+
+@bp.route("/review_user/<int:customer_id>/approve", methods=["POST"])
+@bp.route("/review-user/<int:customer_id>/approve", methods=["POST"])
+@admin_required
+def approve_reviewed_user(customer_id):
+    customer = db.session.query(Customer).get_or_404(customer_id)
+    customer.signup_status = "active"
+    customer.is_active = True
+    customer.blocked_at = None
+    customer.reviewed_at = datetime.utcnow()
+    customer.reviewed_by = session.get("admin_username", "admin")
+    customer.rejection_reason = None
+    db.session.add(AuditLog(
+        actor=session.get("admin_username", "admin"),
+        action="approve_customer_signup",
+        detail=f"Approved customer signup for {customer.email} (id={customer.id})",
+        ip_address=request.remote_addr or "",
+    ))
+    db.session.commit()
+    flash(f"Customer {customer.email} approved.", "success")
+    return redirect(url_for("admin.review_user"))
+
+
+@bp.route("/review_user/<int:customer_id>/reject", methods=["POST"])
+@bp.route("/review-user/<int:customer_id>/reject", methods=["POST"])
+@admin_required
+def reject_reviewed_user(customer_id):
+    customer = db.session.query(Customer).get_or_404(customer_id)
+    reason = request.form.get("rejection_reason", "").strip()
+    customer.signup_status = "rejected"
+    customer.is_active = False
+    customer.blocked_at = datetime.utcnow()
+    customer.reviewed_at = datetime.utcnow()
+    customer.reviewed_by = session.get("admin_username", "admin")
+    customer.rejection_reason = reason or None
+    db.session.add(AuditLog(
+        actor=session.get("admin_username", "admin"),
+        action="reject_customer_signup",
+        detail=f"Rejected customer signup for {customer.email} (id={customer.id})",
+        ip_address=request.remote_addr or "",
+    ))
+    db.session.commit()
+    flash(f"Customer {customer.email} rejected.", "success")
+    return redirect(url_for("admin.review_user"))
 
 
 @bp.route("/paypal/config", methods=["GET", "POST"])

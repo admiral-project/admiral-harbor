@@ -26,6 +26,13 @@ class Config:
     HARBOR_PAYPAL_RETURN_URL = os.environ.get("HARBOR_PAYPAL_RETURN_URL", "http://localhost:5000/billing/return")
     HARBOR_PAYPAL_CANCEL_URL = os.environ.get("HARBOR_PAYPAL_CANCEL_URL", "http://localhost:5000/billing/cancel")
     HARBOR_SMTP_FROM = os.environ.get("HARBOR_SMTP_FROM", "noreply@example.com")
+    HARBOR_SMTP_HOST = os.environ.get("HARBOR_SMTP_HOST", "")
+    HARBOR_SMTP_PORT = int(os.environ.get("HARBOR_SMTP_PORT", "587"))
+    HARBOR_SMTP_USERNAME = os.environ.get("HARBOR_SMTP_USERNAME", "")
+    HARBOR_SMTP_PASSWORD = os.environ.get("HARBOR_SMTP_PASSWORD", "")
+    HARBOR_SMTP_USE_TLS = os.environ.get("HARBOR_SMTP_USE_TLS", "1") == "1"
+    HARBOR_SMTP_USE_SSL = os.environ.get("HARBOR_SMTP_USE_SSL", "0") == "1"
+    HARBOR_EMAIL_CONFIRMATION_TTL_HOURS = int(os.environ.get("HARBOR_EMAIL_CONFIRMATION_TTL_HOURS", "72"))
     HARBOR_PORTAL_NAME = "Admiral Harbor"
     HARBOR_PORTAL_DESCRIPTION = "Customer portal"
     HARBOR_EXTERNAL_URL = os.environ.get("HARBOR_EXTERNAL_URL", "http://localhost:5000")

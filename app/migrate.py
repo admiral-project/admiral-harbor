@@ -15,15 +15,25 @@ def run_migrations():
     columns = {c["name"] for c in inspector.get_columns("catalog_app")}
 
     with db.engine.begin() as conn:
-        if "revision" not in columns:
-            logger.info("Migration 0001: adding revision column to catalog_app")
-            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN revision INTEGER NOT NULL DEFAULT 0"))
-        if "checksum" not in columns:
-            logger.info("Migration 0001: adding checksum column to catalog_app")
-            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN checksum VARCHAR(64)"))
-        if "availability" not in columns:
-            logger.info("Migration 0001: adding availability column to catalog_app")
-            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN availability VARCHAR(20) NOT NULL DEFAULT 'available'"))
+        if "revision" in columns and "upstream_revision" not in columns:
+            logger.info("Migration 0001: renaming revision column to upstream_revision")
+            conn.execute(text("ALTER TABLE catalog_app RENAME COLUMN revision TO upstream_revision"))
+        if "checksum" in columns and "upstream_checksum" not in columns:
+            logger.info("Migration 0001: renaming checksum column to upstream_checksum")
+            conn.execute(text("ALTER TABLE catalog_app RENAME COLUMN checksum TO upstream_checksum"))
+        if "availability" in columns and "upstream_availability" not in columns:
+            logger.info("Migration 0001: renaming availability column to upstream_availability")
+            conn.execute(text("ALTER TABLE catalog_app RENAME COLUMN availability TO upstream_availability"))
+
+        if "upstream_revision" not in columns:
+            logger.info("Migration 0001: adding upstream_revision column to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN upstream_revision INTEGER NOT NULL DEFAULT 0"))
+        if "upstream_checksum" not in columns:
+            logger.info("Migration 0001: adding upstream_checksum column to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN upstream_checksum VARCHAR(64)"))
+        if "upstream_availability" not in columns:
+            logger.info("Migration 0001: adding upstream_availability column to catalog_app")
+            conn.execute(text("ALTER TABLE catalog_app ADD COLUMN upstream_availability VARCHAR(20) NOT NULL DEFAULT 'available'"))
 
         if "technical_snapshot" not in columns:
             logger.info("Migration 0002: adding technical_snapshot column to catalog_app")
@@ -82,7 +92,6 @@ def run_migrations():
         if "signup_status" not in customer_columns:
             logger.info("Migration 0004: adding signup_status column to customer")
             conn.execute(text("ALTER TABLE customer ADD COLUMN signup_status VARCHAR(30) NOT NULL DEFAULT 'pending'"))
-            conn.execute(text("UPDATE customer SET signup_status = 'active'"))
         if "email_confirmation_token_hash" not in customer_columns:
             logger.info("Migration 0004: adding email_confirmation_token_hash column to customer")
             conn.execute(text("ALTER TABLE customer ADD COLUMN email_confirmation_token_hash VARCHAR(128)"))

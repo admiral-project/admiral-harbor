@@ -20,12 +20,22 @@ class Customer(db.Model):
     display_name = db.Column(db.String(255), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     country = db.Column(db.String(4), nullable=True, index=True)
+    signup_status = db.Column(db.String(30), nullable=False, default="pending", index=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     blocked_at = db.Column(db.DateTime, nullable=True)
+    email_confirmation_token_hash = db.Column(db.String(128), nullable=True, index=True)
+    email_confirmation_sent_at = db.Column(db.DateTime, nullable=True)
+    email_confirmed_at = db.Column(db.DateTime, nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+    reviewed_by = db.Column(db.String(255), nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)
     terms_policy_version = db.Column(db.String(50), nullable=False, default="overdue-policy-v1")
     terms_accepted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def can_access(self):
+        return self.is_active and self.signup_status == "active" and self.blocked_at is None
 
     def as_dict(self):
         return {
@@ -34,6 +44,11 @@ class Customer(db.Model):
             "email": self.email,
             "display_name": self.display_name,
             "country": self.country,
+            "signup_status": self.signup_status,
+            "is_active": self.is_active,
+            "email_confirmed_at": self.email_confirmed_at.isoformat() if self.email_confirmed_at else None,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+            "reviewed_by": self.reviewed_by,
             "terms_policy_version": self.terms_policy_version,
             "terms_accepted_at": self.terms_accepted_at.isoformat() if self.terms_accepted_at else None,
         }

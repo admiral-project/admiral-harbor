@@ -28,7 +28,7 @@ def customer_required(f):
             return redirect(url_for("customer.login_page"))
         
         customer = db.session.query(Customer).get(customer_id)
-        if not customer:
+        if not customer or not customer.can_access():
             session.clear()
             flash("Customer not found", "error")
             return redirect(url_for("customer.login_page"))
@@ -63,6 +63,9 @@ def login():
     
     if not customer:
         flash("Invalid email or password", "error")
+        return redirect(url_for("customer.login_page"))
+    if not customer.can_access():
+        flash("Your account is pending approval.", "warning")
         return redirect(url_for("customer.login_page"))
     
     try:
