@@ -145,6 +145,13 @@ def get_customer_app(instance_id):
     return _request("GET", f"/api/v1/customer-apps/{instance_id}", timeout=30)
 
 
+def get_instance_credentials(instance_id):
+    result = _request("GET", f"/api/v1/customer-apps/{instance_id}/credentials", timeout=30)
+    if result is None:
+        return []
+    return result
+
+
 def provision_app(app_slug, tier_name, customer_id):
     return _request(
         "POST",

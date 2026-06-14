@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from uuid import uuid4
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from werkzeug.utils import secure_filename
 
 from app import admiral_client
@@ -200,6 +200,7 @@ def _provision_from_order(order):
     db.session.flush()
 
     response = admiral_client.provision_app(order.app_slug, order.tier_name, customer.public_id)
+    credentials = response.get("credentials", [])
     operation_id = response.get("operation_id", "")
     instance_id = ""
     if operation_id:
@@ -231,12 +232,13 @@ def _provision_from_order(order):
     order.status = "paid"
     db.session.commit()
     _event(instance_id, customer.email, "payment_received", f"Payment confirmed for {order.app_slug}.")
-    return instance_id, subscription
+    return instance_id, subscription, credentials
 
 
 def _provision_subscription(subscription):
     customer = db.session.query(Customer).filter_by(email=subscription.customer_email).one()
     response = admiral_client.provision_app(subscription.app_slug, subscription.tier_name, customer.public_id)
+    credentials = response.get("credentials", [])
     operation_id = response.get("operation_id", "")
     instance_id = ""
     if operation_id:
@@ -264,7 +266,7 @@ def _provision_subscription(subscription):
     subscription.status = "active"
     db.session.commit()
     _event(instance_id, subscription.customer_email, "payment_received", f"Payment confirmed for {subscription.app_slug}.")
-    return instance_id
+    return instance_id, credentials
 
 
 @bp.route("/")
@@ -436,7 +438,7 @@ def deploy_app(slug):
             flash(f"Cannot provision: {validation['message']}", "error")
             return redirect(url_for("main.app_detail", slug=slug))
         
-        instance_id, subscription = _provision_from_order(order)
+        instance_id, subscription, credentials = _provision_from_order(order)
     except AdmiralAPIError as exc:
         order.status = "failed"
         db.session.commit()
@@ -446,8 +448,9 @@ def deploy_app(slug):
     _audit(customer.email, "app_provisioned", "instance", instance_id,
            f"Instance for {slug} ({tier_name}) queued for provisioning")
     _event(instance_id, customer.email, "provision_requested", f"Provision requested for {slug} ({tier_name}).")
-    flash("App provisioned.", "success")
-    return redirect(url_for("main.dashboard"))
+    session["provision_credentials"] = credentials if credentials else []
+    session["provision_instance_id"] = instance_id
+    return redirect(url_for("main.provision_success", instance_id=instance_id))
 
 
 @bp.route("/billing")
@@ -488,7 +491,7 @@ def billing_return():
     if paypal_sub.get("status") in ("ACTIVE", "APPROVED"):
         if current_app.config.get("HARBOR_PAYPAL_MODE", "mock") == "mock":
             try:
-                instance_id, subscription = _provision_from_order(order)
+                instance_id, subscription, credentials = _provision_from_order(order)
             except AdmiralAPIError as exc:
                 order.status = "failed"
                 db.session.commit()
@@ -525,8 +528,9 @@ def billing_return():
             db.session.commit()
             _audit(customer.email, "payment_completed", "order", order.order_id,
                    f"Payment confirmed for {order.app_slug} ({order.tier_name}) — ${total_cents/100:.2f}")
-            flash("Payment confirmed and provisioning queued.", "success")
-            return redirect(url_for("main.billing_receipt", invoice_id=invoice.invoice_id))
+            session["provision_credentials"] = credentials if credentials else []
+            session["provision_instance_id"] = instance_id
+            return redirect(url_for("main.provision_success", instance_id=instance_id))
 
         order.status = "approved"
         db.session.commit()
@@ -712,6 +716,44 @@ def instance_detail(instance_id):
         remote_tone=STATUS_TONES.get((remote_state or {}).get("technical_status", ""), "attention"),
         customer=customer,
     )
+
+
+@bp.route("/instances/<instance_id>/welcome")
+@login_required
+def provision_success(instance_id):
+    customer = current_customer()
+    instance = db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
+    if instance is None:
+        flash("Instance not found.", "error")
+        return redirect(url_for("main.dashboard"))
+    credentials = session.pop("provision_credentials", [])
+    sess_id = session.pop("provision_instance_id", None)
+    if sess_id != instance_id:
+        # Credentials not in session; try fetching from admirald API
+        try:
+            credentials = admiral_client.get_instance_credentials(instance_id)
+        except AdmiralAPIError:
+            credentials = []
+    return render_template(
+        "provision_confirmation.html",
+        instance=instance,
+        credentials=credentials,
+        customer=customer,
+    )
+
+
+@bp.route("/instances/<instance_id>/credentials.json")
+@login_required
+def instance_credentials(instance_id):
+    customer = current_customer()
+    instance = db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
+    if instance is None:
+        return jsonify({"error": "instance not found"}), 404
+    try:
+        credentials = admiral_client.get_instance_credentials(instance_id)
+        return jsonify(credentials)
+    except AdmiralAPIError:
+        return jsonify({"error": "failed to fetch credentials"}), 502
 
 
 @bp.route("/instances/<instance_id>/actions", methods=["POST"])

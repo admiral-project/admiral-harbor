@@ -86,8 +86,8 @@
  <div class="grid">
  <div class="card">
  <p class="metric-label">Status</p>
- <span class="status-badge {% if admirald.get('status') == 'running' %}success{% else %}info{% endif %}">
- {{ admirald.get('status', 'unknown') }}
+  <span class="status-badge {% if admirald.get('technical_status') == 'running' %}success{% else %}info{% endif %}">
+    {{ admirald.get('technical_status', 'unknown') }}
  </span>
  </div>
  

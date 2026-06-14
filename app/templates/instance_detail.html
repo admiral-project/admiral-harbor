@@ -115,9 +115,50 @@
  </section>
  </div>
 
- <aside class="instance-side">
- <section class="panel">
- <h2>Tier change</h2>
+  <aside class="instance-side">
+  <section class="panel">
+  <h2>Access credentials</h2>
+  <p class="meta">Your app login credentials are available for retrieval.</p>
+  <button class="secondary page-cta" type="button" id="show-creds-btn" onclick="fetchCredentials()">Show credentials</button>
+  <div id="creds-display" style="display:none; margin-top: 12px;"></div>
+  <script>
+  function fetchCredentials() {
+    var btn = document.getElementById('show-creds-btn');
+    var display = document.getElementById('creds-display');
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    fetch('{{ url_for("main.instance_credentials", instance_id=instance.instance_id) }}')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          display.innerHTML = '<p class="meta" style="color:#e74c3c;">' + data.error + '</p>';
+        } else if (data.length === 0) {
+          display.innerHTML = '<p class="meta">No credentials available.</p>';
+        } else {
+          var html = '<table style="width:100%;border-collapse:collapse;">';
+          html += '<thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ddd;">Variable</th><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ddd;">Value</th></tr></thead><tbody>';
+          data.forEach(function(c) {
+            html += '<tr><td style="padding:4px 6px;border-bottom:1px solid #eee;"><code>' + c.name + '</code></td><td style="padding:4px 6px;border-bottom:1px solid #eee;"><code style="user-select:all;word-break:break-all;">' + c.value + '</code></td></tr>';
+          });
+          html += '</tbody></table>';
+          html += '<p class="meta" style="margin-top:8px;color:#e65100;">&#9888; Save these now. They cannot be retrieved again later.</p>';
+          display.innerHTML = html;
+        }
+        display.style.display = 'block';
+        btn.style.display = 'none';
+      })
+      .catch(function(err) {
+        display.innerHTML = '<p class="meta" style="color:#e74c3c;">Failed to load credentials.</p>';
+        display.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Show credentials';
+      });
+  }
+  </script>
+  </section>
+
+  <section class="panel">
+  <h2>Tier change</h2>
  <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}" class="stack">
  <input type="hidden" name="action" value="resize">
  <label>Target tier <input name="tier_name" value="{{ instance.tier_name }}"></label>

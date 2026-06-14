@@ -44,8 +44,8 @@
  {% if item.error %}
  <span class="status-badge danger">Error: {{ item.error[:30] }}...</span>
  {% elif item.admirald %}
- <span class="status-badge {% if item.admirald.get('status') == 'running' %}success{% else %}info{% endif %}">
- {{ item.admirald.get('status', 'unknown') }}
+  <span class="status-badge {% if item.admirald.get('technical_status') == 'running' %}success{% else %}info{% endif %}">
+    {{ item.admirald.get('technical_status', 'unknown') }}
  </span>
  {% else %}
  <span class="status-badge info">N/A</span>
