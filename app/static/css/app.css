@@ -374,7 +374,7 @@ label { display: grid; gap: 6px; font-size: .88rem; color: var(--muted); }
   font-weight: 600;
   text-transform: capitalize;
 }
-.tone-success { background: #ecfdf5; color: #065f46; }
+.tone-success, .tone-ok { background: #ecfdf5; color: #065f46; }
 .tone-warning { background: #fffbeb; color: #92400e; }
 .tone-danger { background: #fef2f2; color: #991b1b; }
 .tone-attention { background: #fff7ed; color: #9a3412; }
