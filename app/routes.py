@@ -201,6 +201,7 @@ def _provision_from_order(order):
 
     response = admiral_client.provision_app(order.app_slug, order.tier_name, customer.public_id)
     credentials = response.get("credentials", [])
+    hostname = response.get("hostname", "")
     operation_id = response.get("operation_id", "")
     instance_id = ""
     if operation_id:
@@ -211,6 +212,8 @@ def _provision_from_order(order):
             pass
     if not instance_id:
         instance_id = f"inst_{uuid4().hex[:16]}"
+    if not hostname:
+        hostname = instance_id
 
     db.session.add(
         CustomerApp(
@@ -218,7 +221,7 @@ def _provision_from_order(order):
             customer_email=customer.email,
             instance_id=instance_id,
             app_slug=order.app_slug,
-            domain=instance_id,
+            domain=hostname,
             status="provisioning",
             backup_status="pending",
             storage_status="ok",
@@ -239,6 +242,7 @@ def _provision_subscription(subscription):
     customer = db.session.query(Customer).filter_by(email=subscription.customer_email).one()
     response = admiral_client.provision_app(subscription.app_slug, subscription.tier_name, customer.public_id)
     credentials = response.get("credentials", [])
+    hostname = response.get("hostname", "")
     operation_id = response.get("operation_id", "")
     instance_id = ""
     if operation_id:
@@ -249,13 +253,15 @@ def _provision_subscription(subscription):
             pass
     if not instance_id:
         instance_id = f"inst_{uuid4().hex[:16]}"
+    if not hostname:
+        hostname = instance_id
     db.session.add(
         CustomerApp(
             subscription_id=subscription.id,
             customer_email=subscription.customer_email,
             instance_id=instance_id,
             app_slug=subscription.app_slug,
-            domain=instance_id,
+            domain=hostname,
             status="provisioning",
             backup_status="pending",
             storage_status="ok",
