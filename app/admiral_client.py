@@ -176,7 +176,7 @@ def action(instance_id, action_name, tier=None, service=None):
 def list_backups(instance_id):
     response = _request("GET", "/api/v1/backups", params={"instance_id": instance_id}, timeout=30)
     if isinstance(response, dict) and "items" in response:
-        return response["items"]
+        return response["items"] or []
     return response or []
 
 
