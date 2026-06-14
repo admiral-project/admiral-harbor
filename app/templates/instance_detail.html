@@ -135,12 +135,16 @@
         } else if (data.length === 0) {
           display.innerHTML = '<p class="meta">No credentials available.</p>';
         } else {
-          var html = '<table style="width:100%;border-collapse:collapse;">';
-          html += '<thead><tr><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ddd;">Variable</th><th style="text-align:left;padding:4px 6px;border-bottom:1px solid #ddd;">Value</th></tr></thead><tbody>';
+          var html = '<dl class="details" style="margin-top:8px;">';
           data.forEach(function(c) {
-            html += '<tr><td style="padding:4px 6px;border-bottom:1px solid #eee;"><code>' + c.name + '</code></td><td style="padding:4px 6px;border-bottom:1px solid #eee;"><code style="user-select:all;word-break:break-all;">' + c.value + '</code></td></tr>';
+            if (c.service === 'db') return;
+            if (c.generate === 'username') {
+              html += '<div><dt>Usuario</dt><dd><code style="user-select:all;word-break:break-all;">' + c.value + '</code></dd></div>';
+            } else if (c.generate === 'password') {
+              html += '<div><dt>Contraseña</dt><dd><code style="user-select:all;word-break:break-all;">' + c.value + '</code></dd></div>';
+            }
           });
-          html += '</tbody></table>';
+          html += '</dl>';
           html += '<p class="meta" style="margin-top:8px;color:#e65100;">&#9888; Save these now. They cannot be retrieved again later.</p>';
           display.innerHTML = html;
         }

@@ -5,12 +5,11 @@
   <div style="font-size: 48px; margin-bottom: 16px;">&#10003;</div>
   <h1>Your app is being provisioned</h1>
   <p class="lede">Your application <strong>{{ instance.app_slug }}</strong> is being deployed.</p>
-  {% if not instance.domain.startswith('inst_') %}
+
   <p style="margin: 20px 0;">
     <strong>URL:</strong>
     <a href="https://{{ instance.domain }}" target="_blank" rel="noopener">{{ instance.domain }}</a>
   </p>
-  {% endif %}
 
   {% if credentials %}
   <div class="panel" style="background: #fff8e1; border-color: #ffc107; text-align: left; margin-top: 24px;">
@@ -18,26 +17,17 @@
     <p class="meta" style="color: #bf360c;">
       These credentials will not be shown again. Save them in a secure place before leaving this page.
     </p>
-    <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
-      <thead>
-        <tr>
-          <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid #ffc107;">Service</th>
-          <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid #ffc107;">Variable</th>
-          <th style="text-align: left; padding: 6px 8px; border-bottom: 1px solid #ffc107;">Value</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for cred in credentials %}
-        <tr>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">{{ cred.service }}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;"><code>{{ cred.name }}</code></td>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">
-            <code style="user-select: all; word-break: break-all;">{{ cred.value }}</code>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+    <dl class="details" style="margin-top: 12px;">
+    {% for cred in credentials %}
+      {% if cred.service != "db" %}
+        {% if cred.generate == "username" %}
+        <div><dt>Usuario</dt><dd><code style="user-select: all;">{{ cred.value }}</code></dd></div>
+        {% elif cred.generate == "password" %}
+        <div><dt>Contraseña</dt><dd><code style="user-select: all;">{{ cred.value }}</code></dd></div>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+    </dl>
   </div>
   {% endif %}
 
