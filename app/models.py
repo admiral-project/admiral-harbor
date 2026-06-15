@@ -3,14 +3,17 @@
 
 from datetime import datetime
 from hashlib import sha256
+import logging
 from uuid import uuid4
 
 from argon2 import PasswordHasher
 from flask_login import UserMixin
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 
 ph = PasswordHasher()
+logger = logging.getLogger("admiral-harbor")
 
 
 class Customer(db.Model):
@@ -74,14 +77,21 @@ class HarborAdminUser(UserMixin, db.Model):
             return
         if db.session.query(cls).count() > 0:
             return
-        db.session.add(
-            cls(
-                username=username,
-                display_name=display_name,
-                password_hash=ph.hash(password),
+        try:
+            db.session.add(
+                cls(
+                    username=username,
+                    display_name=display_name,
+                    password_hash=ph.hash(password),
+                )
             )
-        )
-        db.session.commit()
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            if db.session.query(cls).filter_by(username=username).one_or_none():
+                logger.warning("Bootstrap admin %r already exists; skipping creation", username)
+                return
+            raise
 
     def as_dict(self):
         return {"username": self.username, "display_name": self.display_name}
