@@ -107,14 +107,28 @@
  </div>
  {% endif %}
  
- {% if admirald.get('last_check_at') %}
- <div class="card">
- <p class="metric-label">Última revisión</p>
- {{ admirald.get('last_check_at') }}
- </div>
- {% endif %}
- </div>
- </div>
+  {% if admirald.get('last_check_at') %}
+  <div class="card">
+  <p class="metric-label">Última revisión</p>
+  {{ admirald.get('last_check_at') }}
+  </div>
+  {% endif %}
+
+  {% if admirald.get('node_id') %}
+  <div class="card">
+  <p class="metric-label">Nodo</p>
+  <code>{{ admirald.get('node_id') }}</code>
+  </div>
+  {% endif %}
+
+  {% if admirald.get('logical_instance_id') %}
+  <div class="card">
+  <p class="metric-label">Logical Instance ID</p>
+  <code>{{ admirald.get('logical_instance_id') }}</code>
+  </div>
+  {% endif %}
+  </div>
+  </div>
 {% endif %}
 
 <div class="panel">
