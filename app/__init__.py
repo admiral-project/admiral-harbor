@@ -15,7 +15,7 @@ from app.auth import bp as auth_bp
 from app.catalog import bp as catalog_bp
 from app.customer import customer_bp
 from app.csrf import init_csrf_protection
-from app.extensions import alembic, db, login_manager
+from app.extensions import alembic, db, login_manager, secrets
 from app.identity import current_admin, current_customer
 from app.models import HarborAdminUser
 from app.security import init_security_headers, validate_production_config
@@ -45,6 +45,12 @@ def create_app(config_object="app.config.Config"):
     login_manager.login_view = "admin.login_page"
     init_csrf_protection(app)
     init_security_headers(app)
+
+    # Initialize SecretsManager with the encryption key
+    master_key = app.config.get("HARBOR_ENCRYPTION_KEY", "")
+    if master_key:
+        import app.extensions as ext
+        ext.secrets = SecretsManager(master_key)
 
     @login_manager.user_loader
     def load_admin(username):

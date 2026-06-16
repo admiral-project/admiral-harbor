@@ -16,6 +16,18 @@ class PayPalError(RuntimeError):
     pass
 
 
+def _resolve_secret(value):
+    """Decrypt a stored secret if encrypted; otherwise return as-is."""
+    from app.extensions import secrets as ext_secrets
+
+    if ext_secrets is None or not value:
+        return value
+    decrypted = ext_secrets.decrypt(value)
+    if decrypted != value:
+        return decrypted
+    return value
+
+
 def _db_paypal_config():
     """Return PayPal config from DB, falling back to env vars (current_app.config)."""
     from app.models import HarborPayPalConfig
@@ -26,7 +38,7 @@ def _db_paypal_config():
         return {
             "mode": cfg.mode,
             "client_id": cfg.client_id or "",
-            "client_secret": cfg.client_secret or "",
+            "client_secret": _resolve_secret(cfg.client_secret or ""),
             "webhook_id": cfg.webhook_id or "",
         }
     return {

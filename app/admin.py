@@ -1793,6 +1793,8 @@ def reject_reviewed_user(customer_id):
 @admin_required
 def paypal_config():
     """Configure PayPal credentials."""
+    from app.extensions import secrets as ext_secrets
+
     config = HarborPayPalConfig.get_config()
 
     if request.method == "POST":
@@ -1807,7 +1809,10 @@ def paypal_config():
 
         config.mode = mode
         config.client_id = client_id
-        config.client_secret = client_secret
+        if ext_secrets is not None:
+            config.client_secret = ext_secrets.encrypt(client_secret)
+        else:
+            config.client_secret = client_secret
         config.webhook_id = webhook_id or None
 
         db.session.add(
