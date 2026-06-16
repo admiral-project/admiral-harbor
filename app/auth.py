@@ -25,6 +25,7 @@ from flask import (
 from app.extensions import db
 from app.identity import current_customer, login_required
 from app.models import AuditLog, Customer
+from app.rate_limit import RateLimiter
 
 _COUNTRIES = [
     ("NI", "Nicaragua"),
@@ -32,6 +33,7 @@ _COUNTRIES = [
 
 ph = PasswordHasher()
 bp = Blueprint("auth", __name__, url_prefix="/auth")
+login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
 
 def _login_customer(customer):
@@ -115,6 +117,16 @@ def register_page():
 
 @bp.route("/login", methods=["POST"])
 def login():
+    ip = request.remote_addr or "unknown"
+    allowed, remaining = login_limiter.is_allowed(ip)
+    if not allowed:
+        if request.is_json:
+            return jsonify({
+                "error": f"Too many login attempts. Try again in {remaining} second(s)."
+            }), 429
+        flash("Demasiados intentos de inicio de sesion. Intenta de nuevo en 30 segundos.", "error")
+        return redirect(url_for("auth.login_page"))
+
     if request.content_type and "application/json" not in request.content_type:
         payload = request.form
     else:
@@ -152,6 +164,7 @@ def login():
         return redirect(url_for("auth.login_page"))
 
     _login_customer(customer)
+    login_limiter.reset(ip)
     if request.is_json:
         return jsonify(
             {"status": "ok", "email": email, "public_id": customer.public_id}
