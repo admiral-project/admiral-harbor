@@ -20,8 +20,16 @@ jobs:
       - run: pip install .
         name: Install project
 
-      - run: pip install pytest
-        name: Install test runner
+      - run: pip install pytest ruff bandit
+        name: Install test and lint tools
+
+      - run: ruff check .
+        continue-on-error: true
+        name: ruff check
+
+      - run: bandit -r . -ll
+        continue-on-error: true
+        name: bandit
 
       - run: python -m pytest tests/ -v
         name: pytest
