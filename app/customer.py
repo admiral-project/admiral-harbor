@@ -170,9 +170,9 @@ def dashboard():
     )
 
     # Current month revenue/usage
-    from datetime import datetime
+    from datetime import UTC, datetime
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     total_charged_cents = (
@@ -568,9 +568,9 @@ def support_reply(ticket_id):
     db.session.add(reply)
 
     # Update ticket updated_at
-    from datetime import datetime
+    from datetime import UTC, datetime
 
-    ticket.updated_at = datetime.utcnow()
+    ticket.updated_at = datetime.now(UTC)
 
     db.session.add(
         AuditLog(
@@ -631,9 +631,9 @@ def support_detail_updated(ticket_id):
     # Calculate SLA status (customer-friendly format)
     sla_status = None
     if ticket.response_deadline or ticket.resolution_deadline:
-        from datetime import datetime
+        from datetime import UTC, datetime
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         if ticket.resolution_deadline and now > ticket.resolution_deadline:
             sla_status = {"status": "overdue", "type": "resolution"}

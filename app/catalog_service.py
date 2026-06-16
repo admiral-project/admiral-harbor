@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 import json
 
@@ -31,7 +31,7 @@ def sync_catalog(origin="manual", actor=None):
         dict with sync results and audit record
     """
     audit = CatalogSyncAudit(origin=origin, actor=actor, status="in_progress")
-    audit.started_at = datetime.utcnow()
+    audit.started_at = datetime.now(UTC)
     db.session.add(audit)
     db.session.flush()  # Get execution_id
 
@@ -89,7 +89,7 @@ def sync_catalog(origin="manual", actor=None):
                     upstream_checksum=app_data.get("checksum", ""),
                     technical_snapshot=technical_snapshot,
                     catalog_enabled=False,  # Manual enablement required
-                    synced_at=datetime.utcnow(),
+                    synced_at=datetime.now(UTC),
                 )
                 db.session.add(app)
                 synced_count += 1
@@ -102,7 +102,7 @@ def sync_catalog(origin="manual", actor=None):
                 app.upstream_checksum = app_data.get("checksum", "")
                 app.technical_snapshot = technical_snapshot
                 app.sync_status = "synced"
-                app.synced_at = datetime.utcnow()
+                app.synced_at = datetime.now(UTC)
                 app.sync_last_error = None
                 updated_count += 1
 
@@ -159,7 +159,7 @@ def sync_catalog(origin="manual", actor=None):
         for app in missing_apps:
             app.upstream_present = False
             app.sync_status = "synced"
-            app.synced_at = datetime.utcnow()
+            app.synced_at = datetime.now(UTC)
             missing_count += 1
             logger.info(f"App marked as missing upstream: {app.upstream_app_id}")
 
@@ -171,7 +171,7 @@ def sync_catalog(origin="manual", actor=None):
         audit.apps_updated = updated_count
         audit.apps_marked_missing = missing_count
         audit.total_apps_processed = synced_count + updated_count + missing_count
-        audit.completed_at = datetime.utcnow()
+        audit.completed_at = datetime.now(UTC)
         db.session.commit()
 
         logger.info(
@@ -191,7 +191,7 @@ def sync_catalog(origin="manual", actor=None):
         error_msg = str(e)
         audit.status = "failure"
         audit.error_message = error_msg
-        audit.completed_at = datetime.utcnow()
+        audit.completed_at = datetime.now(UTC)
         db.session.commit()
 
         logger.info(f"Catalog sync skipped: {error_msg}")
@@ -204,7 +204,7 @@ def sync_catalog(origin="manual", actor=None):
         error_msg = str(e)
         audit.status = "failure"
         audit.error_message = error_msg
-        audit.completed_at = datetime.utcnow()
+        audit.completed_at = datetime.now(UTC)
         db.session.commit()
 
         logger.error(f"Catalog sync failed: {error_msg}", exc_info=True)

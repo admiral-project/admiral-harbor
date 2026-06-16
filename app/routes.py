@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import os
 import tempfile
 from pathlib import Path
@@ -237,7 +237,7 @@ def _provision_from_order(order):
         tier_name=order.tier_name,
         requires_billing=order.requires_billing,
         next_billing_at=order.next_billing_at
-        or (datetime.utcnow() + timedelta(days=30)).date().isoformat(),
+        or (datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         billing_email=order.billing_email or order.customer_email,
         tax_percent=order.tax_percent,
         paypal_subscription_id=order.paypal_subscription_id,
@@ -516,7 +516,7 @@ def deploy_app(slug):
         tax_cents=int(tier["price_monthly_cents"] * tax_pct / 100),
         total_cents=total_cents,
         requires_billing=requires_billing,
-        next_billing_at=(datetime.utcnow() + timedelta(days=30)).date().isoformat(),
+        next_billing_at=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         billing_email=customer.email,
     )
     db.session.add(order)
@@ -682,7 +682,7 @@ def billing_return():
                 status="paid",
                 paypal_transaction_id=order.paypal_subscription_id,
                 period_start=order.next_billing_at,
-                period_end=(datetime.utcnow() + timedelta(days=30)).date().isoformat(),
+                period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
             )
             db.session.add(invoice)
             payment = Payment(
@@ -845,10 +845,10 @@ def paypal_webhook():
                 status="paid",
                 paypal_transaction_id=resource.get("id", ""),
                 paypal_event_id=event_id,
-                period_start=(datetime.utcnow() - timedelta(days=30))
+                period_start=(datetime.now(UTC) - timedelta(days=30))
                 .date()
                 .isoformat(),
-                period_end=datetime.utcnow().date().isoformat(),
+                period_end=datetime.now(UTC).date().isoformat(),
             )
             db.session.add(invoice)
             db.session.add(
@@ -867,7 +867,7 @@ def paypal_webhook():
                 )
             )
         subscription.next_billing_at = (
-            (datetime.utcnow() + timedelta(days=30)).date().isoformat()
+            (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
         )
         if order is not None:
             order.status = "paid"

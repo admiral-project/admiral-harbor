@@ -16,7 +16,7 @@ from flask import (
 )
 from flask_login import current_user, login_user, logout_user
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from sqlalchemy import func
 import csv
 import io
@@ -124,7 +124,7 @@ def _get_admirald_status():
         apps = list_apps()
         return {
             "status": "operativa",
-            "last_check": datetime.utcnow(),
+            "last_check": datetime.now(UTC),
             "app_count": len(apps) if apps else 0,
         }
     except Exception as e:
@@ -291,7 +291,7 @@ def _get_platform_status():
         "color": color,
         "severity": severity,
         "conditions": conditions,
-        "last_updated": datetime.utcnow(),
+        "last_updated": datetime.now(UTC),
     }
 
 
@@ -300,7 +300,7 @@ def _calculate_mrr():
 
     Returns dict with current month MRR and comparison with previous month.
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # Get active subscriptions with their recurring amounts
@@ -502,7 +502,7 @@ def _calculate_sla_deadlines(priority="medium"):
     - medium: 4h response, 72h resolution
     - low: 8h response, 5 days resolution
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     sla_config = {
         "critical": {"response_hours": 1, "resolution_hours": 8},
@@ -532,7 +532,7 @@ def _get_sla_status(ticket):
     - time_remaining: timedelta or None
     - percent_used: 0-100
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
 
     # If resolved, check if resolution deadline was met
     if ticket.resolved_at:
@@ -633,7 +633,7 @@ def _format_timedelta(td):
 @admin_required
 def dashboard():
     """Dashboard administrativo con 5 bloques funcionales."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # Bloque A: Estado general de la plataforma
@@ -827,7 +827,7 @@ def invoice_detail(invoice_id):
 @admin_required
 def metrics():
     """Display MRR, historical metrics, and performance indicators."""
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # Current month MRR
@@ -928,7 +928,7 @@ def export_subscriptions():
         io.BytesIO(csv_data.encode("utf-8")),
         mimetype="text/csv",
         as_attachment=True,
-        download_name=f"subscriptions_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv",
+        download_name=f"subscriptions_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.csv",
     )
 
 
@@ -941,7 +941,7 @@ def export_payments():
         io.BytesIO(csv_data.encode("utf-8")),
         mimetype="text/csv",
         as_attachment=True,
-        download_name=f"payments_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv",
+        download_name=f"payments_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.csv",
     )
 
 
@@ -954,7 +954,7 @@ def export_tickets():
         io.BytesIO(csv_data.encode("utf-8")),
         mimetype="text/csv",
         as_attachment=True,
-        download_name=f"tickets_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv",
+        download_name=f"tickets_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.csv",
     )
 
 
@@ -1503,7 +1503,7 @@ def integration_status():
         admirald_status=admirald_status,
         last_sync=last_sync,
         sync_history=sync_history,
-        now=datetime.utcnow(),
+        now=datetime.now(UTC),
     )
 
 
@@ -1712,7 +1712,7 @@ def toggle_customer_active(customer_id):
     """Block or unblock a customer."""
     customer = db.session.query(Customer).get_or_404(customer_id)
     customer.is_active = not customer.is_active
-    customer.blocked_at = datetime.utcnow() if not customer.is_active else None
+    customer.blocked_at = datetime.now(UTC) if not customer.is_active else None
     status = "blocked" if not customer.is_active else "unblocked"
     db.session.add(
         AuditLog(
@@ -1748,7 +1748,7 @@ def approve_reviewed_user(customer_id):
     customer.signup_status = "active"
     customer.is_active = True
     customer.blocked_at = None
-    customer.reviewed_at = datetime.utcnow()
+    customer.reviewed_at = datetime.now(UTC)
     customer.reviewed_by = session.get("admin_username", "admin")
     customer.rejection_reason = None
     db.session.add(
@@ -1772,8 +1772,8 @@ def reject_reviewed_user(customer_id):
     reason = request.form.get("rejection_reason", "").strip()
     customer.signup_status = "rejected"
     customer.is_active = False
-    customer.blocked_at = datetime.utcnow()
-    customer.reviewed_at = datetime.utcnow()
+    customer.blocked_at = datetime.now(UTC)
+    customer.reviewed_at = datetime.now(UTC)
     customer.reviewed_by = session.get("admin_username", "admin")
     customer.rejection_reason = reason or None
     db.session.add(
@@ -2132,7 +2132,7 @@ def ticket_update_status(ticket_id):
 
     # Mark as resolved when status changes to resolved/closed
     if new_status in ["resolved", "closed"] and not ticket.resolved_at:
-        ticket.resolved_at = datetime.utcnow()
+        ticket.resolved_at = datetime.now(UTC)
         # Check if SLA was violated
         if (
             ticket.resolution_deadline
@@ -2169,7 +2169,7 @@ def ticket_add_note(ticket_id):
 
     note = request.form.get("note", "").strip()
     if note:
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
         actor = session.get("admin_username", "admin")
         formatted_note = f"[{timestamp}] {actor}: {note}\n"
         ticket.internal_notes = (ticket.internal_notes or "") + formatted_note

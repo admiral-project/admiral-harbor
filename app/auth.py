@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from hashlib import sha256
 import smtplib
@@ -59,7 +59,7 @@ def _confirmation_is_expired(customer):
     if sent_at is None:
         return True
     ttl_hours = current_app.config.get("HARBOR_EMAIL_CONFIRMATION_TTL_HOURS", 72)
-    return datetime.utcnow() > sent_at + timedelta(hours=ttl_hours)
+    return datetime.now(UTC) > sent_at + timedelta(hours=ttl_hours)
 
 
 def _send_confirmation_email(customer, token):
@@ -212,11 +212,11 @@ def register():
         email_confirmation_sent_at=None,
         email_confirmed_at=None,
         terms_policy_version=current_app.config["HARBOR_OVERDUE_POLICY_VERSION"],
-        terms_accepted_at=datetime.utcnow(),
+        terms_accepted_at=datetime.now(UTC),
     )
     confirmation_token = token_urlsafe(32)
     customer.email_confirmation_token_hash = _token_hash(confirmation_token)
-    customer.email_confirmation_sent_at = datetime.utcnow()
+    customer.email_confirmation_sent_at = datetime.now(UTC)
     db.session.add(customer)
     db.session.add(
         AuditLog(
@@ -310,10 +310,10 @@ def confirm_email(token):
         )
         return redirect(url_for("auth.login_page"))
 
-    customer.email_confirmed_at = datetime.utcnow()
+    customer.email_confirmed_at = datetime.now(UTC)
     customer.email_confirmation_token_hash = None
     customer.signup_status = "active"
-    customer.reviewed_at = customer.reviewed_at or datetime.utcnow()
+    customer.reviewed_at = customer.reviewed_at or datetime.now(UTC)
     customer.reviewed_by = customer.reviewed_by or "email-confirmation"
     db.session.add(
         AuditLog(
