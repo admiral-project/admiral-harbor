@@ -17,7 +17,7 @@ from app.csrf import init_csrf_protection
 from app.extensions import alembic, db, login_manager
 from app.identity import current_admin, current_customer
 from app.models import HarborAdminUser
-from app.security import validate_production_config
+from app.security import init_security_headers, validate_production_config
 from app.routes import bp as main_bp
 
 logger = logging.getLogger("admiral-harbor")
@@ -34,6 +34,7 @@ def create_app(config_object="app.config.Config"):
     login_manager.init_app(app)
     login_manager.login_view = "admin.login_page"
     init_csrf_protection(app)
+    init_security_headers(app)
 
     @login_manager.user_loader
     def load_admin(username):

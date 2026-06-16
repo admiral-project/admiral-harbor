@@ -4,6 +4,8 @@
 import logging
 import os
 
+from flask import Flask
+
 logger = logging.getLogger("admiral-harbor")
 
 
@@ -70,3 +72,32 @@ def validate_production_config(config):
         raise ValueError(
             "Production security validation failed:\n- " + "\n- ".join(errors)
         )
+
+
+def init_security_headers(app: Flask) -> None:
+    @app.after_request
+    def add_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; "
+            "style-src 'self' https://cdnjs.cloudflare.com https://unpkg.com; "
+            "img-src 'self' data:; "
+            "font-src 'self' https://cdnjs.cloudflare.com https://unpkg.com; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
+        )
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(), camera=(), usb=(), payment=()"
+        )
+        return response
+
+    logger.info("Security headers initialized")
