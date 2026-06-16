@@ -14,17 +14,29 @@ class Config:
     ADMIRAL_API_URL = os.environ.get("ADMIRAL_API_URL", "https://127.0.0.1:8443")
     ADMIRAL_SHARED_TOKEN = os.environ.get("ADMIRAL_SHARED_TOKEN", "dev-token")
     ADMIRAL_CA_FILE = os.environ.get("ADMIRAL_CA_FILE", "")
-    ADMIRAL_INSECURE_SKIP_VERIFY = os.environ.get("ADMIRAL_INSECURE_SKIP_VERIFY", "0") == "1"
+    ADMIRAL_INSECURE_SKIP_VERIFY = (
+        os.environ.get("ADMIRAL_INSECURE_SKIP_VERIFY", "0") == "1"
+    )
     HARBOR_UPLOAD_DIR = os.environ.get("HARBOR_UPLOAD_DIR", "instance/uploads")
-    HARBOR_MAX_BACKUP_UPLOAD_BYTES = int(os.environ.get("HARBOR_MAX_BACKUP_UPLOAD_BYTES", str(512 * 1024 * 1024)))
-    HARBOR_ENCRYPTION_KEY = os.environ.get("HARBOR_ENCRYPTION_KEY", "dev-encryption-key")
+    HARBOR_MAX_BACKUP_UPLOAD_BYTES = int(
+        os.environ.get("HARBOR_MAX_BACKUP_UPLOAD_BYTES", str(512 * 1024 * 1024))
+    )
+    HARBOR_ENCRYPTION_KEY = os.environ.get(
+        "HARBOR_ENCRYPTION_KEY", "dev-encryption-key"
+    )
     HARBOR_PAYPAL_CLIENT_ID = os.environ.get("HARBOR_PAYPAL_CLIENT_ID", "")
     HARBOR_PAYPAL_CLIENT_SECRET = os.environ.get("HARBOR_PAYPAL_CLIENT_SECRET", "")
     HARBOR_PAYPAL_WEBHOOK_ID = os.environ.get("HARBOR_PAYPAL_WEBHOOK_ID", "")
-    HARBOR_PAYPAL_BASE_URL = os.environ.get("HARBOR_PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
+    HARBOR_PAYPAL_BASE_URL = os.environ.get(
+        "HARBOR_PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com"
+    )
     HARBOR_PAYPAL_MODE = os.environ.get("HARBOR_PAYPAL_MODE", "mock")
-    HARBOR_PAYPAL_RETURN_URL = os.environ.get("HARBOR_PAYPAL_RETURN_URL", "http://localhost:5000/billing/return")
-    HARBOR_PAYPAL_CANCEL_URL = os.environ.get("HARBOR_PAYPAL_CANCEL_URL", "http://localhost:5000/billing/cancel")
+    HARBOR_PAYPAL_RETURN_URL = os.environ.get(
+        "HARBOR_PAYPAL_RETURN_URL", "http://localhost:5000/billing/return"
+    )
+    HARBOR_PAYPAL_CANCEL_URL = os.environ.get(
+        "HARBOR_PAYPAL_CANCEL_URL", "http://localhost:5000/billing/cancel"
+    )
     HARBOR_SMTP_FROM = os.environ.get("HARBOR_SMTP_FROM", "noreply@example.com")
     HARBOR_SMTP_HOST = os.environ.get("HARBOR_SMTP_HOST", "")
     HARBOR_SMTP_PORT = int(os.environ.get("HARBOR_SMTP_PORT", "587"))
@@ -32,27 +44,45 @@ class Config:
     HARBOR_SMTP_PASSWORD = os.environ.get("HARBOR_SMTP_PASSWORD", "")
     HARBOR_SMTP_USE_TLS = os.environ.get("HARBOR_SMTP_USE_TLS", "1") == "1"
     HARBOR_SMTP_USE_SSL = os.environ.get("HARBOR_SMTP_USE_SSL", "0") == "1"
-    HARBOR_EMAIL_CONFIRMATION_TTL_HOURS = int(os.environ.get("HARBOR_EMAIL_CONFIRMATION_TTL_HOURS", "72"))
+    HARBOR_EMAIL_CONFIRMATION_TTL_HOURS = int(
+        os.environ.get("HARBOR_EMAIL_CONFIRMATION_TTL_HOURS", "72")
+    )
     HARBOR_PORTAL_NAME = "Admiral Harbor"
     HARBOR_PORTAL_DESCRIPTION = "Customer portal"
     HARBOR_EXTERNAL_URL = os.environ.get("HARBOR_EXTERNAL_URL", "http://localhost:5000")
-    HARBOR_OVERDUE_POLICY_VERSION = os.environ.get("HARBOR_OVERDUE_POLICY_VERSION", "overdue-policy-v1")
-    HARBOR_OVERDUE_SUSPEND_AFTER_DAYS = int(os.environ.get("HARBOR_OVERDUE_SUSPEND_AFTER_DAYS", "5"))
-    HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS = int(os.environ.get("HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS", "10"))
+    HARBOR_OVERDUE_POLICY_VERSION = os.environ.get(
+        "HARBOR_OVERDUE_POLICY_VERSION", "overdue-policy-v1"
+    )
+    HARBOR_OVERDUE_SUSPEND_AFTER_DAYS = int(
+        os.environ.get("HARBOR_OVERDUE_SUSPEND_AFTER_DAYS", "5")
+    )
+    HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS = int(
+        os.environ.get("HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS", "10")
+    )
     HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS = int(
         os.environ.get("HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS", "15")
     )
-    HARBOR_CSRF_CHECK_IN_TESTS = os.environ.get("HARBOR_CSRF_CHECK_IN_TESTS", "0") == "1"
+    HARBOR_CSRF_CHECK_IN_TESTS = (
+        os.environ.get("HARBOR_CSRF_CHECK_IN_TESTS", "0") == "1"
+    )
     HARBOR_BOOTSTRAP_ADMIN_USER = os.environ.get("HARBOR_BOOTSTRAP_ADMIN_USER", "")
-    HARBOR_BOOTSTRAP_ADMIN_PASSWORD = os.environ.get("HARBOR_BOOTSTRAP_ADMIN_PASSWORD", "")
-    HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME = os.environ.get("HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME", "Harbor Bootstrap Admin")
+    HARBOR_BOOTSTRAP_ADMIN_PASSWORD = os.environ.get(
+        "HARBOR_BOOTSTRAP_ADMIN_PASSWORD", ""
+    )
+    HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME = os.environ.get(
+        "HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME", "Harbor Bootstrap Admin"
+    )
 
 
 def overdue_policy(config):
     return {
         "policy_version": config["HARBOR_OVERDUE_POLICY_VERSION"],
         "grace_before_suspend_days": config["HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"],
-        "additional_grace_before_deprovision_days": config["HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"],
-        "last_backup_retention_days": config["HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS"],
+        "additional_grace_before_deprovision_days": config[
+            "HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"
+        ],
+        "last_backup_retention_days": config[
+            "HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS"
+        ],
         "requires_acceptance_at_signup": True,
     }

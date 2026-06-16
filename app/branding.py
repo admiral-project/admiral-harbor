@@ -96,7 +96,11 @@ def save_portal_asset(file_storage, kind):
 
 
 def _catalog_dir(slug):
-    catalog_dir = Path(current_app.config["HARBOR_UPLOAD_DIR"]) / "catalog" / secure_filename(slug)
+    catalog_dir = (
+        Path(current_app.config["HARBOR_UPLOAD_DIR"])
+        / "catalog"
+        / secure_filename(slug)
+    )
     catalog_dir.mkdir(parents=True, exist_ok=True)
     return catalog_dir
 
@@ -120,15 +124,23 @@ def portal_asset_url(kind):
     filename = HarborMeta.get(f"portal_{kind}_file")
     if filename:
         return url_for("main.portal_asset", kind=kind)
-    return url_for("static", filename="img/favicon.ico") if kind == "favicon" else url_for("static", filename="img/admiral-harbor.png")
+    return (
+        url_for("static", filename="img/favicon.ico")
+        if kind == "favicon"
+        else url_for("static", filename="img/admiral-harbor.png")
+    )
 
 
 def get_portal_branding():
     return {
-        "portal_name": _meta_value(PORTAL_NAME_KEY, current_app.config["HARBOR_PORTAL_NAME"] or DEFAULT_PORTAL_NAME),
+        "portal_name": _meta_value(
+            PORTAL_NAME_KEY,
+            current_app.config["HARBOR_PORTAL_NAME"] or DEFAULT_PORTAL_NAME,
+        ),
         "portal_description": _meta_value(
             PORTAL_DESCRIPTION_KEY,
-            current_app.config["HARBOR_PORTAL_DESCRIPTION"] or DEFAULT_PORTAL_DESCRIPTION,
+            current_app.config["HARBOR_PORTAL_DESCRIPTION"]
+            or DEFAULT_PORTAL_DESCRIPTION,
         ),
         "portal_logo_url": portal_asset_url("logo"),
         "portal_favicon_url": portal_asset_url("favicon"),

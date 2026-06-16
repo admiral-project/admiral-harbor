@@ -12,4 +12,3 @@ def test_app_detail(client):
     response = client.get("/api/catalog/apps/wordpress")
     assert response.status_code == 200
     assert response.json["upstream_app_id"] == "wordpress"
-

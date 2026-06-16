@@ -22,6 +22,7 @@ def main():
 
     if command == "user":
         from app.cli.user import handle_user
+
         app = create_app()
         with app.app_context():
             handle_user()

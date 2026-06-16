@@ -36,7 +36,10 @@ def create_app(config_object="app.config.Config"):
     @login_manager.user_loader
     def load_admin(username):
         from app.models import HarborAdminUser
-        return db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
+
+        return (
+            db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
+        )
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -72,7 +75,9 @@ def create_app(config_object="app.config.Config"):
 
             ensure_default_portal_settings()
             bootstrap_admin_user = app.config.get("HARBOR_BOOTSTRAP_ADMIN_USER", "")
-            bootstrap_admin_password = app.config.get("HARBOR_BOOTSTRAP_ADMIN_PASSWORD", "")
+            bootstrap_admin_password = app.config.get(
+                "HARBOR_BOOTSTRAP_ADMIN_PASSWORD", ""
+            )
             bootstrap_admin_display_name = app.config.get(
                 "HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME",
                 "Harbor Bootstrap Admin",
@@ -89,10 +94,11 @@ def create_app(config_object="app.config.Config"):
                 password=bootstrap_admin_password,
                 display_name=bootstrap_admin_display_name,
             )
-            
+
             # Initial handshake: sync catalog from admirald on startup
             try:
                 from app.catalog_service import sync_catalog
+
                 logger.info("Executing initial catalog sync handshake...")
                 result = sync_catalog(origin="startup", actor=None)
                 if result["success"]:
@@ -101,10 +107,12 @@ def create_app(config_object="app.config.Config"):
                         f"{result['marked_missing']} marked missing"
                     )
                 else:
-                    logger.warning(f"Initial sync failed: {result.get('error', 'Unknown error')}")
+                    logger.warning(
+                        f"Initial sync failed: {result.get('error', 'Unknown error')}"
+                    )
             except Exception as e:
                 logger.error(f"Initial sync error: {str(e)}", exc_info=True)
         except Exception as e:
             logger.error(f"Application startup failed: {str(e)}", exc_info=True)
-    
+
     return app

@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import tempfile
+
 import pytest
 
 from argon2 import PasswordHasher
@@ -21,7 +23,7 @@ def app():
         ADMIRAL_API_URL="https://admirald.test:8443",
         ADMIRAL_SHARED_TOKEN="test-token",
         ADMIRAL_CA_FILE="",
-        HARBOR_UPLOAD_DIR="/tmp/admiral-harbor-tests",
+        HARBOR_UPLOAD_DIR=tempfile.mkdtemp(prefix="admiral-harbor-tests-"),
         HARBOR_BOOTSTRAP_ADMIN_USER="testadmin",
         HARBOR_BOOTSTRAP_ADMIN_PASSWORD="secret",
     )
@@ -128,9 +130,32 @@ def client(app):
         ],
         "requires_billing": True,
     }
-    admiral_client.list_backups = lambda instance_id: [{"id": "bk_123", "status": "succeeded", "backup_type": "database", "created_at": "2026-06-04T00:00:00Z"}]
-    admiral_client.get_customer_app = lambda instance_id: {"id": instance_id, "technical_status": "running", "storage_state": "ok"}
-    admiral_client.action = lambda instance_id, action_name, tier=None, service=None: {"operation_id": f"op_{action_name}", "status": "queued"}
-    admiral_client.restore_backup = lambda backup_id, instance_id, service, source=None, verify_checksum=True: {"operation_id": "op_restore", "status": "queued"}
-    admiral_client.provision_app = lambda app_slug, tier_name, customer_id: {"operation_id": "op_provision", "instance_id": "inst_provision", "status": "queued"}
+    admiral_client.list_backups = lambda instance_id: [
+        {
+            "id": "bk_123",
+            "status": "succeeded",
+            "backup_type": "database",
+            "created_at": "2026-06-04T00:00:00Z",
+        }
+    ]
+    admiral_client.get_customer_app = lambda instance_id: {
+        "id": instance_id,
+        "technical_status": "running",
+        "storage_state": "ok",
+    }
+    admiral_client.action = lambda instance_id, action_name, tier=None, service=None: {
+        "operation_id": f"op_{action_name}",
+        "status": "queued",
+    }
+    admiral_client.restore_backup = (
+        lambda backup_id, instance_id, service, source=None, verify_checksum=True: {
+            "operation_id": "op_restore",
+            "status": "queued",
+        }
+    )
+    admiral_client.provision_app = lambda app_slug, tier_name, customer_id: {
+        "operation_id": "op_provision",
+        "instance_id": "inst_provision",
+        "status": "queued",
+    }
     return app.test_client()

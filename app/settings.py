@@ -7,11 +7,8 @@ All settings not required for deployment should live here with admin UI forms,
 so the portal admin never needs shell access.
 """
 
-from datetime import datetime
 
-from app.extensions import db
 from app.models import HarborMeta
-
 
 # ── Key constants ──────────────────────────────────────────────────────────
 

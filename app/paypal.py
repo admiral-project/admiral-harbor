@@ -20,6 +20,7 @@ def _db_paypal_config():
     """Return PayPal config from DB, falling back to env vars (current_app.config)."""
     from app.models import HarborPayPalConfig
     from app.extensions import db
+
     cfg = db.session.query(HarborPayPalConfig).first()
     if cfg is not None and cfg.mode != "mock":
         return {
@@ -40,12 +41,15 @@ def _api_url():
     pp = _db_paypal_config()
     if pp["mode"] == "mock":
         return _external_url() + "/mock-paypal"
-    return current_app.config.get("HARBOR_PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
+    return current_app.config.get(
+        "HARBOR_PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com"
+    )
 
 
 def _external_url():
     """Return the portal external URL, preferring DB setting over env."""
     from app.settings import get_external_url
+
     return get_external_url()
 
 
@@ -102,7 +106,10 @@ def create_subscription(plan_id, return_url, cancel_url, custom_id=None):
     try:
         resp = requests.post(
             f"{base_url}/v1/billing/subscriptions",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
             json=body,
             timeout=30,
         )

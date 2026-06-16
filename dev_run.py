@@ -16,7 +16,6 @@ Usage:
 
 import os
 import sys
-import uuid
 import time
 import secrets
 import logging
@@ -315,7 +314,8 @@ BACKUPS = [
         "status": "succeeded",
         "size_bytes": 46137344,
         "created_at": (NOW - timedelta(days=1)).isoformat() + "Z",
-        "completed_at": (NOW - timedelta(days=1, hours=0, minutes=-5)).isoformat() + "Z",
+        "completed_at": (NOW - timedelta(days=1, hours=0, minutes=-5)).isoformat()
+        + "Z",
     },
     {
         "id": "bkp_e5f6g7h8",
@@ -333,7 +333,8 @@ BACKUPS = [
         "status": "succeeded",
         "size_bytes": 933232640,
         "created_at": (NOW - timedelta(days=14)).isoformat() + "Z",
-        "completed_at": (NOW - timedelta(days=14, hours=0, minutes=-3)).isoformat() + "Z",
+        "completed_at": (NOW - timedelta(days=14, hours=0, minutes=-3)).isoformat()
+        + "Z",
     },
     {
         "id": "bkp_u1v2w3x4",
@@ -413,12 +414,14 @@ def _next_inst_id():
 
 # ── Request logging ────────────────────────────────────────────────────────
 
+
 @mock_app.before_request
 def _log_request():
     log.debug("%s %s", request.method, request.path)
 
 
 # ── Auth helper ────────────────────────────────────────────────────────────
+
 
 def _require_shared_token():
     token = request.headers.get("X-Admiral-Token", "")
@@ -427,6 +430,7 @@ def _require_shared_token():
 
 
 # ── API v1 endpoints ───────────────────────────────────────────────────────
+
 
 @mock_app.route("/api/v1/apps")
 def v1_apps_list():
@@ -474,7 +478,12 @@ def v1_customer_apps_provision():
     customer_id = data.get("customer_id", "")
 
     if not app_slug or not tier_name or not customer_id:
-        return jsonify({"error": "app_definition_name, tier_name and customer_id are required"}), 400
+        return (
+            jsonify(
+                {"error": "app_definition_name, tier_name and customer_id are required"}
+            ),
+            400,
+        )
 
     instance_id = _next_instance_id()
     inst_id = _next_inst_id()
@@ -502,7 +511,12 @@ def v1_customer_apps_provision():
     }
     _operations_store.append(new_op)
 
-    return jsonify({"operation_id": inst_id, "instance_id": instance_id, "status": "queued"}), 202
+    return (
+        jsonify(
+            {"operation_id": inst_id, "instance_id": instance_id, "status": "queued"}
+        ),
+        202,
+    )
 
 
 @mock_app.route("/api/v1/customer-apps/action", methods=["POST"])
@@ -541,7 +555,9 @@ def v1_backups_list():
     result = _backups_store
     if instance_id:
         result = [b for b in _backups_store if b["instance_id"] == instance_id]
-    return jsonify({"items": result, "page": 1, "page_size": len(result), "total": len(result)})
+    return jsonify(
+        {"items": result, "page": 1, "page_size": len(result), "total": len(result)}
+    )
 
 
 @mock_app.route("/api/v1/backups/<backup_id>")
@@ -589,15 +605,16 @@ def v1_operations_list():
 
 # ── Mock PayPal ────────────────────────────────────────────────────────────
 
+
 @mock_app.route("/mock-paypal/approve")
 def mock_paypal_approve():
     subscription_id = request.args.get("subscription_id", "")
     return_url = request.args.get("return_url", "")
-    cancel_url = request.args.get("cancel_url", "")
     if not return_url and not subscription_id:
         return jsonify({"error": "missing subscription_id or return_url"}), 400
     log.info("Mock PayPal: approving subscription %s", subscription_id)
     from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
+
     parsed = list(urlparse(return_url))
     query = dict(parse_qs(parsed[4]))
     query["token"] = subscription_id
@@ -606,6 +623,7 @@ def mock_paypal_approve():
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
+
 
 def _print_banner(mock_port, harbor_port):
     print("*" * 60)
@@ -625,10 +643,13 @@ def _print_banner(mock_port, harbor_port):
 
 def _wait_for_mock(host, port, timeout=10):
     import urllib.request
+
     start = time.time()
     while time.time() - start < timeout:
         try:
-            resp = urllib.request.urlopen(f"http://{host}:{port}/api/v1/apps", timeout=1)
+            resp = urllib.request.urlopen(
+                f"http://{host}:{port}/api/v1/apps", timeout=1
+            )  # nosec - controlled dev mock
             if resp.status == 200:
                 return True
         except Exception:
@@ -652,7 +673,9 @@ def _fleet_simulation():
                 continue
             op["status"] = "succeeded"
             op["updated_at"] = now.isoformat() + "Z"
-            inst = next((i for i in _instances_store if i["id"] == op["instance_id"]), None)
+            inst = next(
+                (i for i in _instances_store if i["id"] == op["instance_id"]), None
+            )
             if inst is None:
                 continue
             if op["action"] == "provision_app":
@@ -669,7 +692,12 @@ def _fleet_simulation():
 
 def _worker_loop():
     from app import create_app as _create_worker_app
-    from worker import _generate_invoices, _enforce_payment_policy, _reconcile_paypal_subscriptions, _sync_remote_instances
+    from worker import (
+        _generate_invoices,
+        _enforce_payment_policy,
+        _reconcile_paypal_subscriptions,
+        _sync_remote_instances,
+    )
 
     worker_app = _create_worker_app()
     while True:
@@ -708,6 +736,7 @@ def main():
         sys.exit(1)
 
     from app import create_app
+
     harbor = create_app()
 
     _print_banner(MOCK_PORT, HARBOR_PORT)

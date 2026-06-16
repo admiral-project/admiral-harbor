@@ -1,10 +1,10 @@
 from functools import wraps
 
 from flask import abort, flash, redirect, request, session, url_for
-from flask_login import current_user, login_required as flask_login_required
+from flask_login import current_user
 
 from app.extensions import db
-from app.models import Customer, HarborAdminUser
+from app.models import Customer
 
 
 def current_customer():
@@ -31,7 +31,11 @@ def login_required(view):
             if request.path.startswith("/api/"):
                 abort(401)
             pending = session.get("customer_email")
-            if pending and db.session.query(Customer).filter_by(email=pending).one_or_none() is not None:
+            if (
+                pending
+                and db.session.query(Customer).filter_by(email=pending).one_or_none()
+                is not None
+            ):
                 session.pop("customer_token", None)
                 session.pop("customer_email", None)
                 session.pop("customer_public_id", None)

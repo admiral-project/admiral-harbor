@@ -112,7 +112,9 @@ def test_paypal_create_subscription_live_payload(monkeypatch, app):
     monkeypatch.setattr("app.paypal.requests.post", fake_post)
 
     with app.app_context():
-        result = create_subscription("P-PLAN-123", "https://return", "https://cancel", custom_id="ord_1")
+        result = create_subscription(
+            "P-PLAN-123", "https://return", "https://cancel", custom_id="ord_1"
+        )
 
     assert result["id"] == "P-123"
     assert captured["url"] == "https://api-m.paypal.com/v1/billing/subscriptions"
@@ -126,7 +128,9 @@ def test_paypal_create_subscription_live_payload(monkeypatch, app):
     assert "tax" not in captured["json"]
 
 
-def test_paypal_return_live_marks_order_approved_without_provision(client, monkeypatch, app):
+def test_paypal_return_live_marks_order_approved_without_provision(
+    client, monkeypatch, app
+):
     app.config.update(HARBOR_PAYPAL_MODE="live")
 
     with app.app_context():
@@ -146,10 +150,15 @@ def test_paypal_return_live_marks_order_approved_without_provision(client, monke
         db.session.commit()
         order_id = order.order_id
 
-    monkeypatch.setattr("app.routes.get_subscription", lambda subscription_id: {"id": subscription_id, "status": "ACTIVE"})
+    monkeypatch.setattr(
+        "app.routes.get_subscription",
+        lambda subscription_id: {"id": subscription_id, "status": "ACTIVE"},
+    )
 
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
-    response = client.get(f"/billing/return?order_id={order_id}&token=sub_123", follow_redirects=False)
+    response = client.get(
+        f"/billing/return?order_id={order_id}&token=sub_123", follow_redirects=False
+    )
     assert response.status_code in {302, 303}
 
     with app.app_context():
@@ -204,7 +213,11 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
 
     with client.application.app_context():
         stored_order = db.session.query(Order).filter_by(order_id=order_id).one()
-        stored_subscription = db.session.query(Subscription).filter_by(paypal_subscription_id="sub_123").one()
+        stored_subscription = (
+            db.session.query(Subscription)
+            .filter_by(paypal_subscription_id="sub_123")
+            .one()
+        )
         invoice = db.session.query(Invoice).filter_by(paypal_event_id="evt_123").one()
         payment = db.session.query(Payment).filter_by(order_id=order_id).one()
         assert stored_order.status == "paid"

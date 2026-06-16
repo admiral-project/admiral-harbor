@@ -25,7 +25,9 @@ def resolve_password():
 
 
 def cmd_create_admin(username):
-    existing = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
+    existing = (
+        db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
+    )
     if existing:
         print(f"Error: admin user '{username}' already exists.")
         sys.exit(1)
@@ -84,32 +86,58 @@ def cmd_create_customer(email, display_name, country):
 
 
 def cmd_list(output):
-    admins = db.session.query(HarborAdminUser).order_by(HarborAdminUser.created_at).all()
+    admins = (
+        db.session.query(HarborAdminUser).order_by(HarborAdminUser.created_at).all()
+    )
     customers = db.session.query(Customer).order_by(Customer.created_at).all()
 
     if output == "json":
         import json
-        print(json.dumps({
-            "admins": [{"username": u.username, "display_name": u.display_name,
-                        "is_active": u.is_active, "created_at": str(u.created_at)} for u in admins],
-            "customers": [{"email": c.email, "display_name": c.display_name,
-                           "is_active": c.is_active, "country": c.country,
-                           "created_at": str(c.created_at)} for c in customers],
-        }, indent=2))
+
+        print(
+            json.dumps(
+                {
+                    "admins": [
+                        {
+                            "username": u.username,
+                            "display_name": u.display_name,
+                            "is_active": u.is_active,
+                            "created_at": str(u.created_at),
+                        }
+                        for u in admins
+                    ],
+                    "customers": [
+                        {
+                            "email": c.email,
+                            "display_name": c.display_name,
+                            "is_active": c.is_active,
+                            "country": c.country,
+                            "created_at": str(c.created_at),
+                        }
+                        for c in customers
+                    ],
+                },
+                indent=2,
+            )
+        )
         return
 
     print("Admin Users:")
     print(f"{'Username':20} {'Display Name':25} {'Active':8} {'Created':20}")
     print(f"{'---':20} {'---':25} {'---':8} {'---':20}")
     for u in admins:
-        print(f"{u.username:20} {(u.display_name or ''):25} {str(u.is_active):8} {str(u.created_at):20}")
+        print(
+            f"{u.username:20} {(u.display_name or ''):25} {str(u.is_active):8} {str(u.created_at):20}"
+        )
 
     print()
     print("Customers:")
     print(f"{'Email':30} {'Display Name':25} {'Active':8} {'Country':8} {'Created':20}")
     print(f"{'---':30} {'---':25} {'---':8} {'---':8} {'---':20}")
     for c in customers:
-        print(f"{c.email:30} {(c.display_name or ''):25} {str(c.is_active):8} {(c.country or ''):8} {str(c.created_at):20}")
+        print(
+            f"{c.email:30} {(c.display_name or ''):25} {str(c.is_active):8} {(c.country or ''):8} {str(c.created_at):20}"
+        )
 
 
 def cmd_set_password(username):
@@ -165,11 +193,19 @@ def handle_user():
 
     if action == "create":
         parser = argparse.ArgumentParser(prog="harborctl user create")
-        parser.add_argument("--type", default="admin", choices=["admin", "customer"],
-                            help="User type to create (default: admin)")
-        parser.add_argument("--display-name", help="Display name (required for customer)")
+        parser.add_argument(
+            "--type",
+            default="admin",
+            choices=["admin", "customer"],
+            help="User type to create (default: admin)",
+        )
+        parser.add_argument(
+            "--display-name", help="Display name (required for customer)"
+        )
         parser.add_argument("--country", default="", help="Country code for customer")
-        parser.add_argument("ident", nargs="?", help="Username (admin) or email (customer)")
+        parser.add_argument(
+            "ident", nargs="?", help="Username (admin) or email (customer)"
+        )
         args = parser.parse_args(sys.argv[3:])
 
         if not args.ident:
@@ -183,8 +219,12 @@ def handle_user():
 
     elif action == "list":
         parser = argparse.ArgumentParser(prog="harborctl user list")
-        parser.add_argument("--output", default="table", choices=["table", "json"],
-                            help="Output format (default: table)")
+        parser.add_argument(
+            "--output",
+            default="table",
+            choices=["table", "json"],
+            help="Output format (default: table)",
+        )
         args = parser.parse_args(sys.argv[3:])
         cmd_list(args.output)
 

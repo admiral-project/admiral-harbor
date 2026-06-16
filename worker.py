@@ -14,14 +14,25 @@ Usage:
 """
 
 import logging
-import sys
-import time
 from datetime import datetime, timedelta
 
 from app import create_app
-from app.admiral_client import AdmiralAPIError, action as admiral_action, get_operation, list_customer_apps
+from app.admiral_client import (
+    AdmiralAPIError,
+    action as admiral_action,
+    get_operation,
+    list_customer_apps,
+)
 from app.extensions import db
-from app.models import Customer, CustomerApp, HarborMeta, Invoice, RestoreRequest, Subscription, WorkerLog
+from app.models import (
+    Customer,
+    CustomerApp,
+    HarborMeta,
+    Invoice,
+    RestoreRequest,
+    Subscription,
+    WorkerLog,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,11 +48,15 @@ def _generate_invoices(app):
     errors = 0
     today = datetime.utcnow().date()
 
-    due = db.session.query(Subscription).filter(
-        Subscription.status == "active",
-        Subscription.is_test_app == False,
-        Subscription.next_billing_at.isnot(None),
-    ).all()
+    due = (
+        db.session.query(Subscription)
+        .filter(
+            Subscription.status == "active",
+            ~Subscription.is_test_app,
+            Subscription.next_billing_at.isnot(None),
+        )
+        .all()
+    )
 
     for sub in due:
         try:
@@ -60,12 +75,18 @@ def _generate_invoices(app):
                 if remote_status in ("CANCELLED", "SUSPENDED", "EXPIRED"):
                     sub.status = "past_due"
                     db.session.commit()
-                    log.info("Subscription %s: PayPal %s, marking past_due", sub.external_id, remote_status)
+                    log.info(
+                        "Subscription %s: PayPal %s, marking past_due",
+                        sub.external_id,
+                        remote_status,
+                    )
                     actions += 1
                     continue
                 paypal_active = remote_status in ("ACTIVE", "APPROVED")
             except PayPalError as exc:
-                log.warning("Subscription %s: PayPal check failed: %s", sub.external_id, exc)
+                log.warning(
+                    "Subscription %s: PayPal check failed: %s", sub.external_id, exc
+                )
                 errors += 1
                 continue
 
@@ -85,9 +106,15 @@ def _generate_invoices(app):
             period_end=(datetime.utcnow() + timedelta(days=30)).date().isoformat(),
         )
         db.session.add(invoice)
-        sub.next_billing_at = (datetime.utcnow() + timedelta(days=30)).date().isoformat()
+        sub.next_billing_at = (
+            (datetime.utcnow() + timedelta(days=30)).date().isoformat()
+        )
         actions += 1
-        log.info("Invoice %s generated for subscription %s", invoice.invoice_id, sub.external_id)
+        log.info(
+            "Invoice %s generated for subscription %s",
+            invoice.invoice_id,
+            sub.external_id,
+        )
 
     db.session.commit()
     return actions, errors
@@ -100,11 +127,15 @@ def _enforce_payment_policy(app):
     actions = 0
     errors = 0
 
-    past_due = db.session.query(Subscription).filter(
-        Subscription.status == "past_due",
-        Subscription.is_test_app == False,
-        Subscription.instance_id.isnot(None),
-    ).all()
+    past_due = (
+        db.session.query(Subscription)
+        .filter(
+            Subscription.status == "past_due",
+            ~Subscription.is_test_app,
+            Subscription.instance_id.isnot(None),
+        )
+        .all()
+    )
 
     for sub in past_due:
         if not sub.next_billing_at:
@@ -112,13 +143,19 @@ def _enforce_payment_policy(app):
         try:
             next_billing = datetime.fromisoformat(sub.next_billing_at)
             if not isinstance(next_billing, datetime):
-                next_billing = datetime(next_billing.year, next_billing.month, next_billing.day)
+                next_billing = datetime(
+                    next_billing.year, next_billing.month, next_billing.day
+                )
             overdue_days = (now - next_billing).days
         except (ValueError, TypeError):
             continue
 
         if overdue_days >= overdue_deprovision_days:
-            log.info("Deprovisioning instance %s (subscription %s)", sub.instance_id, sub.external_id)
+            log.info(
+                "Deprovisioning instance %s (subscription %s)",
+                sub.instance_id,
+                sub.external_id,
+            )
             try:
                 admiral_action(sub.instance_id, "deprovision")
                 sub.status = "cancelled"
@@ -128,7 +165,11 @@ def _enforce_payment_policy(app):
                 errors += 1
 
         elif overdue_days >= overdue_suspend_days:
-            log.info("Pausing instance %s (subscription %s)", sub.instance_id, sub.external_id)
+            log.info(
+                "Pausing instance %s (subscription %s)",
+                sub.instance_id,
+                sub.external_id,
+            )
             try:
                 admiral_action(sub.instance_id, "pause")
                 actions += 1
@@ -145,31 +186,46 @@ def _reconcile_paypal_subscriptions(app):
 
     actions = 0
     errors = 0
-    active_subs = db.session.query(Subscription).filter(
-        Subscription.paypal_subscription_id.isnot(None),
-        Subscription.is_test_app == False,
-        Subscription.status.in_(["active", "past_due"]),
-    ).all()
+    active_subs = (
+        db.session.query(Subscription)
+        .filter(
+            Subscription.paypal_subscription_id.isnot(None),
+            ~Subscription.is_test_app,
+            Subscription.status.in_(["active", "past_due"]),
+        )
+        .all()
+    )
 
     for sub in active_subs:
         try:
             remote = paypal_get_sub(sub.paypal_subscription_id)
         except PayPalError as exc:
-            log.warning("PayPal fetch failed for %s: %s", sub.paypal_subscription_id, exc)
+            log.warning(
+                "PayPal fetch failed for %s: %s", sub.paypal_subscription_id, exc
+            )
             errors += 1
             continue
 
         paypal_status = remote.get("status", "")
         if paypal_status == "SUSPENDED" and sub.status == "active":
-            log.info("PayPal subscription %s suspended, marking past_due", sub.paypal_subscription_id)
+            log.info(
+                "PayPal subscription %s suspended, marking past_due",
+                sub.paypal_subscription_id,
+            )
             sub.status = "past_due"
             actions += 1
         elif paypal_status == "CANCELLED" and sub.status != "cancelled":
-            log.info("PayPal subscription %s cancelled, updating local", sub.paypal_subscription_id)
+            log.info(
+                "PayPal subscription %s cancelled, updating local",
+                sub.paypal_subscription_id,
+            )
             sub.status = "cancelled"
             actions += 1
         elif paypal_status in ("ACTIVE", "APPROVED") and sub.status == "past_due":
-            log.info("PayPal subscription %s reactivated, restoring active", sub.paypal_subscription_id)
+            log.info(
+                "PayPal subscription %s reactivated, restoring active",
+                sub.paypal_subscription_id,
+            )
             sub.status = "active"
             actions += 1
 
@@ -191,7 +247,11 @@ def _sync_remote_instances(app):
             continue
 
         for item in items:
-            local = db.session.query(CustomerApp).filter_by(instance_id=item["id"]).one_or_none()
+            local = (
+                db.session.query(CustomerApp)
+                .filter_by(instance_id=item["id"])
+                .one_or_none()
+            )
             if local is None:
                 continue
             local.status = item.get("technical_status", local.status)
@@ -206,10 +266,14 @@ def _reconcile_operations(app):
     actions = 0
     errors = 0
 
-    pending = db.session.query(RestoreRequest).filter(
-        RestoreRequest.operation_id.isnot(None),
-        RestoreRequest.status.in_(["queued", "pending"]),
-    ).all()
+    pending = (
+        db.session.query(RestoreRequest)
+        .filter(
+            RestoreRequest.operation_id.isnot(None),
+            RestoreRequest.status.in_(["queued", "pending"]),
+        )
+        .all()
+    )
 
     for req in pending:
         try:
@@ -222,14 +286,22 @@ def _reconcile_operations(app):
         op_status = op.get("status", "")
         if op_status == "succeeded":
             req.status = "completed"
-            local = db.session.query(CustomerApp).filter_by(instance_id=req.instance_id).one_or_none()
+            local = (
+                db.session.query(CustomerApp)
+                .filter_by(instance_id=req.instance_id)
+                .one_or_none()
+            )
             if local:
                 local.backup_status = "ok"
             actions += 1
             log.info("Restore %s completed (op %s)", req.request_id, req.operation_id)
         elif op_status == "failed":
             req.status = "failed"
-            local = db.session.query(CustomerApp).filter_by(instance_id=req.instance_id).one_or_none()
+            local = (
+                db.session.query(CustomerApp)
+                .filter_by(instance_id=req.instance_id)
+                .one_or_none()
+            )
             if local:
                 local.backup_status = "failed"
             actions += 1
@@ -281,13 +353,15 @@ def main():
         HarborMeta.set("last_worker_run_at", datetime.utcnow().isoformat())
 
         summary = f"Actions: {total_actions}, Errors: {total_errors}"
-        db.session.add(WorkerLog(
-            started_at=started_at,
-            completed_at=datetime.utcnow(),
-            actions_taken=total_actions,
-            errors=total_errors,
-            summary=summary,
-        ))
+        db.session.add(
+            WorkerLog(
+                started_at=started_at,
+                completed_at=datetime.utcnow(),
+                actions_taken=total_actions,
+                errors=total_errors,
+                summary=summary,
+            )
+        )
         db.session.commit()
 
         log.info("Worker finished: %s", summary)

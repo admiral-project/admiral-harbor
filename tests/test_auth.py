@@ -3,7 +3,9 @@
 
 
 def test_login_logout_me(client):
-    response = client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/auth/login", json={"email": "user@example.com", "password": "secret"}
+    )
     assert response.status_code == 200
     assert response.json["email"] == "user@example.com"
 
@@ -21,7 +23,11 @@ def test_login_logout_me(client):
 def test_register_requires_terms(client):
     response = client.post(
         "/auth/register",
-        json={"display_name": "New Customer", "email": "new@example.com", "password": "secret"},
+        json={
+            "display_name": "New Customer",
+            "email": "new@example.com",
+            "password": "secret",
+        },
     )
     assert response.status_code == 400
     assert response.json["error"] == "terms acceptance required"

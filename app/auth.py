@@ -10,7 +10,17 @@ from secrets import token_urlsafe
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from app.extensions import db
 from app.identity import current_customer, login_required
@@ -56,7 +66,9 @@ def _send_confirmation_email(customer, token):
         return False
 
     message = EmailMessage()
-    message["Subject"] = f"Confirm your Harbor account for {current_app.config['HARBOR_PORTAL_NAME']}"
+    message["Subject"] = (
+        f"Confirm your Harbor account for {current_app.config['HARBOR_PORTAL_NAME']}"
+    )
     message["From"] = current_app.config.get("HARBOR_SMTP_FROM", "noreply@example.com")
     message["To"] = customer.email
     message.set_content(
@@ -141,7 +153,9 @@ def login():
 
     _login_customer(customer)
     if request.is_json:
-        return jsonify({"status": "ok", "email": email, "public_id": customer.public_id})
+        return jsonify(
+            {"status": "ok", "email": email, "public_id": customer.public_id}
+        )
     return redirect(url_for("main.dashboard"))
 
 
@@ -158,7 +172,10 @@ def register():
     accept_terms = bool(payload.get("accept_terms"))
     if not email or not password or not display_name:
         if request.is_json:
-            return jsonify({"error": "display_name, email and password are required"}), 400
+            return (
+                jsonify({"error": "display_name, email and password are required"}),
+                400,
+            )
         flash("Display name, email and password are required.", "error")
         return redirect(url_for("auth.register_page"))
     if not accept_terms:
@@ -202,9 +219,13 @@ def register():
     email_error = None
     try:
         email_sent = _send_confirmation_email(customer, confirmation_token)
-    except Exception as exc:  # pragma: no cover - email transport failures are runtime dependent
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - email transport failures are runtime dependent
         email_error = str(exc)
-        current_app.logger.warning("Could not send Harbor confirmation email for %s: %s", email, exc)
+        current_app.logger.warning(
+            "Could not send Harbor confirmation email for %s: %s", email, exc
+        )
 
     if email_sent:
         db.session.add(
@@ -228,15 +249,25 @@ def register():
         db.session.commit()
 
     if request.is_json:
-        response = {"status": "pending", "customer": customer.as_dict(), "email_sent": email_sent}
+        response = {
+            "status": "pending",
+            "customer": customer.as_dict(),
+            "email_sent": email_sent,
+        }
         if email_error:
             response["email_error"] = email_error
         return jsonify(response), 202
 
     if email_sent:
-        flash("Cuenta creada. Revisa tu correo para confirmarla o espera la aprobación del admin de Harbor.", "success")
+        flash(
+            "Cuenta creada. Revisa tu correo para confirmarla o espera la aprobación del admin de Harbor.",
+            "success",
+        )
     else:
-        flash("Cuenta creada. Harbor no pudo enviar el correo de confirmación, así que el admin de Harbor puede aprobarla manualmente.", "warning")
+        flash(
+            "Cuenta creada. Harbor no pudo enviar el correo de confirmación, así que el admin de Harbor puede aprobarla manualmente.",
+            "warning",
+        )
     return redirect(url_for("auth.login_page"))
 
 
@@ -248,7 +279,11 @@ def confirm_email(token):
         return redirect(url_for("auth.login_page"))
 
     token_hash = _token_hash(token)
-    customer = db.session.query(Customer).filter_by(email_confirmation_token_hash=token_hash).one_or_none()
+    customer = (
+        db.session.query(Customer)
+        .filter_by(email_confirmation_token_hash=token_hash)
+        .one_or_none()
+    )
     if customer is None:
         flash("Confirmation link is invalid or expired.", "error")
         return redirect(url_for("auth.login_page"))
@@ -256,7 +291,10 @@ def confirm_email(token):
         flash("This account was rejected by Harbor administration.", "error")
         return redirect(url_for("auth.login_page"))
     if _confirmation_is_expired(customer):
-        flash("Confirmation link expired. Ask Harbor administration to approve your account.", "error")
+        flash(
+            "Confirmation link expired. Ask Harbor administration to approve your account.",
+            "error",
+        )
         return redirect(url_for("auth.login_page"))
 
     customer.email_confirmed_at = datetime.utcnow()
@@ -293,7 +331,13 @@ def me():
     customer = current_customer()
     if customer is None:
         return jsonify({"error": "not authenticated"}), 401
-    return jsonify({"email": customer.email, "authenticated": True, "public_id": customer.public_id})
+    return jsonify(
+        {
+            "email": customer.email,
+            "authenticated": True,
+            "public_id": customer.public_id,
+        }
+    )
 
 
 @bp.route("/terms")
@@ -301,9 +345,15 @@ def terms():
     return jsonify(
         {
             "policy_version": current_app.config["HARBOR_OVERDUE_POLICY_VERSION"],
-            "grace_before_suspend_days": current_app.config["HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"],
-            "additional_grace_before_deprovision_days": current_app.config["HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"],
-            "last_backup_retention_days": current_app.config["HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS"],
+            "grace_before_suspend_days": current_app.config[
+                "HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"
+            ],
+            "additional_grace_before_deprovision_days": current_app.config[
+                "HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"
+            ],
+            "last_backup_retention_days": current_app.config[
+                "HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS"
+            ],
             "requires_acceptance_at_signup": True,
         }
     )
@@ -330,7 +380,14 @@ def profile():
             except VerifyMismatchError:
                 flash("Current password is incorrect.", "error")
                 return redirect(url_for("auth.profile"))
-        db.session.add(AuditLog(actor=customer.email, action="profile_updated", detail="Profile updated", ip_address=request.remote_addr or ""))
+        db.session.add(
+            AuditLog(
+                actor=customer.email,
+                action="profile_updated",
+                detail="Profile updated",
+                ip_address=request.remote_addr or "",
+            )
+        )
         db.session.commit()
         flash("Profile updated.", "success")
         return redirect(url_for("auth.profile"))

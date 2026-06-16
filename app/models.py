@@ -18,12 +18,20 @@ logger = logging.getLogger("admiral-harbor")
 
 class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    public_id = db.Column(db.String(64), unique=True, nullable=False, index=True, default=lambda: f"hcus_{uuid4().hex[:16]}")
+    public_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        index=True,
+        default=lambda: f"hcus_{uuid4().hex[:16]}",
+    )
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     display_name = db.Column(db.String(255), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     country = db.Column(db.String(4), nullable=True, index=True)
-    signup_status = db.Column(db.String(30), nullable=False, default="pending", index=True)
+    signup_status = db.Column(
+        db.String(30), nullable=False, default="pending", index=True
+    )
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     blocked_at = db.Column(db.DateTime, nullable=True)
     email_confirmation_token_hash = db.Column(db.String(128), nullable=True, index=True)
@@ -32,13 +40,21 @@ class Customer(db.Model):
     reviewed_at = db.Column(db.DateTime, nullable=True)
     reviewed_by = db.Column(db.String(255), nullable=True)
     rejection_reason = db.Column(db.Text, nullable=True)
-    terms_policy_version = db.Column(db.String(50), nullable=False, default="overdue-policy-v1")
+    terms_policy_version = db.Column(
+        db.String(50), nullable=False, default="overdue-policy-v1"
+    )
     terms_accepted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def can_access(self):
-        return self.is_active and self.signup_status == "active" and self.blocked_at is None
+        return (
+            self.is_active
+            and self.signup_status == "active"
+            and self.blocked_at is None
+        )
 
     def as_dict(self):
         return {
@@ -49,11 +65,15 @@ class Customer(db.Model):
             "country": self.country,
             "signup_status": self.signup_status,
             "is_active": self.is_active,
-            "email_confirmed_at": self.email_confirmed_at.isoformat() if self.email_confirmed_at else None,
+            "email_confirmed_at": (
+                self.email_confirmed_at.isoformat() if self.email_confirmed_at else None
+            ),
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
             "reviewed_by": self.reviewed_by,
             "terms_policy_version": self.terms_policy_version,
-            "terms_accepted_at": self.terms_accepted_at.isoformat() if self.terms_accepted_at else None,
+            "terms_accepted_at": (
+                self.terms_accepted_at.isoformat() if self.terms_accepted_at else None
+            ),
         }
 
 
@@ -64,14 +84,21 @@ class HarborAdminUser(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def get_id(self):
         return self.username
 
     @classmethod
-    def ensure_default_admin(cls, username="", password="", display_name="Harbor Bootstrap Admin"):
-        if username and db.session.query(cls).filter_by(username=username).one_or_none():
+    def ensure_default_admin(
+        cls, username="", password="", display_name="Harbor Bootstrap Admin"
+    ):
+        if (
+            username
+            and db.session.query(cls).filter_by(username=username).one_or_none()
+        ):
             return
         if not username or not password:
             return
@@ -89,7 +116,9 @@ class HarborAdminUser(UserMixin, db.Model):
         except IntegrityError:
             db.session.rollback()
             if db.session.query(cls).filter_by(username=username).one_or_none():
-                logger.warning("Bootstrap admin %r already exists; skipping creation", username)
+                logger.warning(
+                    "Bootstrap admin %r already exists; skipping creation", username
+                )
                 return
             raise
 
@@ -99,20 +128,23 @@ class HarborAdminUser(UserMixin, db.Model):
 
 class CatalogApp(db.Model):
     """Application catalog: technical snapshot from admirald + commercial metadata"""
+
     id = db.Column(db.Integer, primary_key=True)
-    
+
     # Technical identity from admirald (immutable after creation)
     upstream_app_id = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    
+
     # Sync status: synced | missing_upstream | sync_error
     sync_status = db.Column(db.String(50), default="synced", nullable=False)
-    
+
     # Upstream presence and current values (refreshed during sync)
     upstream_present = db.Column(db.Boolean, default=True, nullable=False)
-    upstream_availability = db.Column(db.String(20), default="available", nullable=False)
+    upstream_availability = db.Column(
+        db.String(20), default="available", nullable=False
+    )
     upstream_revision = db.Column(db.Integer, default=0, nullable=False)
     upstream_checksum = db.Column(db.String(64), nullable=True)
-    
+
     # Commercial metadata (editable locally)
     name = db.Column(db.String(255), nullable=False)
     one_liner = db.Column(db.String(255), nullable=False, default="")
@@ -123,20 +155,22 @@ class CatalogApp(db.Model):
     documentation_url = db.Column(db.String(1024), nullable=True)
     bug_tracker_url = db.Column(db.String(1024), nullable=True)
     support_url = db.Column(db.String(1024), nullable=True)
-    
+
     # Visibility control (local editable)
     catalog_enabled = db.Column(db.Boolean, default=False, nullable=False)
     sort_order = db.Column(db.Integer, default=0, nullable=False)
-    
+
     # Technical snapshot (JSON copy of the definition from admirald)
     technical_snapshot = db.Column(db.Text, nullable=True)
-    
+
     # Audit timestamps
     synced_at = db.Column(db.DateTime, nullable=True)
     sync_last_attempted_at = db.Column(db.DateTime, nullable=True)
     sync_last_error = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     @property
     def slug(self):
@@ -163,49 +197,69 @@ class CatalogApp(db.Model):
             "catalog_enabled": self.catalog_enabled,
             "sort_order": self.sort_order,
             "synced_at": self.synced_at.isoformat() if self.synced_at else None,
-            "sync_last_attempted_at": self.sync_last_attempted_at.isoformat() if self.sync_last_attempted_at else None,
+            "sync_last_attempted_at": (
+                self.sync_last_attempted_at.isoformat()
+                if self.sync_last_attempted_at
+                else None
+            ),
         }
 
 
 class CatalogAppTier(db.Model):
     """Per-tier technical snapshot synchronized from admirald."""
+
     id = db.Column(db.Integer, primary_key=True)
-    catalog_app_id = db.Column(db.Integer, db.ForeignKey("catalog_app.id"), nullable=False, index=True)
+    catalog_app_id = db.Column(
+        db.Integer, db.ForeignKey("catalog_app.id"), nullable=False, index=True
+    )
     upstream_tier_id = db.Column(db.String(120), nullable=False)
     paypal_plan_id = db.Column(db.String(255), nullable=True)
     upstream_present = db.Column(db.Boolean, default=True, nullable=False)
-    upstream_availability = db.Column(db.String(20), default="available", nullable=False)
+    upstream_availability = db.Column(
+        db.String(20), default="available", nullable=False
+    )
     technical_snapshot = db.Column(db.Text, nullable=True)
     display_name = db.Column(db.String(255), nullable=True)
     commercial_description = db.Column(db.Text, nullable=True)
     display_order = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     __table_args__ = (
-        db.UniqueConstraint("catalog_app_id", "upstream_tier_id", name="uq_catalog_app_tier"),
+        db.UniqueConstraint(
+            "catalog_app_id", "upstream_tier_id", name="uq_catalog_app_tier"
+        ),
     )
 
 
 class CatalogSyncAudit(db.Model):
     """Audit trail for catalog synchronization events"""
+
     id = db.Column(db.Integer, primary_key=True)
-    
+
     # Sync execution metadata
-    execution_id = db.Column(db.String(64), unique=True, nullable=False, index=True, default=lambda: f"sync_{uuid4().hex[:16]}")
+    execution_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        index=True,
+        default=lambda: f"sync_{uuid4().hex[:16]}",
+    )
     origin = db.Column(db.String(50), nullable=False)  # manual | systemd_timer
     actor = db.Column(db.String(255), nullable=True)  # admin username if manual
-    
+
     # Execution result
     status = db.Column(db.String(20), nullable=False)  # success | failure
     error_message = db.Column(db.Text, nullable=True)
-    
+
     # Statistics
     apps_synced = db.Column(db.Integer, default=0, nullable=False)
     apps_updated = db.Column(db.Integer, default=0, nullable=False)
     apps_marked_missing = db.Column(db.Integer, default=0, nullable=False)
     total_apps_processed = db.Column(db.Integer, default=0, nullable=False)
-    
+
     # Timestamps
     started_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
@@ -223,7 +277,9 @@ class CatalogSyncAudit(db.Model):
             "apps_marked_missing": self.apps_marked_missing,
             "total_apps_processed": self.total_apps_processed,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
         }
 
 
@@ -235,13 +291,20 @@ class Subscription(db.Model):
     monthly_price_cents = db.Column(db.Integer, default=0, nullable=False)
     tier_name = db.Column(db.String(120), nullable=False, default="starter")
     instance_id = db.Column(db.String(120), unique=True, nullable=True, index=True)
-    paypal_subscription_id = db.Column(db.String(255), unique=True, nullable=True, index=True)
+    paypal_subscription_id = db.Column(
+        db.String(255), unique=True, nullable=True, index=True
+    )
     paypal_plan_id = db.Column(db.String(255), nullable=True)
     requires_billing = db.Column(db.Boolean, default=True, nullable=False)
     next_billing_at = db.Column(db.String(32), nullable=True)
     billing_email = db.Column(db.String(255), nullable=True)
     technical_email = db.Column(db.String(255), nullable=True)
-    external_id = db.Column(db.String(64), unique=True, nullable=False, default=lambda: f"sub_{uuid4().hex[:20]}")
+    external_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"sub_{uuid4().hex[:20]}",
+    )
     tax_percent = db.Column(db.Integer, default=0, nullable=False)
     is_test_app = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -269,7 +332,12 @@ class Subscription(db.Model):
 
 class Invoice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    invoice_id = db.Column(db.String(64), unique=True, nullable=False, default=lambda: f"inv_{uuid4().hex[:16]}")
+    invoice_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"inv_{uuid4().hex[:16]}",
+    )
     subscription_external_id = db.Column(db.String(64), nullable=False, index=True)
     customer_email = db.Column(db.String(255), nullable=False, index=True)
     app_slug = db.Column(db.String(120), nullable=False)
@@ -308,9 +376,17 @@ class Invoice(db.Model):
 
 class CustomerApp(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    subscription_id = db.Column(db.Integer, db.ForeignKey("subscription.id"), nullable=False, index=True)
+    subscription_id = db.Column(
+        db.Integer, db.ForeignKey("subscription.id"), nullable=False, index=True
+    )
     customer_email = db.Column(db.String(255), nullable=False, index=True)
-    instance_id = db.Column(db.String(120), unique=True, nullable=False, index=True, default=lambda: f"local_{uuid4().hex[:16]}")
+    instance_id = db.Column(
+        db.String(120),
+        unique=True,
+        nullable=False,
+        index=True,
+        default=lambda: f"local_{uuid4().hex[:16]}",
+    )
     app_slug = db.Column(db.String(120), nullable=False, index=True)
     domain = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(50), nullable=False, default="running")
@@ -354,7 +430,12 @@ class InstanceEvent(db.Model):
 
 class SupportIncident(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    incident_id = db.Column(db.String(64), unique=True, nullable=False, default=lambda: f"inc_{uuid4().hex[:12]}")
+    incident_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"inc_{uuid4().hex[:12]}",
+    )
     instance_id = db.Column(db.String(120), nullable=False, index=True)
     customer_email = db.Column(db.String(255), nullable=False, index=True)
     subject = db.Column(db.String(255), nullable=False)
@@ -365,8 +446,10 @@ class SupportIncident(db.Model):
     assigned_to = db.Column(db.String(255), nullable=True, index=True)
     internal_notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
     # SLA fields
     response_deadline = db.Column(db.DateTime, nullable=True, index=True)
     resolution_deadline = db.Column(db.DateTime, nullable=True, index=True)
@@ -388,7 +471,12 @@ class SupportIncident(db.Model):
 
 class UploadedBackup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    backup_id = db.Column(db.String(64), unique=True, nullable=False, default=lambda: f"upbk_{uuid4().hex[:12]}")
+    backup_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"upbk_{uuid4().hex[:12]}",
+    )
     customer_email = db.Column(db.String(255), nullable=False, index=True)
     app_slug = db.Column(db.String(120), nullable=False, index=True)
     original_filename = db.Column(db.String(255), nullable=False)
@@ -414,7 +502,12 @@ class UploadedBackup(db.Model):
 
 class RestoreRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    request_id = db.Column(db.String(64), unique=True, nullable=False, default=lambda: f"rst_{uuid4().hex[:12]}")
+    request_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"rst_{uuid4().hex[:12]}",
+    )
     instance_id = db.Column(db.String(120), nullable=False, index=True)
     customer_email = db.Column(db.String(255), nullable=False, index=True)
     source_backup_id = db.Column(db.String(64), nullable=False)
@@ -452,7 +545,9 @@ class BillingEvent(db.Model):
 class HarborMeta(db.Model):
     key = db.Column(db.String(64), primary_key=True)
     value = db.Column(db.Text, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     @classmethod
     def get(cls, key, default=None):
@@ -484,7 +579,9 @@ class LMSSettings(db.Model):
     base_url = db.Column(db.String(1024), nullable=True)
     encrypted_api_key = db.Column(db.Text, nullable=True)
     enabled = db.Column(db.Boolean, default=False, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     @classmethod
     def singleton(cls):
@@ -504,7 +601,9 @@ class AppCourse(db.Model):
     base_price_cents = db.Column(db.Integer, nullable=False, default=0)
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -519,11 +618,15 @@ class AppCourse(db.Model):
 
 class AppCourseTierDiscount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    app_course_id = db.Column(db.Integer, db.ForeignKey("app_course.id"), nullable=False, index=True)
+    app_course_id = db.Column(
+        db.Integer, db.ForeignKey("app_course.id"), nullable=False, index=True
+    )
     tier_name = db.Column(db.String(120), nullable=False)
     discount_percent = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -541,12 +644,19 @@ class AuditLog(db.Model):
     resource_id = db.Column(db.String(120), nullable=False, default="")
     detail = db.Column(db.String(500), nullable=False, default="")
     ip_address = db.Column(db.String(45), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = db.Column(
+        db.DateTime, default=datetime.utcnow, nullable=False, index=True
+    )
 
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.String(64), unique=True, nullable=False, default=lambda: f"ord_{uuid4().hex[:16]}")
+    order_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"ord_{uuid4().hex[:16]}",
+    )
     customer_email = db.Column(db.String(255), nullable=False, index=True)
     app_slug = db.Column(db.String(120), nullable=False)
     tier_name = db.Column(db.String(120), nullable=False)
@@ -555,7 +665,9 @@ class Order(db.Model):
     tax_cents = db.Column(db.Integer, nullable=False, default=0)
     total_cents = db.Column(db.Integer, nullable=False, default=0)
     currency = db.Column(db.String(3), nullable=False, default="USD")
-    status = db.Column(db.String(30), nullable=False, default="pending_payment", index=True)
+    status = db.Column(
+        db.String(30), nullable=False, default="pending_payment", index=True
+    )
     requires_billing = db.Column(db.Boolean, default=True, nullable=False)
     subscription_external_id = db.Column(db.String(64), nullable=True, index=True)
     paypal_subscription_id = db.Column(db.String(255), nullable=True)
@@ -582,7 +694,12 @@ class Order(db.Model):
 
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    payment_id = db.Column(db.String(64), unique=True, nullable=False, default=lambda: f"pay_{uuid4().hex[:16]}")
+    payment_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"pay_{uuid4().hex[:16]}",
+    )
     order_id = db.Column(db.String(64), nullable=False, index=True)
     subscription_external_id = db.Column(db.String(64), nullable=True, index=True)
     customer_email = db.Column(db.String(255), nullable=False, index=True)
@@ -596,14 +713,19 @@ class Payment(db.Model):
 
 class HarborPayPalConfig(db.Model):
     """PayPal configuration singleton."""
+
     id = db.Column(db.Integer, primary_key=True)
-    mode = db.Column(db.String(30), nullable=False, default="sandbox")  # sandbox or live
+    mode = db.Column(
+        db.String(30), nullable=False, default="sandbox"
+    )  # sandbox or live
     client_id = db.Column(db.String(255), nullable=True)
     client_secret = db.Column(db.String(255), nullable=True)
     webhook_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
     @staticmethod
     def get_config():
         """Get or create the singleton config."""
@@ -627,8 +749,11 @@ def compute_sha256(fileobj):
 
 class SubscriptionChange(db.Model):
     """Track subscription tier changes and cancellations."""
+
     id = db.Column(db.Integer, primary_key=True)
-    subscription_id = db.Column(db.Integer, db.ForeignKey("subscription.id"), nullable=False, index=True)
+    subscription_id = db.Column(
+        db.Integer, db.ForeignKey("subscription.id"), nullable=False, index=True
+    )
     change_type = db.Column(db.String(30), nullable=False)  # tier_change, cancellation
     old_tier = db.Column(db.String(50), nullable=True)
     new_tier = db.Column(db.String(50), nullable=True)
@@ -636,13 +761,22 @@ class SubscriptionChange(db.Model):
     new_amount_cents = db.Column(db.Integer, nullable=True)
     reason = db.Column(db.Text, nullable=True)
     created_by = db.Column(db.String(255), nullable=False)  # customer email
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = db.Column(
+        db.DateTime, default=datetime.utcnow, nullable=False, index=True
+    )
 
 
 class CustomerReply(db.Model):
     """Track customer replies to support tickets."""
+
     id = db.Column(db.Integer, primary_key=True)
-    ticket_id = db.Column(db.Integer, db.ForeignKey("support_incident.id"), nullable=False, index=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("customer.id"), nullable=False, index=True)
+    ticket_id = db.Column(
+        db.Integer, db.ForeignKey("support_incident.id"), nullable=False, index=True
+    )
+    customer_id = db.Column(
+        db.Integer, db.ForeignKey("customer.id"), nullable=False, index=True
+    )
     message = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = db.Column(
+        db.DateTime, default=datetime.utcnow, nullable=False, index=True
+    )
