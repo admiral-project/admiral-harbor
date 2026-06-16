@@ -25,7 +25,7 @@
  
  <div class="form-group">
  <label for="client_secret">Client Secret *</label>
- <input type="password" id="client_secret" name="client_secret" required placeholder="Tu Client Secret de PayPal">
+ <input type="password" id="client_secret" name="client_secret" {% if config.client_secret %}required{% else %}required{% endif %} placeholder="{% if config.client_secret %}•••••••• (dejar en blanco para mantener actual){% else %}Tu Client Secret de PayPal{% endif %}">
  </div>
  
  <div class="form-group">
@@ -42,7 +42,8 @@
 
 <div class="panel">
  <h2>ℹ️ Información</h2>
- <p>La configuración de PayPal se almacena de forma segura en la base de datos.</p>
+ <p>El Client Secret se cifra con AES-256-GCM antes de almacenarse en la base de datos usando <code>HARBOR_ENCRYPTION_KEY</code>.</p>
+ <p class="warning">Si pierdes <code>HARBOR_ENCRYPTION_KEY</code>, las credenciales cifradas de PayPal quedarán inaccesibles y tendrás que volver a introducirlas.</p>
  <ul style="margin-left: 1.5rem; margin-top: 1rem; color: #7f8c8d;">
  <li><strong>Modo Sandbox:</strong> Use para pruebas y desarrollo.</li>
  <li><strong>Modo Live:</strong> Usar en producción (real money).</li>

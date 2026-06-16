@@ -1127,10 +1127,15 @@ def update_tier_paypal_plan(upstream_app_id, tier_id):
 def lms_settings():
     settings = LMSSettings.singleton()
     if request.method == "POST":
+        from app.extensions import secrets as ext_secrets
+
         settings.base_url = request.form.get("base_url", "").strip() or None
         api_key = request.form.get("api_key", "").strip()
         if api_key:
-            settings.encrypted_api_key = api_key
+            if ext_secrets is not None:
+                settings.encrypted_api_key = ext_secrets.encrypt(api_key)
+            else:
+                settings.encrypted_api_key = api_key
         settings.enabled = request.form.get("enabled") == "on" and bool(
             settings.base_url
         )

@@ -11,7 +11,7 @@
 <section class="panel">
  <form method="post" class="stack">
  <label>Base URL <input name="base_url" value="{{ settings.base_url or '' }}"></label>
- <label>API Key <input name="api_key" value="{{ settings.encrypted_api_key or '' }}"></label>
+ <label>API Key <input name="api_key" type="password" {% if settings.encrypted_api_key %}placeholder="•••••••• (leave blank to keep current)"{% endif %}></label>
  <label class="checkbox-row"><input type="checkbox" name="enabled" {% if settings.enabled %}checked{% endif %}> Enabled</label>
  <button class="primary page-cta" type="submit">Save</button>
  </form>
