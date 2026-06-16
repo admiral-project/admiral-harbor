@@ -17,10 +17,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - run: pip install flit
-        name: Install build tool
-
-      - run: pip install -e .
+      - run: pip install .
         name: Install project
 
       - run: pip install pytest
