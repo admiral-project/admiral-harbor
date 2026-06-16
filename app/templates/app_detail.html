@@ -28,7 +28,7 @@
 {% if app.description_md %}
 <section class="detail-section">
   <h2>About</h2>
-  <div class="markdown">{{ app.description_md }}</div>
+  <div class="markdown">{{ app.description_md | render_markdown }}</div>
 </section>
 {% endif %}
 

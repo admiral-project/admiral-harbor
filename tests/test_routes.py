@@ -27,6 +27,9 @@ def test_app_detail_page(client):
     response = client.get("/apps/wordpress")
     assert response.status_code == 200
     assert b"Sign in to deploy" in response.data or b"Deploy" in response.data
+    body = response.get_data(as_text=True)
+    assert "<strong>WordPress</strong>" in body
+    assert '<a href="https://example.com">backups</a>' in body
 
 
 def test_dashboard(client):

@@ -16,6 +16,7 @@ from app.catalog import bp as catalog_bp
 from app.customer import customer_bp
 from app.csrf import init_csrf_protection
 from app.extensions import alembic, db, login_manager
+from app.markdown import render_markdown
 from app.secrets_manager import SecretsManager
 from app.identity import current_admin, current_customer
 from app.models import HarborAdminUser
@@ -75,6 +76,10 @@ def create_app(config_object="app.config.Config"):
             return _json.loads(value)
         except (TypeError, ValueError, _json.JSONDecodeError):
             return {}
+
+    @app.template_filter("render_markdown")
+    def render_markdown_filter(value):
+        return render_markdown(value)
 
     @app.context_processor
     def inject_principals():

@@ -42,7 +42,7 @@ def client(app):
                         upstream_app_id="wordpress",
                         name="WordPress",
                         one_liner="Managed publishing for teams that want to ship content fast.",
-                        description_md="Managed WordPress hosting with backups and updates.",
+                        description_md="Managed **WordPress** hosting with [backups](https://example.com) and updates.",
                         catalog_enabled=True,
                         sort_order=1,
                         sync_status="synced",
