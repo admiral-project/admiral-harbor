@@ -15,7 +15,7 @@ from app.auth import bp as auth_bp
 from app.catalog import bp as catalog_bp
 from app.customer import customer_bp
 from app.csrf import init_csrf_protection
-from app.extensions import alembic, db, login_manager, secrets
+from app.extensions import alembic, db, login_manager
 from app.secrets_manager import SecretsManager
 from app.identity import current_admin, current_customer
 from app.models import HarborAdminUser
