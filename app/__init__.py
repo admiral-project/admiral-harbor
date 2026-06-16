@@ -6,6 +6,7 @@ import os
 from flask import Flask
 from flask_login import current_user
 from pathlib import Path
+from sqlalchemy import inspect
 import logging
 
 from app.admin import bp as admin_bp
@@ -21,6 +22,15 @@ from app.security import init_security_headers, validate_production_config
 from app.routes import bp as main_bp
 
 logger = logging.getLogger("admiral-harbor")
+
+
+def _database_has_tables() -> bool:
+    try:
+        tables = inspect(db.engine).get_table_names()
+        required = {"harbor_admin_user", "customer", "catalog_app"}
+        return required.issubset(tables)
+    except Exception:
+        return False
 
 
 def create_app(config_object="app.config.Config"):
@@ -71,10 +81,10 @@ def create_app(config_object="app.config.Config"):
 
     with app.app_context():
         try:
-            try:
+            if not _database_has_tables():
                 db.create_all()
-            except Exception as e:
-                logger.warning(f"Database schema creation: {str(e)}")
+
+            ensure_default_portal_settings()
 
             ensure_default_portal_settings()
             bootstrap_admin_user = app.config.get("HARBOR_BOOTSTRAP_ADMIN_USER", "")
