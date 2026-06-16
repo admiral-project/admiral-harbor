@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 from flask import Flask
 from flask_login import current_user
 from pathlib import Path
@@ -82,7 +84,13 @@ def create_app(config_object="app.config.Config"):
                 "HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME",
                 "Harbor Bootstrap Admin",
             )
+            is_production = os.environ.get("ENV", "").lower() == "production"
             if not bootstrap_admin_user or not bootstrap_admin_password:
+                if is_production:
+                    raise ValueError(
+                        "HARBOR_BOOTSTRAP_ADMIN_USER and HARBOR_BOOTSTRAP_ADMIN_PASSWORD "
+                        "must be set when ENV=production"
+                    )
                 logger.warning(
                     "HARBOR_BOOTSTRAP_ADMIN_USER/HARBOR_BOOTSTRAP_ADMIN_PASSWORD are not set; "
                     "falling back to insecure bootstrap defaults"
