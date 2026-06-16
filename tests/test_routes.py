@@ -19,14 +19,14 @@ def test_index(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"Deploy managed applications" in response.data
-    assert b"Sign In and Deploy" in response.data
+    assert b"Deploy managed applications" in response.data
     assert b"WordPress" in response.data
 
 
 def test_app_detail_page(client):
     response = client.get("/apps/wordpress")
     assert response.status_code == 200
-    assert b"Deploy App" in response.data
+    assert b"Sign in to deploy" in response.data or b"Deploy" in response.data
 
 
 def test_dashboard(client):

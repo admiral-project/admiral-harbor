@@ -43,5 +43,5 @@ def test_register_accepts_terms(client):
             "accept_terms": True,
         },
     )
-    assert response.status_code == 201
+    assert response.status_code == 202
     assert response.json["customer"]["terms_policy_version"] == "overdue-policy-v1"

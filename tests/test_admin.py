@@ -5,7 +5,7 @@
 def test_admin_login_and_dashboard(client):
     response = client.post(
         "/admin/login",
-        data={"username": "admin", "password": "secret"},
+        data={"username": "testadmin", "password": "secret"},
         follow_redirects=True,
     )
     assert response.status_code == 200

@@ -72,6 +72,7 @@ def client(app):
                     public_id="hcus_testuser",
                     display_name="Acme Studios",
                     password_hash=PasswordHasher().hash("secret"),
+                    signup_status="active",
                     terms_policy_version="overdue-policy-v1",
                 )
             )
