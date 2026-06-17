@@ -56,7 +56,8 @@
  {% endif %}
  {% endwith %}
  {% block body %}{% endblock %}
- </main>
+</main>
+ <script src="{{ url_for('static', filename='js/csrf.js') }}" defer></script>
  <script src="{{ url_for('static', filename='js/shell.js') }}" defer></script>
 </body>
 </html>

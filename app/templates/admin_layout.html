@@ -141,9 +141,10 @@
  {% endwith %}
  {% block content %}{% endblock %}
  </div>
- </main>
- </div>
+</main>
+</div>
 
+ <script src="{{ url_for('static', filename='js/csrf.js') }}" defer></script>
  <script src="{{ url_for('static', filename='js/admin-shell.js') }}" defer></script>
 </body>
 </html>

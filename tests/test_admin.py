@@ -17,6 +17,17 @@ def test_admin_login_and_dashboard(client):
     assert b"Dashboard Administrativo" in response.data
 
 
+def test_admin_layout_includes_csrf_helper(client):
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=True,
+    )
+    response = client.get("/admin/")
+    assert response.status_code == 200
+    assert b"js/csrf.js" in response.data
+
+
 def test_instance_pod_status_requires_auth(client):
     """Pod-status endpoint returns 302 without admin login."""
     response = client.get("/admin/instances/inst_123/pod-status")
