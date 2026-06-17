@@ -22,9 +22,6 @@
         <p class="tagline">{{ app.one_liner }}</p>
       </div>
     </div>
-    {% if app.description_md %}
-    <p class="desc">{{ app.description_md[:200] }}{% if app.description_md|length > 200 %}…{% endif %}</p>
-    {% endif %}
     <div class="card-footer">
       <div class="card-links">
       {% if app.homepage_url %}<a href="{{ app.homepage_url }}" class="link">Homepage</a>{% endif %}

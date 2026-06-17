@@ -23,6 +23,13 @@ def test_index(client):
     assert b"WordPress" in response.data
 
 
+def test_index_uses_one_liner_in_catalog_cards(client):
+    response = client.get("/")
+    body = response.get_data(as_text=True)
+    assert "Managed publishing for teams that want to ship content fast." in body
+    assert "Managed **WordPress** hosting" not in body
+
+
 def test_app_detail_page(client):
     response = client.get("/apps/wordpress")
     assert response.status_code == 200
