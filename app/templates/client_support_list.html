@@ -1,17 +1,17 @@
-{% extends "customer_layout.html" %}
+{% extends "layout.html" %}
 
 {% block title %}Support Tickets - {{ portal_name }}{% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="page-title">
  <h1>Support Tickets</h1>
  <p>View and manage your support tickets.</p>
 </div>
 
 <div style="margin-bottom: 20px;">
- <a href="{{ url_for('customer.support_create_page') }}" class="btn btn-success">+ Create New Ticket</a>
+ <a href="{{ url_for('client.support_create_page') }}" class="btn btn-success">+ Create New Ticket</a>
  
- <form method="GET" action="{{ url_for('customer.support_list') }}" style="display: flex; gap: 10px; align-items: center; margin-top: 15px;">
+ <form method="GET" action="{{ url_for('client.support_list') }}" style="display: flex; gap: 10px; align-items: center; margin-top: 15px;">
  <select name="status" class="form-select">
  <option value="">All Status</option>
  <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Open</option>
@@ -51,7 +51,7 @@
  </td>
  <td>{{ ticket.created_at.strftime('%Y-%m-%d') if ticket.created_at else 'N/A' }}</td>
  <td>
- <a href="{{ url_for('customer.support_detail', ticket_id=ticket.id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">View</a>
+ <a href="{{ url_for('client.support_detail', ticket_id=ticket.id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">View</a>
  </td>
  </tr>
  {% endfor %}
@@ -61,20 +61,20 @@
  <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
  <div>
  {% if paginated.has_prev %}
- <a href="{{ url_for('customer.support_list', page=paginated.prev_num, status=status_filter) }}" class="btn btn-primary">← Previous</a>
+ <a href="{{ url_for('client.support_list', page=paginated.prev_num, status=status_filter) }}" class="btn btn-primary">← Previous</a>
  {% endif %}
  
  <span style="color: #7f8c8d; margin: 0 10px;">Page {{ paginated.page }} of {{ paginated.pages }}</span>
  
  {% if paginated.has_next %}
- <a href="{{ url_for('customer.support_list', page=paginated.next_num, status=status_filter) }}" class="btn btn-primary">Next →</a>
+ <a href="{{ url_for('client.support_list', page=paginated.next_num, status=status_filter) }}" class="btn btn-primary">Next →</a>
  {% endif %}
  </div>
  </div>
 {% else %}
  <div style="text-align: center; padding: 40px 0;">
  <p style="color: #7f8c8d; margin-bottom: 20px;">No tickets found.</p>
- <a href="{{ url_for('customer.support_create_page') }}" class="btn btn-success">Create your first ticket</a>
+ <a href="{{ url_for('client.support_create_page') }}" class="btn btn-success">Create your first ticket</a>
  </div>
 {% endif %}
 

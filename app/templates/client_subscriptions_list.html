@@ -1,15 +1,15 @@
-{% extends "customer_layout.html" %}
+{% extends "layout.html" %}
 
 {% block title %}Subscriptions - {{ portal_name }}{% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="page-title">
  <h1>Subscriptions</h1>
  <p>Manage your active subscriptions and billing.</p>
 </div>
 
 <div style="margin-bottom: 20px;">
- <form method="GET" action="{{ url_for('customer.subscriptions_list') }}" style="display: flex; gap: 10px; align-items: center;">
+ <form method="GET" action="{{ url_for('client.subscriptions_list') }}" style="display: flex; gap: 10px; align-items: center;">
  <select name="status" class="form-select">
  <option value="">All Status</option>
  <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
@@ -35,17 +35,17 @@
  <tbody>
  {% for sub in subscriptions %}
  <tr>
- <td>{{ sub.app_id or 'N/A' }}</td>
- <td><strong>{{ sub.tier }}</strong></td>
+ <td>{{ sub.app_slug or 'N/A' }}</td>
+ <td><strong>{{ sub.tier_name }}</strong></td>
  <td>
  <span class="badge {% if sub.status == 'active' %}badge-success{% elif sub.status == 'paused' %}badge-warning{% else %}badge-danger{% endif %}">
  {{ sub.status }}
  </span>
  </td>
- <td>{{ sub.renewal_date.strftime('%Y-%m-%d') if sub.renewal_date else 'N/A' }}</td>
- <td>${{ "%.2f"|format(sub.amount_cents / 100) if sub.amount_cents else '0.00' }}</td>
+ <td>{{ sub.next_billing_at.strftime('%Y-%m-%d') if sub.next_billing_at else 'N/A' }}</td>
+ <td>${{ "%.2f"|format(sub.monthly_price_cents / 100) if sub.monthly_price_cents else '0.00' }}</td>
  <td>
- <a href="{{ url_for('customer.subscription_detail', subscription_id=sub.id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Details</a>
+ <a href="{{ url_for('client.subscription_detail', subscription_id=sub.id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Details</a>
  </td>
  </tr>
  {% endfor %}
@@ -55,13 +55,13 @@
  <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
  <div>
  {% if paginated.has_prev %}
- <a href="{{ url_for('customer.subscriptions_list', page=paginated.prev_num, status=status_filter) }}" class="btn btn-primary">← Previous</a>
+ <a href="{{ url_for('client.subscriptions_list', page=paginated.prev_num, status=status_filter) }}" class="btn btn-primary">← Previous</a>
  {% endif %}
  
  <span style="color: #7f8c8d; margin: 0 10px;">Page {{ paginated.page }} of {{ paginated.pages }}</span>
  
  {% if paginated.has_next %}
- <a href="{{ url_for('customer.subscriptions_list', page=paginated.next_num, status=status_filter) }}" class="btn btn-primary">Next →</a>
+ <a href="{{ url_for('client.subscriptions_list', page=paginated.next_num, status=status_filter) }}" class="btn btn-primary">Next →</a>
  {% endif %}
  </div>
  </div>

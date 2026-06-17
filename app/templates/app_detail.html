@@ -44,7 +44,7 @@
       <p class="price">${{ "%.2f"|format(tier.price_monthly_cents / 100) }}<span class="period">/month</span></p>
       {% endif %}
       {% if customer %}
-      <form method="post" action="{{ url_for('main.deploy_app', slug=app.slug) }}">
+      <form method="post" action="{{ url_for('client.deploy_app', slug=app.slug) }}">
         <input type="hidden" name="tier_name" value="{{ tier.name }}">
         <button type="submit" class="btn primary">{% if tier.free %}Deploy{% else %}Subscribe{% endif %}</button>
       </form>

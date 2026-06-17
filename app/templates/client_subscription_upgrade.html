@@ -1,21 +1,21 @@
-{% extends "customer_layout.html" %}
+{% extends "layout.html" %}
 
 {% block title %}Upgrade Subscription - {{ portal_name }}{% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="page-title">
  <h1>Change Subscription Tier</h1>
- <p>{{ subscription.app_id }} (Current: {{ subscription.tier }})</p>
+ <p>{{ subscription.app_slug }} (Current: {{ subscription.tier_name }})</p>
 </div>
 
 <div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-width: 600px;">
- <form method="POST" action="{{ url_for('customer.subscription_upgrade', subscription_id=subscription.id) }}">
+ <form method="POST" action="{{ url_for('client.subscription_upgrade', subscription_id=subscription.id) }}">
  <div style="margin-bottom: 20px;">
  <label for="new_tier" style="display: block; margin-bottom: 8px; color: #333; font-weight: 500;">Select New Tier *</label>
  <select id="new_tier" name="new_tier" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
  <option value="">Choose a tier...</option>
  {% for tier in available_tiers %}
- {% if tier != subscription.tier %}
+ {% if tier != subscription.tier_name %}
  <option value="{{ tier }}">{{ tier|capitalize }}</option>
  {% endif %}
  {% endfor %}
@@ -29,7 +29,7 @@
  
  <div style="display: flex; gap: 10px;">
  <button type="submit" class="btn btn-success">Change Tier</button>
- <a href="{{ url_for('customer.subscription_detail', subscription_id=subscription.id) }}" class="btn btn-primary">Cancel</a>
+ <a href="{{ url_for('client.subscription_detail', subscription_id=subscription.id) }}" class="btn btn-primary">Cancel</a>
  </div>
  </form>
 </div>

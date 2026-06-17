@@ -17,7 +17,7 @@
  <p>{{ order.tier_name }} · ${{ "%.2f"|format(order.monthly_price_cents / 100) }}/month{% if order.tax_percent > 0 %} + {{ order.tax_percent }}% tax{% endif %}</p>
  <p class="meta">Order {{ order.order_id }}</p>
  {% if order.status == "pending_payment" and order.paypal_subscription_id %}
- <form method="get" action="{{ url_for('main.billing_return', order_id=order.order_id) }}">
+ <form method="get" action="{{ url_for('client.billing_return', order_id=order.order_id) }}">
  <button class="secondary" type="submit">Complete PayPal payment</button>
  </form>
  {% endif %}
@@ -53,7 +53,7 @@
  <tbody>
  {% for inv in invoices %}
  <tr>
- <td><a href="{{ url_for('main.billing_receipt', invoice_id=inv.invoice_id) }}">{{ inv.invoice_id }}</a></td>
+ <td><a href="{{ url_for('client.billing_receipt', invoice_id=inv.invoice_id) }}">{{ inv.invoice_id }}</a></td>
  <td>{{ inv.app_slug }}</td>
  <td>${{ "%.2f"|format(inv.total_cents / 100) }}</td>
  <td class="meta">{{ inv.created_at.strftime("%Y-%m-%d") }}</td>

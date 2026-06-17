@@ -32,8 +32,8 @@
   {% endif %}
 
   <div style="margin-top: 24px;">
-    <a class="primary page-cta" href="{{ url_for('main.instance_detail', instance_id=instance.instance_id) }}">Manage your app</a>
-    <a class="secondary page-cta" href="{{ url_for('main.dashboard') }}" style="margin-left: 8px;">Back to dashboard</a>
+    <a class="primary page-cta" href="{{ url_for('client.instance_detail', instance_id=instance.instance_id) }}">Manage your app</a>
+    <a class="secondary page-cta" href="{{ url_for('client.dashboard') }}" style="margin-left: 8px;">Back to dashboard</a>
   </div>
 </section>
 {% endblock %}

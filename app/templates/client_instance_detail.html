@@ -3,26 +3,26 @@
 {% block body %}
 <header class="page-header instance-header">
   <div>
-    <p class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Dashboard</a> / {{ instance.domain }}</p>
+    <p class="breadcrumb"><a href="{{ url_for('client.dashboard') }}">Dashboard</a> / {{ instance.domain }}</p>
     <h1>{{ instance.domain }}</h1>
     <p class="instance-id">{{ instance.instance_id }}</p>
     <p class="lede">App: {{ app.name if app else instance.app_slug }} · Tier: {{ instance.tier_name }} · Next billing: {{ instance.next_billing_at or "-" }}</p>
   </div>
   <div class="detail-actions">
     {% if instance.status in ["running", "provisioning", "backup_running", "restoring"] %}
-    <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+    <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}">
       <input type="hidden" name="action" value="pause">
       <button class="btn action-pause" type="submit">Pause</button>
     </form>
     {% endif %}
     {% if instance.status in ["paused", "stopped"] %}
-    <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+    <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}">
       <input type="hidden" name="action" value="resume">
       <button class="btn action-resume" type="submit">Resume</button>
     </form>
     {% endif %}
     {% if instance.status not in ["deprovisioning", "deprovisioned", "cancelled"] %}
-    <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+    <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}">
       <input type="hidden" name="action" value="restart">
       <button class="btn action-restart" type="submit">Restart</button>
     </form>
@@ -57,7 +57,7 @@
           <h2>Backups & Restore</h2>
           <p class="meta">Create backups, upload external archives and request restore operations.</p>
         </div>
-        <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}">
+        <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}">
           <input type="hidden" name="action" value="backup">
           <input type="hidden" name="service" value="db">
           <button class="btn btn-primary" type="submit">Request backup</button>
@@ -82,7 +82,7 @@
       <div class="detail-split">
         <div class="detail-sub">
           <h3>Upload external backup</h3>
-          <form method="post" enctype="multipart/form-data" action="{{ url_for('main.upload_backup', instance_id=instance.instance_id) }}" class="stack">
+          <form method="post" enctype="multipart/form-data" action="{{ url_for('client.upload_backup', instance_id=instance.instance_id) }}" class="stack">
             <label class="upload-field">Backup file
               <span class="upload-shell"><input type="file" name="backup_file"></span>
             </label>
@@ -96,7 +96,7 @@
                 <strong>{{ backup.original_filename }}</strong>
                 <p class="meta">{{ backup.size_bytes }} bytes</p>
               </div>
-              <a class="btn btn-small" href="{{ url_for('main.download_uploaded_backup', backup_id=backup.backup_id) }}">Download</a>
+              <a class="btn btn-small" href="{{ url_for('client.download_uploaded_backup', backup_id=backup.backup_id) }}">Download</a>
             </div>
             {% endfor %}
           </div>
@@ -106,7 +106,7 @@
         <div class="detail-sub">
           <h3>Request restore</h3>
           <p class="meta">Type the application slug to confirm a destructive restore request.</p>
-          <form method="post" action="{{ url_for('main.request_restore', instance_id=instance.instance_id) }}" class="stack">
+          <form method="post" action="{{ url_for('client.request_restore', instance_id=instance.instance_id) }}" class="stack">
             <label>Source kind
               <select name="source_kind">
                 <option value="uploaded">Uploaded backup</option>
@@ -135,7 +135,7 @@
         var display = document.getElementById('creds-display');
         btn.disabled = true;
         btn.textContent = 'Loading...';
-        fetch('{{ url_for("main.instance_credentials", instance_id=instance.instance_id) }}')
+        fetch('{{ url_for("client.instance_credentials", instance_id=instance.instance_id) }}')
           .then(function(r) { return r.json(); })
           .then(function(data) {
             if (data.error) {
@@ -171,7 +171,7 @@
 
     <section class="panel">
       <h2>Tier change</h2>
-      <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}" class="stack">
+      <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}" class="stack">
         <input type="hidden" name="action" value="resize">
         <label>Target tier <input name="tier_name" value="{{ instance.tier_name }}"></label>
         <button class="btn" type="submit">Request tier change</button>
@@ -182,7 +182,7 @@
     <section class="panel panel-danger">
       <h2>Cancel service</h2>
       <p class="meta">Type <strong>{{ instance.app_slug }}</strong> to confirm cancellation.</p>
-      <form method="post" action="{{ url_for('main.instance_action', instance_id=instance.instance_id) }}" class="stack">
+      <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}" class="stack">
         <input type="hidden" name="action" value="cancel">
         <label>Confirm text <input name="confirm_text"></label>
         <button class="btn btn-danger" type="submit">Cancel service</button>
@@ -192,7 +192,7 @@
 
     <section class="panel">
       <h2>Support incident</h2>
-      <form method="post" enctype="multipart/form-data" action="{{ url_for('main.create_incident', instance_id=instance.instance_id) }}" class="stack">
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('client.create_incident', instance_id=instance.instance_id) }}" class="stack">
         <label>Subject <input name="subject"></label>
         <label>Description <textarea name="description"></textarea></label>
         <label>Priority

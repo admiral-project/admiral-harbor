@@ -1,11 +1,11 @@
-{% extends "customer_layout.html" %}
+{% extends "layout.html" %}
 
 {% block title %}Subscription Details - {{ portal_name }}{% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="page-title">
  <h1>Subscription Details</h1>
- <p>{{ subscription.app_id }} - {{ subscription.tier }}</p>
+ <p>{{ subscription.app_slug }} - {{ subscription.tier_name }}</p>
 </div>
 
 <div class="dashboard-grid">
@@ -20,12 +20,12 @@
  
  <div class="metric-card">
  <h3>Monthly Cost</h3>
- <div class="value">${{ "%.2f"|format(subscription.amount_cents / 100) if subscription.amount_cents else '0.00' }}</div>
+ <div class="value">${{ "%.2f"|format(subscription.monthly_price_cents / 100) if subscription.monthly_price_cents else '0.00' }}</div>
  </div>
  
  <div class="metric-card">
  <h3>Renewal Date</h3>
- <div style="font-size: 18px; margin-top: 10px;">{{ subscription.renewal_date.strftime('%B %d, %Y') if subscription.renewal_date else 'N/A' }}</div>
+ <div style="font-size: 18px; margin-top: 10px;">{{ subscription.next_billing_at.strftime('%B %d, %Y') if subscription.next_billing_at else 'N/A' }}</div>
  </div>
  
  <div class="metric-card">
@@ -51,7 +51,7 @@
  {% for payment in payments %}
  <tr>
  <td>{{ payment.created_at.strftime('%Y-%m-%d %H:%M') if payment.created_at else 'N/A' }}</td>
- <td>${{ "%.2f"|format(payment.amount_cents / 100) if payment.amount_cents else '0.00' }}</td>
+ <td>${{ "%.2f"|format(payment.monthly_price_cents / 100) if payment.monthly_price_cents else '0.00' }}</td>
  <td>
  <span class="badge {% if payment.status == 'completed' %}badge-success{% elif payment.status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
  {{ payment.status }}
@@ -71,10 +71,10 @@
  <h2 style="margin-bottom: 20px; color: #2c3e50;">Actions</h2>
  
  <div style="display: flex; gap: 10px; flex-wrap: wrap;">
- <a href="{{ url_for('customer.subscriptions_list') }}" class="btn btn-primary">← Back</a>
+ <a href="{{ url_for('client.subscriptions_list') }}" class="btn btn-primary">← Back</a>
  {% if subscription.status == 'active' %}
- <a href="{{ url_for('customer.subscription_upgrade_page', subscription_id=subscription.id) }}" class="btn btn-success">Change Tier</a>
- <a href="{{ url_for('customer.subscription_cancel_page', subscription_id=subscription.id) }}" class="btn btn-danger">Cancel Subscription</a>
+ <a href="{{ url_for('client.subscription_upgrade_page', subscription_id=subscription.id) }}" class="btn btn-success">Change Tier</a>
+ <a href="{{ url_for('client.subscription_cancel_page', subscription_id=subscription.id) }}" class="btn btn-danger">Cancel Subscription</a>
  {% elif subscription.status == 'cancelled' %}
  <span style="color: #e74c3c; font-weight: 600;">This subscription has been cancelled.</span>
  {% endif %}

@@ -31,13 +31,13 @@
  </button>
  <nav class="topnav" id="topnav">
  <a href="{{ url_for('main.index') }}">Catalog</a>
- {% if customer %}
- <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
- <a href="{{ url_for('main.billing') }}">Billing</a>
- <a href="{{ url_for('main.help_center') }}">Help</a>
- <a href="{{ url_for('auth.profile') }}">Profile</a>
- <form method="post" action="{{ url_for('auth.logout') }}"><button type="submit" class="linkish">Logout</button></form>
- {% else %}
+  {% if customer %}
+  <a href="{{ url_for('client.dashboard') }}">Dashboard</a>
+  <a href="{{ url_for('client.billing') }}">Billing</a>
+  <a href="{{ url_for('client.help_center') }}">Help</a>
+  <a href="{{ url_for('auth.profile') }}">Profile</a>
+  <form method="post" action="{{ url_for('auth.logout') }}"><button type="submit" class="linkish">Logout</button></form>
+  {% else %}
  <a href="{{ url_for('auth.login_page') }}">Login</a>
  <a href="{{ url_for('auth.register_page') }}">Register</a>
  {% endif %}

@@ -1,8 +1,8 @@
-{% extends "customer_layout.html" %}
+{% extends "layout.html" %}
 
 {% block title %}Ticket #{{ ticket.id }} - {{ portal_name }}{% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="page-title">
  <h1>Ticket #{{ ticket.id }}</h1>
  <p>{{ ticket.subject }}</p>
@@ -64,6 +64,6 @@
 </div>
 
 <div style="margin-top: 20px;">
- <a href="{{ url_for('customer.support_list') }}" class="btn btn-primary">← Back to Tickets</a>
+ <a href="{{ url_for('client.support_list') }}" class="btn btn-primary">← Back to Tickets</a>
 </div>
 {% endblock %}
