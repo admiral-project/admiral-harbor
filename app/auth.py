@@ -21,6 +21,7 @@ from flask import (
     session,
     url_for,
 )
+from flask_login import logout_user
 
 from app.extensions import db
 from app.identity import current_customer, login_required
@@ -163,6 +164,7 @@ def login():
             flash("Your account is pending activation.", "warning")
         return redirect(url_for("auth.login_page"))
 
+    logout_user()
     _login_customer(customer)
     login_limiter.reset(ip)
     if request.is_json:

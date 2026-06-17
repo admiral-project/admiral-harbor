@@ -5,6 +5,7 @@ import hmac
 import os
 
 from flask import current_app, jsonify, request, session
+from flask_login import current_user
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 EXEMPT_ENDPOINTS = {"main.paypal_webhook"}
@@ -14,12 +15,23 @@ def _generate_token():
     return os.urandom(32).hex()
 
 
+def _csrf_role():
+    if current_user.is_authenticated:
+        return "admin"
+    if session.get("customer_email"):
+        return "customer"
+    return "public"
+
+
 def generate_csrf_token():
-    token = session.get("csrf_token")
-    if not token:
+    data = session.get("csrf_data")
+    role = _csrf_role()
+    if not data or data.get("role") != role:
         token = _generate_token()
+        session["csrf_data"] = {"token": token, "role": role}
         session["csrf_token"] = token
-    return token
+        return token
+    return data["token"]
 
 
 def _extract_token():
@@ -48,10 +60,14 @@ def validate_csrf_request():
     ):
         return None
 
-    session_token = session.get("csrf_token")
-    if not session_token:
+    data = session.get("csrf_data")
+    if not data:
         return jsonify({"error": "CSRF token missing"}), 403
 
+    if data.get("role") != _csrf_role():
+        return jsonify({"error": "CSRF token invalid"}), 403
+
+    session_token = data.get("token")
     token = _extract_token()
     if not token:
         return jsonify({"error": "CSRF token missing"}), 403

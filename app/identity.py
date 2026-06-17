@@ -1,6 +1,6 @@
 from functools import wraps
 
-from flask import abort, flash, redirect, request, session, url_for
+from flask import abort, flash, g, redirect, request, session, url_for
 from flask_login import current_user
 
 from app.extensions import db
@@ -46,13 +46,25 @@ def login_required(view):
     return wrapped
 
 
+def customer_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if current_user.is_authenticated:
+            abort(403)
+        customer = current_customer()
+        if customer is None:
+            abort(403)
+        g.customer = customer
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
 def admin_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not current_user.is_authenticated:
-            if request.path.startswith("/api/"):
-                abort(401)
-            return redirect(url_for("admin.login_page", next=request.path))
+        if session.get("customer_email"):
+            abort(403)
         return view(*args, **kwargs)
 
     return wrapped

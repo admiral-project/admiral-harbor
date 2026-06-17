@@ -87,6 +87,9 @@ def login():
     except VerifyMismatchError:
         flash("Invalid admin credentials.", "error")
         return redirect(url_for("admin.login_page"))
+    session.pop("customer_token", None)
+    session.pop("customer_email", None)
+    session.pop("customer_public_id", None)
     _set_admin_session(admin)
     login_user(admin)
     db.session.add(
