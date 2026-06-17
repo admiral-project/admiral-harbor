@@ -1,0 +1,410 @@
+# SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
+# SPDX-License-Identifier: Apache-2.0
+
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
+from uuid import uuid4
+
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
+from werkzeug.utils import secure_filename
+
+from app import admiral_client
+from app.admiral_client import AdmiralAPIError
+from app.branding import get_tax_rates
+from app.config import overdue_policy
+from app.extensions import db
+from app.identity import current_customer
+from app.models import (
+    AppCourse,
+    AuditLog,
+    BillingEvent,
+    CatalogApp,
+    Customer,
+    CustomerApp,
+    InstanceEvent,
+    Invoice,
+    LMSSettings,
+    Order,
+    Payment,
+    Subscription,
+    UploadedBackup,
+)
+from app.paypal import verify_webhook_signature
+
+bp = Blueprint("main", __name__)
+
+
+def _local_catalog():
+    return (
+        db.session.query(CatalogApp)
+        .filter_by(catalog_enabled=True)
+        .order_by(CatalogApp.sort_order.asc(), CatalogApp.name.asc())
+        .all()
+    )
+
+
+def _local_app(slug):
+    return db.session.query(CatalogApp).filter_by(upstream_app_id=slug).one_or_none()
+
+
+def _audit(actor, action, resource_type="", resource_id="", detail=""):
+    db.session.add(
+        AuditLog(
+            actor=actor,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            detail=detail,
+            ip_address=request.remote_addr or "",
+        )
+    )
+    db.session.commit()
+
+
+def _event(instance_id, customer_email, event_type, message):
+    db.session.add(
+        InstanceEvent(
+            instance_id=instance_id,
+            customer_email=customer_email,
+            event_type=event_type,
+            message=message,
+        )
+    )
+    db.session.commit()
+
+
+def _provision_subscription(subscription):
+    customer = (
+        db.session.query(Customer).filter_by(email=subscription.customer_email).one()
+    )
+    response = admiral_client.provision_app(
+        subscription.app_slug, subscription.tier_name, customer.public_id
+    )
+    credentials = response.get("credentials", [])
+    hostname = response.get("hostname", "")
+    operation_id = response.get("operation_id", "")
+    instance_id = ""
+    if operation_id:
+        try:
+            op = admiral_client.get_operation(operation_id)
+            instance_id = op.get("instance_id", "")
+        except AdmiralAPIError:
+            pass
+    if not instance_id:
+        instance_id = f"inst_{uuid4().hex[:16]}"
+    if not hostname:
+        hostname = instance_id
+    db.session.add(
+        CustomerApp(
+            subscription_id=subscription.id,
+            customer_email=subscription.customer_email,
+            instance_id=instance_id,
+            app_slug=subscription.app_slug,
+            domain=hostname,
+            status="provisioning",
+            backup_status="pending",
+            storage_status="ok",
+            tier_name=subscription.tier_name,
+        )
+    )
+    subscription.instance_id = instance_id
+    subscription.status = "active"
+    db.session.commit()
+    _event(
+        instance_id,
+        subscription.customer_email,
+        "payment_received",
+        f"Payment confirmed for {subscription.app_slug}.",
+    )
+    return instance_id, credentials
+
+
+@bp.route("/")
+def index():
+    apps = [app.as_dict() for app in _local_catalog()]
+    return render_template(
+        "index.html",
+        apps=apps,
+        overdue_policy=overdue_policy(current_app.config),
+        customer=current_customer(),
+    )
+
+
+@bp.route("/catalog")
+def catalog():
+    apps = [app.as_dict() for app in _local_catalog()]
+    return render_template(
+        "index.html",
+        apps=apps,
+        overdue_policy=overdue_policy(current_app.config),
+        customer=current_customer(),
+    )
+
+
+@bp.route("/apps/")
+def apps_index():
+    return redirect(url_for("main.catalog"))
+
+
+@bp.route("/health")
+def health():
+    return jsonify({"status": "healthy"})
+
+
+@bp.route("/branding/<kind>")
+def portal_asset(kind):
+    if kind not in {"logo", "favicon"}:
+        return jsonify({"error": "asset not found"}), 404
+    filename = current_app.config["HARBOR_UPLOAD_DIR"]
+    asset_name = f"portal-{kind}"
+    branding_dir = Path(filename) / "branding"
+    stored = None
+    for candidate in branding_dir.glob(f"{asset_name}.*"):
+        stored = candidate
+        break
+    if stored is None:
+        fallback = "favicon.ico" if kind == "favicon" else "admiral-harbor.png"
+        stored = Path(current_app.static_folder) / "img" / fallback
+    response = send_file(stored)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
+@bp.route("/catalog-assets/<slug>/<filename>")
+def catalog_asset(slug, filename):
+    slug = secure_filename((slug or "").strip())
+    filename = secure_filename((filename or "").strip())
+    if not slug or not filename:
+        return jsonify({"error": "asset not found"}), 404
+    catalog_dir = Path(current_app.config["HARBOR_UPLOAD_DIR"]) / "catalog" / slug
+    stored = catalog_dir / filename
+    if not stored.exists() or not stored.is_file():
+        return jsonify({"error": "asset not found"}), 404
+    response = send_file(stored)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
+@bp.route("/apps/<slug>")
+def app_detail(slug):
+    app = _local_app(slug)
+    if app is None or not app.catalog_enabled:
+        return jsonify({"error": "app not found"}), 404
+    remote = {}
+    try:
+        remote = admiral_client.get_app(slug)
+    except AdmiralAPIError:
+        remote = {"tiers": []}
+    settings = LMSSettings.singleton()
+    courses = (
+        db.session.query(AppCourse)
+        .filter_by(app_slug=slug, active=True)
+        .order_by(AppCourse.course_code.asc())
+        .all()
+    )
+    return render_template(
+        "app_detail.html",
+        app=app.as_dict(),
+        remote=remote,
+        lms_enabled=settings.enabled,
+        courses=courses,
+        customer=current_customer(),
+    )
+
+
+@bp.route("/billing/webhooks/paypal", methods=["POST"])
+def paypal_webhook():
+    if not verify_webhook_signature(request.headers, request.get_data(as_text=True)):
+        return jsonify({"error": "webhook signature verification failed"}), 403
+
+    event = request.get_json(silent=True) or {}
+    event_id = event.get("id", "")
+    event_type = event.get("event_type", "unknown")
+    resource = event.get("resource") or {}
+    subscription_id = (
+        resource.get("billing_agreement_id")
+        or resource.get("subscription_id")
+        or resource.get("id")
+    )
+    if not event_id or not subscription_id:
+        return jsonify({"error": "invalid webhook payload"}), 400
+    if (
+        db.session.query(BillingEvent).filter_by(event_id=event_id).one_or_none()
+        is not None
+    ):
+        return jsonify({"status": "duplicate"}), 200
+
+    subscription = (
+        db.session.query(Subscription)
+        .filter_by(paypal_subscription_id=subscription_id)
+        .one_or_none()
+    )
+    if subscription is None:
+        return jsonify({"error": "subscription not found"}), 404
+    order = (
+        db.session.query(Order)
+        .filter_by(paypal_subscription_id=subscription_id)
+        .one_or_none()
+    )
+    status = subscription.status
+    if event_type in {"BILLING.SUBSCRIPTION.ACTIVATED", "PAYMENT.SALE.COMPLETED"}:
+        status = "active"
+    elif event_type in {"PAYMENT.SALE.DENIED", "BILLING.SUBSCRIPTION.SUSPENDED"}:
+        status = "past_due"
+    elif event_type in {
+        "BILLING.SUBSCRIPTION.CANCELLED",
+        "BILLING.SUBSCRIPTION.EXPIRED",
+    }:
+        status = "cancelled"
+    subscription.status = status
+    if status == "active" and not subscription.instance_id:
+        try:
+            _provision_subscription(subscription)
+        except AdmiralAPIError as exc:
+            subscription.status = "suspended"
+            db.session.add(
+                BillingEvent(
+                    event_id=event_id,
+                    subscription_external_id=subscription.external_id,
+                    event_type=event_type,
+                    status="failed_provision",
+                    payload_json=admiral_client.dump_json(
+                        {"event": event, "error": str(exc)}
+                    ),
+                )
+            )
+            db.session.commit()
+            return jsonify({"status": "failed_provision", "error": str(exc)}), 502
+        if order is not None and not order.subscription_external_id:
+            order.subscription_external_id = subscription.external_id
+            if order.status == "pending_payment":
+                order.status = "approved"
+
+    if event_type == "PAYMENT.SALE.COMPLETED":
+        tax_cents = int(
+            subscription.monthly_price_cents * subscription.tax_percent / 100
+        )
+        total_cents = subscription.monthly_price_cents + tax_cents
+        existing = (
+            db.session.query(Invoice).filter_by(paypal_event_id=event_id).one_or_none()
+        )
+        if existing is None:
+            invoice = Invoice(
+                subscription_external_id=subscription.external_id,
+                customer_email=subscription.customer_email,
+                app_slug=subscription.app_slug,
+                tier_name=subscription.tier_name,
+                subtotal_cents=subscription.monthly_price_cents,
+                tax_percent=subscription.tax_percent,
+                tax_cents=tax_cents,
+                total_cents=total_cents,
+                status="paid",
+                paypal_transaction_id=resource.get("id", ""),
+                paypal_event_id=event_id,
+                period_start=(datetime.now(UTC) - timedelta(days=30))
+                .date()
+                .isoformat(),
+                period_end=datetime.now(UTC).date().isoformat(),
+            )
+            db.session.add(invoice)
+            db.session.add(
+                Payment(
+                    order_id=(
+                        order.order_id
+                        if order is not None
+                        else subscription.external_id
+                    ),
+                    subscription_external_id=subscription.external_id,
+                    customer_email=subscription.customer_email,
+                    provider="paypal",
+                    provider_reference=resource.get("id", ""),
+                    amount_cents=total_cents,
+                    status="completed",
+                )
+            )
+        subscription.next_billing_at = (
+            (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
+        )
+        if order is not None:
+            order.status = "paid"
+            if not order.subscription_external_id:
+                order.subscription_external_id = subscription.external_id
+    db.session.add(
+        BillingEvent(
+            event_id=event_id,
+            subscription_external_id=subscription.external_id,
+            event_type=event_type,
+            status=status,
+            payload_json=admiral_client.dump_json(event),
+        )
+    )
+    db.session.commit()
+    if event_type == "PAYMENT.SALE.COMPLETED":
+        _audit(
+            subscription.customer_email,
+            "billing_payment_received",
+            "subscription",
+            subscription.external_id,
+            f"Payment received for {subscription.app_slug} ({subscription.tier_name})",
+        )
+    elif event_type in ("BILLING.SUBSCRIPTION.ACTIVATED",):
+        _audit(
+            subscription.customer_email,
+            "subscription_activated",
+            "subscription",
+            subscription.external_id,
+            f"Subscription activated for {subscription.app_slug}",
+        )
+    elif event_type in (
+        "BILLING.SUBSCRIPTION.CANCELLED",
+        "BILLING.SUBSCRIPTION.EXPIRED",
+    ):
+        _audit(
+            subscription.customer_email,
+            "subscription_cancelled",
+            "subscription",
+            subscription.external_id,
+            f"Subscription {event_type.split('.')[-1].lower()} for {subscription.app_slug}",
+        )
+    return jsonify({"status": status})
+
+
+@bp.route("/mock-paypal/approve")
+def mock_paypal_approve():
+    subscription_id = request.args.get("subscription_id", "")
+    return_url = request.args.get("return_url", "")
+    if not return_url and not subscription_id:
+        return jsonify({"error": "missing subscription_id or return_url"}), 400
+
+    parsed = list(urlparse(return_url))
+    query = dict(parse_qs(parsed[4]))
+    query["token"] = subscription_id
+    parsed[4] = urlencode(query, doseq=True)
+    return redirect(urlunparse(parsed))
+
+
+@bp.route("/api/v1/backups/uploads/<backup_id>/download")
+def api_download_uploaded_backup(backup_id):
+    token = request.headers.get("X-Admiral-Token", "")
+    if token != current_app.config["ADMIRAL_SHARED_TOKEN"]:
+        return jsonify({"error": "unauthorized"}), 401
+    backup = (
+        db.session.query(UploadedBackup).filter_by(backup_id=backup_id).one_or_none()
+    )
+    if backup is None:
+        return jsonify({"error": "backup not found"}), 404
+    return send_file(
+        backup.stored_path, as_attachment=True, download_name=backup.original_filename
+    )
