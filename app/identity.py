@@ -26,6 +26,8 @@ def current_admin():
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
+        if current_user.is_authenticated:
+            abort(403)
         customer = current_customer()
         if customer is None:
             if request.path.startswith("/api/"):
