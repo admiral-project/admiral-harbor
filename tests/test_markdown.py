@@ -41,9 +41,7 @@ def test_render_markdown_strikethrough_and_table():
 
     # Test plugins (table)
     table_input = (
-        "| Header 1 | Header 2 |\n"
-        "| -------- | -------- |\n"
-        "| Cell 1   | Cell 2   |\n"
+        "| Header 1 | Header 2 |\n| -------- | -------- |\n| Cell 1   | Cell 2   |\n"
     )
     res = render_markdown(table_input)
     assert "<table>" in res

@@ -196,7 +196,7 @@ def _get_platform_status():
             {
                 "issue": "critical payment failures",
                 "severity": 3,
-                "description": f"{failed_payments} failed, ${failed_payments_cents/100:.2f} at risk",
+                "description": f"{failed_payments} failed, ${failed_payments_cents / 100:.2f} at risk",
             }
         )
         severity = max(severity, 3)

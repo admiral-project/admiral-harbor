@@ -9,20 +9,17 @@ from uuid import uuid4
 from flask import (
     Blueprint,
     current_app,
-    flash,
     jsonify,
     redirect,
     render_template,
     request,
     send_file,
-    session,
     url_for,
 )
 from werkzeug.utils import secure_filename
 
 from app import admiral_client
 from app.admiral_client import AdmiralAPIError
-from app.branding import get_tax_rates
 from app.config import overdue_policy
 from app.extensions import db
 from app.identity import current_customer

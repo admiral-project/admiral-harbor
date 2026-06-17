@@ -76,7 +76,7 @@ def test_generate_csrf_token_admin_role(app):
         admin = db.session.query(HarborAdminUser).filter_by(username="testadmin").one()
         login_user(admin)
         assert _csrf_role() == "admin"
-        token = generate_csrf_token()
+        generate_csrf_token()
         assert session["csrf_data"]["role"] == "admin"
 
 
@@ -86,7 +86,7 @@ def test_generate_csrf_token_customer_role(app):
 
         session["customer_email"] = "user@example.com"
         assert _csrf_role() == "customer"
-        token = generate_csrf_token()
+        generate_csrf_token()
         assert session["csrf_data"]["role"] == "customer"
 
 

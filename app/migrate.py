@@ -78,7 +78,8 @@ def run_migrations():
     with db.engine.begin() as conn:
         if "id" not in tier_columns:
             logger.info("Migration 0002: creating catalog_app_tier table")
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 CREATE TABLE catalog_app_tier (
                     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                     catalog_app_id INTEGER NOT NULL REFERENCES catalog_app(id),
@@ -93,7 +94,8 @@ def run_migrations():
                     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE (catalog_app_id, upstream_tier_id)
                 )
-            """))
+            """)
+            )
 
     # Ensure harbor_admin_user has new columns
     admin_columns = {c["name"] for c in inspector.get_columns("harbor_admin_user")}

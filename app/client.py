@@ -622,7 +622,7 @@ def billing_return():
                 "payment_completed",
                 "order",
                 order.order_id,
-                f"Payment confirmed for {order.app_slug} ({order.tier_name}) — ${total_cents/100:.2f}",
+                f"Payment confirmed for {order.app_slug} ({order.tier_name}) — ${total_cents / 100:.2f}",
             )
             session["provision_credentials"] = credentials if credentials else []
             session["provision_instance_id"] = instance_id
@@ -756,7 +756,7 @@ def deploy_app(slug):
         "order_created",
         "order",
         order.order_id,
-        f"Order for {slug} ({tier_name}) — ${total_cents/100:.2f}",
+        f"Order for {slug} ({tier_name}) — ${total_cents / 100:.2f}",
     )
 
     if requires_billing:

@@ -89,9 +89,9 @@ def test_client_blocks_anonymous_all_routes(client):
     ]
     for url in protected:
         response = client.get(url, follow_redirects=False)
-        assert (
-            response.status_code == 302
-        ), f"Expected 302 for {url}, got {response.status_code}"
+        assert response.status_code == 302, (
+            f"Expected 302 for {url}, got {response.status_code}"
+        )
 
 
 def test_client_blocks_admin_user(client):
@@ -110,6 +110,6 @@ def test_client_blocks_admin_user(client):
     ]
     for url in protected:
         response = client.get(url, follow_redirects=False)
-        assert (
-            response.status_code == 403
-        ), f"Expected 403 for {url}, got {response.status_code}"
+        assert response.status_code == 403, (
+            f"Expected 403 for {url}, got {response.status_code}"
+        )
