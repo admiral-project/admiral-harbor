@@ -24,12 +24,12 @@ def _warn_default(name, value):
 
 def validate_production_config(config):
     secret_key = config.get("SECRET_KEY", "")
-    admiral_token = config.get("ADMIRAL_SHARED_TOKEN", "")
+    admiral_token = config.get("ADMIRAL_ADMIN_TOKEN", "")
     encryption_key = config.get("HARBOR_ENCRYPTION_KEY", "")
     database_url = config.get("SQLALCHEMY_DATABASE_URI", "")
 
     _warn_default("SECRET_KEY", secret_key)
-    _warn_default("ADMIRAL_SHARED_TOKEN", admiral_token)
+    _warn_default("ADMIRAL_ADMIN_TOKEN", admiral_token)
     _warn_default("HARBOR_ENCRYPTION_KEY", encryption_key)
 
     if os.environ.get("ENV", "").lower() != "production":
@@ -51,7 +51,7 @@ def validate_production_config(config):
         or admiral_token.startswith("dev-")
         or admiral_token == "dev-token"  # nosec B105 - checking for dev value
     ):
-        errors.append("ADMIRAL_SHARED_TOKEN must be replaced before production")
+        errors.append("ADMIRAL_ADMIN_TOKEN must be replaced before production")
 
     if (
         not encryption_key

@@ -26,7 +26,7 @@ def _verify():
 def _headers():
     return {
         "Content-Type": "application/json",
-        "X-Admiral-Token": current_app.config["ADMIRAL_SHARED_TOKEN"],
+        "X-Admiral-Token": current_app.config["ADMIRAL_ADMIN_TOKEN"],
         "X-Admiral-Operator": "admiral-harbor",
     }
 

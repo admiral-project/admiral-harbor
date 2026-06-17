@@ -62,7 +62,7 @@ Important variables:
 - `HARBOR_SECRET_KEY` - Flask secret key, required in production
 - `HARBOR_ENCRYPTION_KEY` - master key for encrypted secrets, required in production
 - `ADMIRAL_API_URL` - `admirald` API endpoint
-- `ADMIRAL_SHARED_TOKEN` - shared service token for Admiral APIs
+- `ADMIRAL_ADMIN_TOKEN` - shared service token for Admiral APIs
 - `ADMIRAL_CA_FILE` - CA bundle for TLS verification
 - `ADMIRAL_INSECURE_SKIP_VERIFY` - test-only TLS bypass
 - `HARBOR_BOOTSTRAP_ADMIN_USER` / `HARBOR_BOOTSTRAP_ADMIN_PASSWORD` - initial admin account

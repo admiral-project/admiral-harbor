@@ -395,7 +395,7 @@ def mock_paypal_approve():
 @bp.route("/api/v1/backups/uploads/<backup_id>/download")
 def api_download_uploaded_backup(backup_id):
     token = request.headers.get("X-Admiral-Token", "")
-    if token != current_app.config["ADMIRAL_SHARED_TOKEN"]:
+    if token != current_app.config["ADMIRAL_ADMIN_TOKEN"]:
         return jsonify({"error": "unauthorized"}), 401
     backup = (
         db.session.query(UploadedBackup).filter_by(backup_id=backup_id).one_or_none()

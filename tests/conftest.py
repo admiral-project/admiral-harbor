@@ -21,7 +21,7 @@ def app():
         SECRET_KEY="test-secret",
         SQLALCHEMY_DATABASE_URI="sqlite://",
         ADMIRAL_API_URL="https://admirald.test:8443",
-        ADMIRAL_SHARED_TOKEN="test-token",
+        ADMIRAL_ADMIN_TOKEN="test-token",
         ADMIRAL_CA_FILE="",
         HARBOR_UPLOAD_DIR=tempfile.mkdtemp(prefix="admiral-harbor-tests-"),
         HARBOR_BOOTSTRAP_ADMIN_USER="testadmin",

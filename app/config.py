@@ -12,7 +12,7 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     ADMIRAL_API_URL = os.environ.get("ADMIRAL_API_URL", "https://127.0.0.1:8443")
-    ADMIRAL_SHARED_TOKEN = os.environ.get("ADMIRAL_SHARED_TOKEN", "dev-token")
+    ADMIRAL_ADMIN_TOKEN = os.environ.get("ADMIRAL_ADMIN_TOKEN", "dev-token")
     ADMIRAL_CA_FILE = os.environ.get("ADMIRAL_CA_FILE", "")
     ADMIRAL_INSECURE_SKIP_VERIFY = (
         os.environ.get("ADMIRAL_INSECURE_SKIP_VERIFY", "0") == "1"
