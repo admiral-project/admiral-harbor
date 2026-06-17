@@ -32,9 +32,9 @@ def test_app_detail_page(client):
     assert '<a href="https://example.com">backups</a>' in body
 
 
-def test_dashboard(client):
+def test_client_dashboard(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
-    response = client.get("/dashboard")
+    response = client.get("/client/")
     assert response.status_code == 200
     assert b"Your managed apps" in response.data
     assert b"My Applications" in response.data
@@ -42,9 +42,9 @@ def test_dashboard(client):
     assert b"Monthly total" in response.data
 
 
-def test_instance_detail_page(client):
+def test_client_instance_detail_page(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
-    response = client.get("/instances/inst_123")
+    response = client.get("/client/instances/inst_123")
     assert response.status_code == 200
     assert b"wordpress.example.com" in response.data
     assert b"Restore" in response.data
@@ -80,9 +80,9 @@ def test_terms_policy_override():
         assert response.json["last_backup_retention_days"] == 21
 
 
-def test_billing_page(client):
+def test_client_billing_page(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
-    response = client.get("/billing")
+    response = client.get("/client/billing")
     assert response.status_code == 200
     assert b"Billing" in response.data
     assert b"wordpress" in response.data
@@ -154,13 +154,13 @@ def test_paypal_return_live_marks_order_approved_without_provision(
         order_id = order.order_id
 
     monkeypatch.setattr(
-        "app.routes.get_subscription",
+        "app.client.get_subscription",
         lambda subscription_id: {"id": subscription_id, "status": "ACTIVE"},
     )
 
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.get(
-        f"/billing/return?order_id={order_id}&token=sub_123", follow_redirects=False
+        f"/client/billing/return?order_id={order_id}&token=sub_123", follow_redirects=False
     )
     assert response.status_code in {302, 303}
 
