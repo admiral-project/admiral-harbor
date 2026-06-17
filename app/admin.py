@@ -66,7 +66,12 @@ ph = PasswordHasher()
 
 @bp.before_request
 def _ensure_authenticated():
-    if request.endpoint in ("admin.login_page", "admin.login", "admin.logout", "static"):
+    if request.endpoint in (
+        "admin.login_page",
+        "admin.login",
+        "admin.logout",
+        "static",
+    ):
         return None
     if not current_user.is_authenticated:
         return redirect(url_for("admin.login_page"))

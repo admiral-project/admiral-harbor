@@ -52,6 +52,7 @@ def create_app(config_object="app.config.Config"):
     master_key = app.config.get("HARBOR_ENCRYPTION_KEY", "")
     if master_key:
         import app.extensions as ext
+
         ext.secrets = SecretsManager(master_key)
 
     @login_manager.user_loader

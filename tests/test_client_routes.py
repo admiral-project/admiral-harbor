@@ -79,21 +79,37 @@ def test_client_deploy_as_customer(client):
 
 def test_client_blocks_anonymous_all_routes(client):
     protected = [
-        "/client/", "/client/billing", "/client/instances/inst_123",
-        "/client/profile", "/client/support", "/client/help",
+        "/client/",
+        "/client/billing",
+        "/client/instances/inst_123",
+        "/client/profile",
+        "/client/support",
+        "/client/help",
         "/client/subscriptions",
     ]
     for url in protected:
         response = client.get(url, follow_redirects=False)
-        assert response.status_code == 302, f"Expected 302 for {url}, got {response.status_code}"
+        assert (
+            response.status_code == 302
+        ), f"Expected 302 for {url}, got {response.status_code}"
 
 
 def test_client_blocks_admin_user(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     protected = [
-        "/client/", "/client/billing", "/client/instances/inst_123",
-        "/client/profile", "/client/support", "/client/help",
+        "/client/",
+        "/client/billing",
+        "/client/instances/inst_123",
+        "/client/profile",
+        "/client/support",
+        "/client/help",
     ]
     for url in protected:
         response = client.get(url, follow_redirects=False)
-        assert response.status_code == 403, f"Expected 403 for {url}, got {response.status_code}"
+        assert (
+            response.status_code == 403
+        ), f"Expected 403 for {url}, got {response.status_code}"

@@ -5,8 +5,8 @@
 
 from flask import session
 
-
 # ---- current_customer ----
+
 
 def test_current_customer_returns_customer(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
@@ -23,8 +23,13 @@ def test_current_customer_returns_none_if_no_email(client):
 
 # ---- current_admin ----
 
+
 def test_current_admin_returns_user_when_authenticated(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     response = client.get("/admin/")
     assert response.status_code == 200
 
@@ -35,6 +40,7 @@ def test_current_admin_returns_none_when_anonymous(client):
 
 
 # ---- login_required ----
+
 
 def test_login_required_passes_authenticated(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
@@ -50,12 +56,17 @@ def test_login_required_redirects_anonymous(client):
 
 
 def test_login_required_blocks_admin(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     response = client.get("/auth/profile", follow_redirects=False)
     assert response.status_code == 403
 
 
 # ---- customer_required ----
+
 
 def test_customer_required_allows_customer(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
@@ -64,7 +75,11 @@ def test_customer_required_allows_customer(client):
 
 
 def test_customer_required_blocks_admin(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     response = client.get("/client/")
     assert response.status_code == 403
 
@@ -76,8 +91,13 @@ def test_customer_required_redirects_anonymous(client):
 
 # ---- admin_required (cross-role barrier) ----
 
+
 def test_admin_required_allows_admin(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     response = client.get("/admin/")
     assert response.status_code == 200
 
@@ -96,8 +116,13 @@ def test_admin_required_redirects_anonymous_to_login(client):
 
 # ---- mutual exclusion ----
 
+
 def test_customer_login_clears_admin_session(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.get("/auth/me")
     assert response.status_code == 200
@@ -108,7 +133,11 @@ def test_customer_login_clears_admin_session(client):
 
 def test_admin_login_clears_customer_session(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     response = client.get("/auth/me")
     assert response.status_code == 401
     response = client.get("/client/")
@@ -117,27 +146,49 @@ def test_admin_login_clears_customer_session(client):
 
 # ---- cross-role barrier integration ----
 
+
 def test_customer_redirected_from_admin_routes(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     admin_urls = [
-        "/admin/", "/admin/subscriptions", "/admin/billing", "/admin/metrics",
-        "/admin/status", "/admin/apps", "/admin/audit-log", "/admin/settings",
-        "/admin/users", "/admin/lms", "/admin/branding", "/admin/integration-status",
+        "/admin/",
+        "/admin/subscriptions",
+        "/admin/billing",
+        "/admin/metrics",
+        "/admin/status",
+        "/admin/apps",
+        "/admin/audit-log",
+        "/admin/settings",
+        "/admin/users",
+        "/admin/lms",
+        "/admin/branding",
+        "/admin/integration-status",
     ]
     for url in admin_urls:
         response = client.get(url, follow_redirects=False)
-        assert response.status_code == 302, f"Expected 302 for {url}, got {response.status_code}"
+        assert (
+            response.status_code == 302
+        ), f"Expected 302 for {url}, got {response.status_code}"
 
 
 def test_admin_blocked_from_all_client_routes(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     client_urls = [
-        "/client/", "/client/billing", "/client/instances/inst_123",
-        "/client/profile", "/client/support", "/client/help",
+        "/client/",
+        "/client/billing",
+        "/client/instances/inst_123",
+        "/client/profile",
+        "/client/support",
+        "/client/help",
     ]
     for url in client_urls:
         response = client.get(url, follow_redirects=False)
-        assert response.status_code == 403, f"Expected 403 for {url}, got {response.status_code}"
+        assert (
+            response.status_code == 403
+        ), f"Expected 403 for {url}, got {response.status_code}"
 
 
 def test_logout_clears_customer_session(client):
@@ -148,15 +199,21 @@ def test_logout_clears_customer_session(client):
 
 
 def test_customer_login_redirects_to_client(client):
-    response = client.post("/auth/login", data={
-        "email": "user@example.com", "password": "secret"
-    }, follow_redirects=False)
+    response = client.post(
+        "/auth/login",
+        data={"email": "user@example.com", "password": "secret"},
+        follow_redirects=False,
+    )
     assert response.status_code == 302
     assert "/client/" in response.location
 
 
 def test_logout_clears_admin_session(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=False)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=False,
+    )
     client.post("/admin/logout")
     response = client.get("/admin/", follow_redirects=False)
     assert response.status_code == 302

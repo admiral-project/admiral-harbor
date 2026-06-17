@@ -44,9 +44,14 @@ class Customer(db.Model):
         db.String(50), nullable=False, default="overdue-policy-v1"
     )
     terms_accepted_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     def can_access(self):
@@ -83,9 +88,14 @@ class HarborAdminUser(UserMixin, db.Model):
     display_name = db.Column(db.String(255), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     def get_id(self):
@@ -167,9 +177,14 @@ class CatalogApp(db.Model):
     synced_at = db.Column(db.DateTime, nullable=True)
     sync_last_attempted_at = db.Column(db.DateTime, nullable=True)
     sync_last_error = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     @property
@@ -222,9 +237,14 @@ class CatalogAppTier(db.Model):
     display_name = db.Column(db.String(255), nullable=True)
     commercial_description = db.Column(db.Text, nullable=True)
     display_order = db.Column(db.Integer, default=0, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     __table_args__ = (
@@ -261,9 +281,13 @@ class CatalogSyncAudit(db.Model):
     total_apps_processed = db.Column(db.Integer, default=0, nullable=False)
 
     # Timestamps
-    started_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    started_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
     completed_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -307,7 +331,9 @@ class Subscription(db.Model):
     )
     tax_percent = db.Column(db.Integer, default=0, nullable=False)
     is_test_app = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -352,7 +378,9 @@ class Invoice(db.Model):
     paypal_event_id = db.Column(db.String(255), nullable=True)
     period_start = db.Column(db.String(16), nullable=True)
     period_end = db.Column(db.String(16), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -394,7 +422,9 @@ class CustomerApp(db.Model):
     storage_status = db.Column(db.String(50), nullable=False, default="ok")
     tier_name = db.Column(db.String(120), nullable=False, default="starter")
     next_billing_at = db.Column(db.String(32), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -418,7 +448,9 @@ class InstanceEvent(db.Model):
     customer_email = db.Column(db.String(255), nullable=False, index=True)
     event_type = db.Column(db.String(80), nullable=False)
     message = db.Column(db.String(500), nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -445,9 +477,14 @@ class SupportIncident(db.Model):
     status = db.Column(db.String(30), nullable=False, default="open")
     assigned_to = db.Column(db.String(255), nullable=True, index=True)
     internal_notes = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     # SLA fields
@@ -484,7 +521,9 @@ class UploadedBackup(db.Model):
     size_bytes = db.Column(db.Integer, nullable=False)
     checksum_sha256 = db.Column(db.String(64), nullable=False)
     status = db.Column(db.String(30), nullable=False, default="uploaded")
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -516,7 +555,9 @@ class RestoreRequest(db.Model):
     status = db.Column(db.String(30), nullable=False, default="pending")
     confirm_text = db.Column(db.String(255), nullable=False)
     operation_id = db.Column(db.String(120), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -539,14 +580,19 @@ class BillingEvent(db.Model):
     event_type = db.Column(db.String(120), nullable=False)
     status = db.Column(db.String(60), nullable=False)
     payload_json = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
 
 class HarborMeta(db.Model):
     key = db.Column(db.String(64), primary_key=True)
     value = db.Column(db.Text, nullable=False)
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     @classmethod
@@ -580,7 +626,10 @@ class LMSSettings(db.Model):
     encrypted_api_key = db.Column(db.Text, nullable=True)
     enabled = db.Column(db.Boolean, default=False, nullable=False)
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     @classmethod
@@ -600,9 +649,14 @@ class AppCourse(db.Model):
     course_type = db.Column(db.String(40), nullable=False)
     base_price_cents = db.Column(db.Integer, nullable=False, default=0)
     active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     def as_dict(self):
@@ -623,9 +677,14 @@ class AppCourseTierDiscount(db.Model):
     )
     tier_name = db.Column(db.String(120), nullable=False)
     discount_percent = db.Column(db.Integer, nullable=False, default=0)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     def as_dict(self):
@@ -675,7 +734,9 @@ class Order(db.Model):
     next_billing_at = db.Column(db.String(32), nullable=True)
     billing_email = db.Column(db.String(255), nullable=True)
     technical_email = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
     def as_dict(self):
         return {
@@ -708,7 +769,9 @@ class Payment(db.Model):
     amount_cents = db.Column(db.Integer, nullable=False, default=0)
     currency = db.Column(db.String(3), nullable=False, default="USD")
     status = db.Column(db.String(30), nullable=False, default="completed", index=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
 
 
 class HarborPayPalConfig(db.Model):
@@ -721,9 +784,14 @@ class HarborPayPalConfig(db.Model):
     client_id = db.Column(db.String(255), nullable=True)
     client_secret = db.Column(db.String(255), nullable=True)
     webhook_id = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
     updated_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+        db.DateTime,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
     )
 
     @staticmethod

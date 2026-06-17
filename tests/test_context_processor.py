@@ -12,10 +12,18 @@ def test_context_processor_injects_customer_on_client_routes(client):
 
 
 def test_context_processor_injects_admin_on_admin_routes(client):
-    client.post("/admin/login", data={"username": "testadmin", "password": "secret"}, follow_redirects=True)
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=True,
+    )
     response = client.get("/admin/")
     assert response.status_code == 200
-    assert b"testadmin" in response.data or b"Admin" in response.data or b"dashboard" in response.data.lower()
+    assert (
+        b"testadmin" in response.data
+        or b"Admin" in response.data
+        or b"dashboard" in response.data.lower()
+    )
 
 
 def test_context_processor_renders_public_pages_without_auth(client):

@@ -7,7 +7,6 @@ All settings not required for deployment should live here with admin UI forms,
 so the portal admin never needs shell access.
 """
 
-
 from app.models import HarborMeta
 
 # ── Key constants ──────────────────────────────────────────────────────────

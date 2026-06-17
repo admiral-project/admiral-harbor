@@ -160,7 +160,8 @@ def test_paypal_return_live_marks_order_approved_without_provision(
 
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.get(
-        f"/client/billing/return?order_id={order_id}&token=sub_123", follow_redirects=False
+        f"/client/billing/return?order_id={order_id}&token=sub_123",
+        follow_redirects=False,
     )
     assert response.status_code in {302, 303}
 

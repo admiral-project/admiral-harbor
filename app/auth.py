@@ -122,10 +122,18 @@ def login():
     allowed, remaining = login_limiter.is_allowed(ip)
     if not allowed:
         if request.is_json:
-            return jsonify({
-                "error": f"Too many login attempts. Try again in {remaining} second(s)."
-            }), 429
-        flash("Demasiados intentos de inicio de sesion. Intenta de nuevo en 30 segundos.", "error")
+            return (
+                jsonify(
+                    {
+                        "error": f"Too many login attempts. Try again in {remaining} second(s)."
+                    }
+                ),
+                429,
+            )
+        flash(
+            "Demasiados intentos de inicio de sesion. Intenta de nuevo en 30 segundos.",
+            "error",
+        )
         return redirect(url_for("auth.login_page"))
 
     if request.content_type and "application/json" not in request.content_type:
