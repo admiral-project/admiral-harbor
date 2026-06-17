@@ -587,6 +587,78 @@ tbody tr:hover { background: #f8fbff; }
 .status-degradado { background: #e0f0ff; color: #004080; border: 1px solid #b3d4f7; }
 .status-critico { background: #fbeae8; color: #c9190b; border: 1px solid #f4c7c2; }
 
+.status-hero {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ecf0f1 100%);
+}
+
+.status-hero__row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.status-hero__indicator {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 2.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.status-hero__title {
+  margin: 0 0 0.5rem;
+}
+
+.status-hero__meta {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.status-legend {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.status-legend th,
+.status-legend td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.status-legend th {
+  font-weight: 700;
+  background: #ecf0f1;
+  border-bottom-color: #bdc3c7;
+}
+
+.status-legend__dot {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.status-swatch--green { background: #27ae60; }
+.status-swatch--amber { background: #f39c12; }
+.status-swatch--orange { background: #e67e22; }
+.status-swatch--red { background: #e74c3c; }
+
+.status-text-green { color: #27ae60; }
+.status-text-red { color: #e74c3c; }
+.status-muted { color: #7f8c8d; }
+
 /* ===== Buttons ===== */
 .btn, .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-warning {
   font-size: 0.8125rem;

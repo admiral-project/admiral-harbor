@@ -57,40 +57,6 @@
  {% endwith %}
  {% block body %}{% endblock %}
  </main>
- <script>
- (function () {
- const toggle = document.querySelector(".nav-toggle");
- const nav = document.querySelector("#topnav");
- if (!toggle || !nav) return;
- toggle.addEventListener("click", function () {
- const open = nav.classList.toggle("is-open");
- toggle.setAttribute("aria-expanded", open ? "true" : "false");
- });
- })();
- </script>
- <script>
- (function () {
- const meta = document.querySelector('meta[name="csrf-token"]');
- const token = meta ? meta.getAttribute("content") : "";
- if (!token) return;
-
- function addToken(form) {
- if (!form) return;
- const method = (form.getAttribute("method") || "get").toUpperCase();
- if (method === "GET" || form.dataset.csrf === "false") return;
- if (form.querySelector('input[name="csrf_token"]')) return;
- const input = document.createElement("input");
- input.type = "hidden";
- input.name = "csrf_token";
- input.value = token;
- form.appendChild(input);
- }
-
- document.querySelectorAll("form").forEach(addToken);
- document.addEventListener("submit", function (event) {
- addToken(event.target);
- }, true);
- })();
- </script>
+ <script src="{{ url_for('static', filename='js/shell.js') }}" defer></script>
 </body>
 </html>
