@@ -159,4 +159,12 @@ def client(app):
         "instance_id": "inst_provision",
         "status": "queued",
     }
+    admiral_client.get_instance_inspect = lambda instance_id: {
+        "containers": [
+            {"name": "app", "image": "wordpress:latest", "state": "running"},
+            {"name": "db", "image": "mariadb:10", "state": "running"},
+        ],
+        "volumes": [{"name": "wp-data", "mountpoint": "/var/lib/containers/storage/volumes/wp-data"}],
+        "inspected_at": "2026-06-17T00:00:00Z",
+    }
     return app.test_client()

@@ -7,6 +7,7 @@ import json
 from flask import (
     Blueprint,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -37,6 +38,7 @@ from app.admiral_client import (
     list_apps,
     provision_app,
     get_customer_app,
+    get_instance_inspect,
     list_backups,
     get_backup,
 )
@@ -1916,6 +1918,47 @@ def instances_list():
     except Exception as e:
         flash(f"Error loading instances: {str(e)}", "error")
         return render_template("admin_instances.html", instances=[], total=0)
+
+
+@bp.route("/instances/<instance_id>/pod-status")
+@admin_required
+def instance_pod_status(instance_id):
+    """JSON endpoint returning pod status, services, and disk usage."""
+    try:
+        instance = get_customer_app(instance_id)
+    except AdmiralAPIError:
+        return jsonify({"error": "Instance not found"}), 404
+
+    inspect_data = None
+    try:
+        inspect_data = get_instance_inspect(instance_id)
+    except AdmiralAPIError:
+        pass
+
+    status = instance.get("technical_status", "unknown")
+    storage_state = instance.get("storage_state", "unknown")
+    storage_used = instance.get("storage_used_bytes", 0)
+    storage_limit = instance.get("storage_limit_bytes", 0)
+    storage_pct = instance.get("storage_used_percent", 0.0)
+
+    pod_info = {
+        "instance_id": instance_id,
+        "status": status,
+        "node_id": instance.get("node_id", ""),
+        "hostname": instance.get("hostname", ""),
+        "health_status": instance.get("health_status", "unknown"),
+        "storage": {
+            "state": storage_state,
+            "used_bytes": storage_used,
+            "limit_bytes": storage_limit,
+            "used_percent": storage_pct,
+        },
+    }
+
+    if inspect_data:
+        pod_info["inspect"] = inspect_data
+
+    return jsonify(pod_info)
 
 
 @bp.route("/instances/<instance_id>")
