@@ -171,7 +171,7 @@ def login():
         return jsonify(
             {"status": "ok", "email": email, "public_id": customer.public_id}
         )
-    return redirect(url_for("main.dashboard"))
+    return redirect(url_for("client.dashboard"))
 
 
 @bp.route("/register", methods=["POST"])
