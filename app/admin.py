@@ -64,6 +64,14 @@ bp = Blueprint("admin", __name__, url_prefix="/admin")
 ph = PasswordHasher()
 
 
+@bp.before_request
+def _ensure_authenticated():
+    if request.endpoint in ("admin.login_page", "admin.login", "admin.logout", "static"):
+        return None
+    if not current_user.is_authenticated:
+        return redirect(url_for("admin.login_page"))
+
+
 def _set_admin_session(admin):
     session["admin_username"] = admin.username
     session["admin_display_name"] = admin.display_name
@@ -1703,7 +1711,7 @@ def customer_detail(customer_id):
     customer = db.session.query(Customer).get_or_404(customer_id)
     subscriptions = (
         db.session.query(Subscription)
-        .filter_by(customer_id=customer.id)
+        .filter_by(customer_email=customer.email)
         .order_by(Subscription.created_at.desc())
         .all()
     )

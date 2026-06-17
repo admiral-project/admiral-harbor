@@ -13,7 +13,7 @@ from app.admin import bp as admin_bp
 from app.branding import ensure_default_portal_settings, get_portal_branding
 from app.auth import bp as auth_bp
 from app.catalog import bp as catalog_bp
-from app.customer import customer_bp
+from app.client import bp as client_bp
 from app.csrf import init_csrf_protection
 from app.extensions import alembic, db, login_manager
 from app.markdown import render_markdown
@@ -21,7 +21,7 @@ from app.secrets_manager import SecretsManager
 from app.identity import current_admin, current_customer
 from app.models import HarborAdminUser
 from app.security import init_security_headers, validate_production_config
-from app.routes import bp as main_bp
+from app.portal import bp as main_bp
 
 logger = logging.getLogger("admiral-harbor")
 
@@ -65,7 +65,7 @@ def create_app(config_object="app.config.Config"):
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(catalog_bp)
-    app.register_blueprint(customer_bp)
+    app.register_blueprint(client_bp)
     app.register_blueprint(main_bp)
 
     import json as _json
@@ -84,12 +84,17 @@ def create_app(config_object="app.config.Config"):
     @app.context_processor
     def inject_principals():
         portal_branding = get_portal_branding()
-        return {
-            "customer": current_customer(),
-            "admin_user": current_admin(),
-            "current_user": current_user,
-            **portal_branding,
-        }
+        ctx = {**portal_branding}
+        if request.endpoint:
+            if request.endpoint.startswith("admin."):
+                ctx["admin_user"] = current_admin()
+                ctx["current_user"] = current_user
+            elif request.endpoint.startswith("client."):
+                ctx["customer"] = current_customer()
+            else:
+                ctx["customer"] = current_customer()
+                ctx["current_user"] = current_user
+        return ctx
 
     with app.app_context():
         try:
