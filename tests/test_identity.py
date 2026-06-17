@@ -163,9 +163,9 @@ def test_customer_redirected_from_admin_routes(client):
     ]
     for url in admin_urls:
         response = client.get(url, follow_redirects=False)
-        assert response.status_code == 302, (
-            f"Expected 302 for {url}, got {response.status_code}"
-        )
+        assert (
+            response.status_code == 302
+        ), f"Expected 302 for {url}, got {response.status_code}"
 
 
 def test_admin_blocked_from_all_client_routes(client):
@@ -184,9 +184,9 @@ def test_admin_blocked_from_all_client_routes(client):
     ]
     for url in client_urls:
         response = client.get(url, follow_redirects=False)
-        assert response.status_code == 403, (
-            f"Expected 403 for {url}, got {response.status_code}"
-        )
+        assert (
+            response.status_code == 403
+        ), f"Expected 403 for {url}, got {response.status_code}"
 
 
 def test_logout_clears_customer_session(client):

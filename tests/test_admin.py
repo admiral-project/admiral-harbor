@@ -35,17 +35,32 @@ def test_instance_pod_status_requires_auth(client):
 
 
 def test_instance_pod_status_returns_json(client):
-    with patch.object(admin_module, "get_customer_app", return_value={
-        "id": "inst_123", "technical_status": "running", "storage_state": "ok",
-        "storage_used_bytes": 500, "storage_limit_bytes": 10000, "storage_used_percent": 5.0,
-    }), patch.object(admin_module, "get_instance_inspect", return_value={
-        "containers": [
-            {"name": "app", "image": "wordpress:latest", "state": "running"},
-            {"name": "db", "image": "mariadb:10", "state": "running"},
-        ],
-        "volumes": [{"name": "wp-data", "mountpoint": "/vol/wp-data"}],
-        "inspected_at": "2026-06-17T00:00:00Z",
-    }):
+    with (
+        patch.object(
+            admin_module,
+            "get_customer_app",
+            return_value={
+                "id": "inst_123",
+                "technical_status": "running",
+                "storage_state": "ok",
+                "storage_used_bytes": 500,
+                "storage_limit_bytes": 10000,
+                "storage_used_percent": 5.0,
+            },
+        ),
+        patch.object(
+            admin_module,
+            "get_instance_inspect",
+            return_value={
+                "containers": [
+                    {"name": "app", "image": "wordpress:latest", "state": "running"},
+                    {"name": "db", "image": "mariadb:10", "state": "running"},
+                ],
+                "volumes": [{"name": "wp-data", "mountpoint": "/vol/wp-data"}],
+                "inspected_at": "2026-06-17T00:00:00Z",
+            },
+        ),
+    ):
         client.post(
             "/admin/login",
             data={"username": "testadmin", "password": "secret"},
@@ -65,9 +80,22 @@ def test_instance_pod_status_returns_json(client):
 
 def test_instance_pod_status_without_inspect(client):
     """Pod-status works even when inspect data is unavailable."""
-    with patch.object(admin_module, "get_customer_app", return_value={
-        "id": "inst_123", "technical_status": "running", "storage_state": "ok",
-    }), patch.object(admin_module, "get_instance_inspect", side_effect=AdmiralAPIError("not found")):
+    with (
+        patch.object(
+            admin_module,
+            "get_customer_app",
+            return_value={
+                "id": "inst_123",
+                "technical_status": "running",
+                "storage_state": "ok",
+            },
+        ),
+        patch.object(
+            admin_module,
+            "get_instance_inspect",
+            side_effect=AdmiralAPIError("not found"),
+        ),
+    ):
         client.post(
             "/admin/login",
             data={"username": "testadmin", "password": "secret"},
