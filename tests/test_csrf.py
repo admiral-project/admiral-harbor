@@ -110,4 +110,4 @@ def test_csrf_token_exposed_in_response_headers(client):
 
 def test_csrf_token_in_context_processor(client):
     response = client.get("/")
-    assert b"csrf_token" in response.data or b'name="csrf_token"' in response.data
+    assert b"csrf-token" in response.data or b'name="csrf-token"' in response.data
