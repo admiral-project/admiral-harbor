@@ -49,6 +49,16 @@
   </div>
 </section>
 
+{% if instance.storage_status not in ["ok", "unknown"] %}
+<div class="storage-alert tone-{{ storage_tone }}">
+  <div class="storage-alert__icon">{% if storage_tone == "danger" %}<span class="alert-icon">&#9888;</span>{% else %}<span class="alert-icon">&#9888;</span>{% endif %}</div>
+  <div class="storage-alert__body">
+    <strong>Storage {{ storage_label|lower }}</strong>
+    <p>Your instance has reached the {{ storage_label|lower }}. Please review your storage usage. If the quota is exceeded for an extended period, the instance may be automatically paused.</p>
+  </div>
+</div>
+{% endif %}
+
 <div class="detail-layout">
   <div class="detail-main">
     <section class="panel">

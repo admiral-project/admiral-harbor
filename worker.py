@@ -14,7 +14,10 @@ Usage:
 """
 
 import logging
+import smtplib
+import ssl
 from datetime import datetime, timedelta
+from email.message import EmailMessage
 
 from app import create_app
 from app.admiral_client import (
@@ -233,6 +236,87 @@ def _reconcile_paypal_subscriptions(app):
     return actions, errors
 
 
+ALERT_COOLDOWN_HOURS = 24
+
+
+def _storage_alert_key(customer_email, instance_id):
+    return f"storage_alert_sent_at:{customer_email}:{instance_id}"
+
+
+def _needs_storage_alert(customer_email, instance_id, new_status):
+    storage_warning_states = {"warning", "critical", "over_quota", "grace_period"}
+    if new_status not in storage_warning_states:
+        return False
+    key = _storage_alert_key(customer_email, instance_id)
+    last_sent = HarborMeta.get(key)
+    if last_sent:
+        try:
+            elapsed = datetime.utcnow() - datetime.fromisoformat(last_sent)
+            if elapsed.total_seconds() < ALERT_COOLDOWN_HOURS * 3600:
+                return False
+        except (ValueError, TypeError):
+            pass
+    return True
+
+
+def _send_storage_alert(app, customer_email, instance_id, new_status, customer_name=""):
+    host = app.config.get("HARBOR_SMTP_HOST", "")
+    port = app.config.get("HARBOR_SMTP_PORT", 587)
+    username = app.config.get("HARBOR_SMTP_USERNAME", "")
+    password = app.config.get("HARBOR_SMTP_PASSWORD", "")
+    smtp_from = app.config.get("HARBOR_SMTP_FROM", "")
+    use_tls = app.config.get("HARBOR_SMTP_USE_TLS", False)
+    use_ssl = app.config.get("HARBOR_SMTP_USE_SSL", False)
+
+    if not host or not smtp_from:
+        log.warning("SMTP not configured: cannot send storage alert for %s", customer_email)
+        return False
+
+    status_labels = {
+        "warning": "warning threshold",
+        "critical": "critical threshold",
+        "over_quota": "quota exceeded",
+        "grace_period": "grace period started",
+    }
+    label = status_labels.get(new_status, new_status)
+
+    subject = f"[Admiral] Storage {label} for instance {instance_id}"
+    body = (
+        f"Hello{ ' ' + customer_name if customer_name else ''},\n\n"
+        f"This is an automated notification from Admiral.\n\n"
+        f"Your instance {instance_id} has reached the storage {label}.\n"
+        f"Current storage state: {new_status}\n\n"
+        f"Please review your storage usage and consider upgrading your plan or "
+        f"cleaning up unused data to avoid service disruption.\n\n"
+        f"If the quota is exceeded for an extended period, the instance may be "
+        f"automatically paused.\n\n"
+        f"Regards,\nAdmiral Platform"
+    )
+
+    try:
+        msg = EmailMessage()
+        msg["From"] = smtp_from
+        msg["To"] = customer_email
+        msg["Subject"] = subject
+        msg.set_content(body)
+
+        smtp_factory = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
+        with smtp_factory(host, port, timeout=10) as smtp:
+            if use_tls and not use_ssl:
+                smtp.starttls(context=ssl.create_default_context())
+            if username and password:
+                smtp.login(username, password)
+            smtp.send_message(msg)
+
+        key = _storage_alert_key(customer_email, instance_id)
+        HarborMeta.set(key, datetime.utcnow().isoformat())
+        log.info("Storage alert sent to %s for instance %s (state=%s)", customer_email, instance_id, new_status)
+        return True
+    except Exception as exc:
+        log.error("Failed to send storage alert to %s: %s", customer_email, exc)
+        return False
+
+
 def _sync_remote_instances(app):
     actions = 0
     errors = 0
@@ -254,9 +338,22 @@ def _sync_remote_instances(app):
             )
             if local is None:
                 continue
+            old_storage = local.storage_status
+            new_storage = item.get("storage_state", old_storage)
             local.status = item.get("technical_status", local.status)
-            local.storage_status = item.get("storage_state", local.storage_status)
+            local.storage_status = new_storage
             actions += 1
+
+            if new_storage != old_storage and _needs_storage_alert(
+                customer.email, item["id"], new_storage
+            ):
+                _send_storage_alert(
+                    app,
+                    customer.email,
+                    item["id"],
+                    new_storage,
+                    customer_name=customer.display_name,
+                )
 
     db.session.commit()
     return actions, errors
