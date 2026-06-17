@@ -1349,13 +1349,13 @@ def sync_catalog():
             AuditLog(
                 actor=username,
                 action="sync_catalog",
-                detail=f"Synced catalog: {result['synced']} new, {result['updated']} updated, {result['marked_missing']} marked missing",
+                detail=f"Synced catalog: {result['synced']} new, {result['updated']} updated, {result['marked_missing']} marked missing",  # noqa: E501
                 ip_address=request.remote_addr or "",
             )
         )
         db.session.commit()
         flash(
-            f"Catalog synced: {result['synced']} new, {result['updated']} updated, {result['marked_missing']} marked missing.",
+            f"Catalog synced: {result['synced']} new, {result['updated']} updated, {result['marked_missing']} marked missing.",  # noqa: E501
             "success",
         )
     else:

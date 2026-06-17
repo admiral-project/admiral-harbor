@@ -40,7 +40,7 @@ def validate_production_config(config):
     if (
         not secret_key
         or secret_key.startswith("dev-")
-        or secret_key == "dev-secret-change-me"
+        or secret_key == "dev-secret-change-me"  # nosec B105 - checking for dev value
     ):
         errors.append("SECRET_KEY must be replaced before production")
     if len(secret_key) < 32:
@@ -49,7 +49,7 @@ def validate_production_config(config):
     if (
         not admiral_token
         or admiral_token.startswith("dev-")
-        or admiral_token == "dev-token"
+        or admiral_token == "dev-token"  # nosec B105 - checking for dev value
     ):
         errors.append("ADMIRAL_SHARED_TOKEN must be replaced before production")
 

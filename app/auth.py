@@ -288,7 +288,7 @@ def register():
         )
     else:
         flash(
-            "Cuenta creada. Harbor no pudo enviar el correo de confirmación, así que el admin de Harbor puede aprobarla manualmente.",
+            "Cuenta creada. Harbor no pudo enviar el correo de confirmacion, asi que el admin de Harbor puede aprobarla manualmente.",  # noqa: E501
             "warning",
         )
     return redirect(url_for("auth.login_page"))

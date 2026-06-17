@@ -124,8 +124,8 @@ def create_app(config_object="app.config.Config"):
                     "HARBOR_BOOTSTRAP_ADMIN_USER/HARBOR_BOOTSTRAP_ADMIN_PASSWORD are not set; "
                     "falling back to insecure bootstrap defaults"
                 )
-                bootstrap_admin_user = "admin"
-                bootstrap_admin_password = "secret"
+                bootstrap_admin_user = "admin"  # nosec - dev fallback only
+                bootstrap_admin_password = "secret"  # nosec - dev fallback only
             HarborAdminUser.ensure_default_admin(
                 username=bootstrap_admin_user,
                 password=bootstrap_admin_password,

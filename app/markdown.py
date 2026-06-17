@@ -27,4 +27,4 @@ def render_markdown(value):
     text = str(value)
     if not text.strip():
         return Markup("")
-    return Markup(_renderer()(text))
+    return Markup(_renderer()(text))  # nosec B704 - mistune escapes HTML

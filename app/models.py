@@ -102,7 +102,7 @@ class HarborAdminUser(UserMixin, db.Model):
         return self.username
 
     @classmethod
-    def ensure_default_admin(
+    def ensure_default_admin(  # nosec B107 - sentinel defaults
         cls, username="", password="", display_name="Harbor Bootstrap Admin"
     ):
         if (

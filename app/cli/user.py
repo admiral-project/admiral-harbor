@@ -136,7 +136,7 @@ def cmd_list(output):
     print(f"{'---':30} {'---':25} {'---':8} {'---':8} {'---':20}")
     for c in customers:
         print(
-            f"{c.email:30} {(c.display_name or ''):25} {str(c.is_active):8} {(c.country or ''):8} {str(c.created_at):20}"
+            f"{c.email:30} {(c.display_name or ''):25} {str(c.is_active):8} {(c.country or ''):8} {str(c.created_at):20}"  # noqa: E501
         )
 
 
