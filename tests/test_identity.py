@@ -3,7 +3,6 @@
 
 """Tests for role decorators and identity helpers (customer_required, admin_required, login_required)."""
 
-
 # ---- current_customer ----
 
 

@@ -99,10 +99,11 @@ def create_app(config_object="app.config.Config"):
 
     with app.app_context():
         try:
-            if not _database_has_tables():
+            if _database_has_tables():
+                alembic.upgrade()
+            else:
                 db.create_all()
-
-            ensure_default_portal_settings()
+                alembic.stamp()
 
             ensure_default_portal_settings()
             bootstrap_admin_user = app.config.get("HARBOR_BOOTSTRAP_ADMIN_USER", "")
