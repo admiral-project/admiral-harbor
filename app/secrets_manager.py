@@ -19,7 +19,12 @@ class SecretsManager:
     - Base64-encoded output
     """
 
+    class EncryptionError(Exception):
+        """Raised when a secret cannot be decrypted."""
+
     def __init__(self, master_key: str):
+        if not master_key:
+            raise ValueError("HARBOR_ENCRYPTION_KEY is required")
         key_bytes = hashlib.sha256(master_key.encode()).digest()
         self.fernet = Fernet(base64.urlsafe_b64encode(key_bytes))
 
@@ -30,24 +35,25 @@ class SecretsManager:
     def decrypt(self, ciphertext: str) -> str:
         """Decrypt base64-encoded ciphertext. Returns plaintext string.
 
-        If the value does not look like a Fernet token (legacy plaintext),
-        returns it as-is with a warning.
+        Raises EncryptionError if the value is not a valid Fernet token
+        or decryption fails.
         """
-        if not ciphertext or not ciphertext.startswith("gAAAA"):
-            if ciphertext:
-                logger.warning(
-                    "Secret value does not look encrypted; treating as plaintext "
-                    "(migrate by re-saving the secret through the admin UI)"
-                )
-            return ciphertext
+        if not ciphertext:
+            return ""
+        if not ciphertext.startswith("gAAAA"):
+            raise self.EncryptionError(
+                "Secret value does not look encrypted; "
+                "HARBOR_ENCRYPTION_KEY may have changed or the value was "
+                "stored in plaintext before encryption was enabled"
+            )
         try:
             return self.fernet.decrypt(ciphertext.encode()).decode()
         except InvalidToken:
-            logger.error(
+            raise self.EncryptionError(
                 "Secret value has Fernet prefix but decryption failed; "
                 "HARBOR_ENCRYPTION_KEY may have changed since this value was stored"
-            )
-            return ciphertext
+            ) from None
         except Exception as exc:
-            logger.error("Failed to decrypt secret: %s", exc)
-            return ciphertext
+            raise self.EncryptionError(
+                f"Failed to decrypt secret: {exc}"
+            ) from exc

@@ -19,12 +19,17 @@ class PayPalError(RuntimeError):
 def _resolve_secret(value):
     """Decrypt a stored secret if encrypted; otherwise return as-is."""
     from app.extensions import secrets as ext_secrets
+    from app.secrets_manager import SecretsManager
 
     if ext_secrets is None or not value:
         return value
-    decrypted = ext_secrets.decrypt(value)
-    if decrypted != value:
-        return decrypted
+    try:
+        decrypted = ext_secrets.decrypt(value)
+        if decrypted != value:
+            return decrypted
+    except SecretsManager.EncryptionError:
+        logger.error("Could not decrypt PayPal client_secret")
+        return value
     return value
 
 
