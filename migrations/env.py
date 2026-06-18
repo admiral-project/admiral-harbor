@@ -2,9 +2,10 @@ import sys
 from logging.config import fileConfig
 
 from alembic import context
+from alembic.config import Config as AlembicConfig
 from sqlalchemy import engine_from_config, pool
 
-config = context.config
+config = getattr(context, "config", None) or AlembicConfig()
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -41,7 +42,10 @@ def run_migrations_online() -> None:
             context.run_migrations()
 
 
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+try:
+    if context.is_offline_mode():
+        run_migrations_offline()
+    else:
+        run_migrations_online()
+except NameError:
+    pass
