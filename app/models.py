@@ -848,3 +848,12 @@ class CustomerReply(db.Model):
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True
     )
+
+
+class RateLimit(db.Model):
+    """Rate limiting state backed by PostgreSQL for multi-worker support."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    identifier = db.Column(db.String(255), nullable=False, index=True)
+    window_start = db.Column(db.Float, nullable=False)
+    attempts = db.Column(db.Integer, default=0, nullable=False)
