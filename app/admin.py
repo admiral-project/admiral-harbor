@@ -31,7 +31,7 @@ from app.branding import (
     set_tax_rates,
     update_portal_branding,
 )
-from app.identity import admin_required
+from app.identity import admin_required, create_user_session, clear_user_session
 from app.admiral_client import (
     AdmiralAPIError,
     get_operation,
@@ -82,6 +82,7 @@ def _ensure_authenticated():
 def _set_admin_session(admin):
     session["admin_username"] = admin.username
     session["admin_display_name"] = admin.display_name
+    create_user_session("admin", admin.username)
 
 
 @bp.route("/login", methods=["GET"])
@@ -131,6 +132,7 @@ def logout():
         )
     )
     db.session.commit()
+    clear_user_session()
     logout_user()
     session.clear()
     return redirect(url_for("main.index"))
@@ -1150,10 +1152,7 @@ def lms_settings():
         settings.base_url = request.form.get("base_url", "").strip() or None
         api_key = request.form.get("api_key", "").strip()
         if api_key:
-            if ext_secrets is not None:
-                settings.encrypted_api_key = ext_secrets.encrypt(api_key)
-            else:
-                settings.encrypted_api_key = api_key
+            settings.encrypted_api_key = ext_secrets.encrypt(api_key)
         settings.enabled = request.form.get("enabled") == "on" and bool(
             settings.base_url
         )
@@ -1832,10 +1831,7 @@ def paypal_config():
 
         config.mode = mode
         config.client_id = client_id
-        if ext_secrets is not None:
-            config.client_secret = ext_secrets.encrypt(client_secret)
-        else:
-            config.client_secret = client_secret
+        config.client_secret = ext_secrets.encrypt(client_secret)
         config.webhook_id = webhook_id or None
 
         db.session.add(

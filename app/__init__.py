@@ -18,7 +18,11 @@ from app.csrf import init_csrf_protection
 from app.extensions import alembic, db, login_manager
 from app.markdown import render_markdown
 from app.secrets_manager import SecretsManager
-from app.identity import current_admin, current_customer
+from app.identity import (
+    check_session_idle_timeout,
+    current_admin,
+    current_customer,
+)
 from app.models import HarborAdminUser
 from app.security import init_security_headers, validate_production_config
 from app.portal import bp as main_bp
@@ -50,10 +54,9 @@ def create_app(config_object="app.config.Config"):
 
     # Initialize SecretsManager with the encryption key
     master_key = app.config.get("HARBOR_ENCRYPTION_KEY", "")
-    if master_key:
-        import app.extensions as ext
+    import app.extensions as ext
 
-        ext.secrets = SecretsManager(master_key)
+    ext.secrets = SecretsManager(master_key)
 
     @login_manager.user_loader
     def load_admin(username):
@@ -96,6 +99,19 @@ def create_app(config_object="app.config.Config"):
                 ctx["customer"] = current_customer()
                 ctx["current_user"] = current_user
         return ctx
+
+    @app.before_request
+    def _check_session_idle():
+        from flask import jsonify as _jsonify, flash as _flash
+
+        if request.endpoint in ("static",):
+            return
+        result = check_session_idle_timeout()
+        if result == "expired":
+            _flash("Your session has expired. Please log in again.", "warning")
+            if request.path.startswith("/api/"):
+                return _jsonify({"error": "session expired"}), 401
+            return redirect(url_for("main.index"))
 
     with app.app_context():
         try:

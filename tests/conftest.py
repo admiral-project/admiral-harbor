@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
+os.environ["HARBOR_ENCRYPTION_KEY"] = "test-encryption-key-for-testing"
+
 import tempfile
 
 import pytest
@@ -26,6 +30,7 @@ def app():
         HARBOR_UPLOAD_DIR=tempfile.mkdtemp(prefix="admiral-harbor-tests-"),
         HARBOR_BOOTSTRAP_ADMIN_USER="testadmin",
         HARBOR_BOOTSTRAP_ADMIN_PASSWORD="secret",
+        HARBOR_ENCRYPTION_KEY="test-encryption-key-for-testing",
     )
     return app
 
