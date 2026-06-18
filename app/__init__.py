@@ -130,19 +130,20 @@ def create_app(config_object="app.config.Config"):
                 "HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME",
                 "Harbor Bootstrap Admin",
             )
-            is_production = os.environ.get("ENV", "").lower() == "production"
+            env = os.environ.get("ENV", "").lower()
             if not bootstrap_admin_user or not bootstrap_admin_password:
-                if is_production:
+                if env in ("dev", "development"):
+                    logger.warning(
+                        "HARBOR_BOOTSTRAP_ADMIN_USER/HARBOR_BOOTSTRAP_ADMIN_PASSWORD are not set; "
+                        "falling back to insecure bootstrap defaults (acceptable for development)"
+                    )
+                    bootstrap_admin_user = "admin"  # nosec - dev fallback only
+                    bootstrap_admin_password = "secret"  # nosec - dev fallback only
+                else:
                     raise ValueError(
                         "HARBOR_BOOTSTRAP_ADMIN_USER and HARBOR_BOOTSTRAP_ADMIN_PASSWORD "
-                        "must be set when ENV=production"
+                        "must be set (set ENV=dev or ENV=development for development defaults)"
                     )
-                logger.warning(
-                    "HARBOR_BOOTSTRAP_ADMIN_USER/HARBOR_BOOTSTRAP_ADMIN_PASSWORD are not set; "
-                    "falling back to insecure bootstrap defaults"
-                )
-                bootstrap_admin_user = "admin"  # nosec - dev fallback only
-                bootstrap_admin_password = "secret"  # nosec - dev fallback only
             HarborAdminUser.ensure_default_admin(
                 username=bootstrap_admin_user,
                 password=bootstrap_admin_password,

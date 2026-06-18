@@ -4,6 +4,7 @@
 import os
 
 os.environ["HARBOR_ENCRYPTION_KEY"] = "test-encryption-key-for-testing"
+os.environ["ENV"] = "development"
 
 import tempfile
 
