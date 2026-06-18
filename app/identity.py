@@ -1,7 +1,7 @@
 from functools import wraps
 from secrets import token_urlsafe
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from flask import abort, flash, g, redirect, request, session, url_for
 from flask_login import current_user
 
@@ -111,9 +111,7 @@ def check_session_idle_timeout():
     if not session_id:
         return None
     record = (
-        db.session.query(UserSession)
-        .filter_by(session_id=session_id)
-        .one_or_none()
+        db.session.query(UserSession).filter_by(session_id=session_id).one_or_none()
     )
     if record is None:
         session.pop("_session_id", None)

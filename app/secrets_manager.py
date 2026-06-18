@@ -54,6 +54,4 @@ class SecretsManager:
                 "HARBOR_ENCRYPTION_KEY may have changed since this value was stored"
             ) from None
         except Exception as exc:
-            raise self.EncryptionError(
-                f"Failed to decrypt secret: {exc}"
-            ) from exc
+            raise self.EncryptionError(f"Failed to decrypt secret: {exc}") from exc

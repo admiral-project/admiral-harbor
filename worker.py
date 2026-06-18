@@ -269,7 +269,9 @@ def _send_storage_alert(app, customer_email, instance_id, new_status, customer_n
     use_ssl = app.config.get("HARBOR_SMTP_USE_SSL", False)
 
     if not host or not smtp_from:
-        log.warning("SMTP not configured: cannot send storage alert for %s", customer_email)
+        log.warning(
+            "SMTP not configured: cannot send storage alert for %s", customer_email
+        )
         return False
 
     status_labels = {
@@ -310,7 +312,12 @@ def _send_storage_alert(app, customer_email, instance_id, new_status, customer_n
 
         key = _storage_alert_key(customer_email, instance_id)
         HarborMeta.set(key, datetime.utcnow().isoformat())
-        log.info("Storage alert sent to %s for instance %s (state=%s)", customer_email, instance_id, new_status)
+        log.info(
+            "Storage alert sent to %s for instance %s (state=%s)",
+            customer_email,
+            instance_id,
+            new_status,
+        )
         return True
     except Exception as exc:
         log.error("Failed to send storage alert to %s: %s", customer_email, exc)

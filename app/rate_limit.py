@@ -18,16 +18,21 @@ class RateLimiter:
         now = time.time()
         cutoff = now - self.window_seconds
 
-        entry = db.session.query(RateLimit).filter(
-            RateLimit.identifier == identifier
-        ).with_for_update().first()
+        entry = (
+            db.session.query(RateLimit)
+            .filter(RateLimit.identifier == identifier)
+            .with_for_update()
+            .first()
+        )
 
         if entry is None:
-            db.session.add(RateLimit(
-                identifier=identifier,
-                window_start=now,
-                attempts=1,
-            ))
+            db.session.add(
+                RateLimit(
+                    identifier=identifier,
+                    window_start=now,
+                    attempts=1,
+                )
+            )
             db.session.commit()
             return True, 0
 
@@ -47,7 +52,5 @@ class RateLimiter:
         return True, 0
 
     def reset(self, identifier):
-        db.session.query(RateLimit).filter(
-            RateLimit.identifier == identifier
-        ).delete()
+        db.session.query(RateLimit).filter(RateLimit.identifier == identifier).delete()
         db.session.commit()

@@ -21,9 +21,7 @@ class Config:
     HARBOR_MAX_BACKUP_UPLOAD_BYTES = int(
         os.environ.get("HARBOR_MAX_BACKUP_UPLOAD_BYTES", str(512 * 1024 * 1024))
     )
-    HARBOR_ENCRYPTION_KEY = os.environ.get(
-        "HARBOR_ENCRYPTION_KEY", ""
-    )
+    HARBOR_ENCRYPTION_KEY = os.environ.get("HARBOR_ENCRYPTION_KEY", "")
     HARBOR_PAYPAL_CLIENT_ID = os.environ.get("HARBOR_PAYPAL_CLIENT_ID", "")
     HARBOR_PAYPAL_CLIENT_SECRET = os.environ.get("HARBOR_PAYPAL_CLIENT_SECRET", "")
     HARBOR_PAYPAL_WEBHOOK_ID = os.environ.get("HARBOR_PAYPAL_WEBHOOK_ID", "")

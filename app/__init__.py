@@ -111,6 +111,8 @@ def create_app(config_object="app.config.Config"):
             _flash("Your session has expired. Please log in again.", "warning")
             if request.path.startswith("/api/"):
                 return _jsonify({"error": "session expired"}), 401
+            from flask import redirect, url_for
+
             return redirect(url_for("main.index"))
 
     with app.app_context():

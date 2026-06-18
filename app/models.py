@@ -869,8 +869,12 @@ class UserSession(db.Model):
     user_type = db.Column(db.String(20), nullable=False)
     user_identifier = db.Column(db.String(255), nullable=False)
     last_activity_at = db.Column(
-        db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+        db.DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
     created_at = db.Column(
-        db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+        db.DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
