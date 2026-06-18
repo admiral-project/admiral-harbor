@@ -857,3 +857,20 @@ class RateLimit(db.Model):
     identifier = db.Column(db.String(255), nullable=False, index=True)
     window_start = db.Column(db.Float, nullable=False)
     attempts = db.Column(db.Integer, default=0, nullable=False)
+
+
+class UserSession(db.Model):
+    """Server-side session tracking for idle timeout enforcement."""
+
+    __tablename__ = "user_session"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    user_type = db.Column(db.String(20), nullable=False)
+    user_identifier = db.Column(db.String(255), nullable=False)
+    last_activity_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
+    created_at = db.Column(
+        db.DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )

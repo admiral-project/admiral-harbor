@@ -24,7 +24,12 @@ from flask import (
 from flask_login import logout_user
 
 from app.extensions import db
-from app.identity import current_customer, login_required
+from app.identity import (
+    clear_user_session,
+    create_user_session,
+    current_customer,
+    login_required,
+)
 from app.models import AuditLog, Customer
 from app.rate_limit import RateLimiter
 
@@ -41,6 +46,7 @@ def _login_customer(customer):
     session["customer_token"] = f"customer:{customer.public_id}"
     session["customer_email"] = customer.email
     session["customer_public_id"] = customer.public_id
+    create_user_session("customer", customer.email)
 
 
 def _token_hash(token):
@@ -340,6 +346,7 @@ def confirm_email(token):
 
 @bp.route("/logout", methods=["POST"])
 def logout():
+    clear_user_session()
     session.pop("customer_token", None)
     session.pop("customer_email", None)
     session.pop("customer_public_id", None)
