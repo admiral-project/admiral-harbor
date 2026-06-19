@@ -16,7 +16,7 @@ Usage:
 import logging
 import smtplib
 import ssl
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 
 from app import create_app
@@ -49,7 +49,7 @@ def _generate_invoices(app):
 
     actions = 0
     errors = 0
-    today = datetime.utcnow().date()
+    today = datetime.now(UTC).date()
 
     due = (
         db.session.query(Subscription)
@@ -106,11 +106,11 @@ def _generate_invoices(app):
             total_cents=total_cents,
             status="paid" if paypal_active else "pending",
             period_start=sub.next_billing_at,
-            period_end=(datetime.utcnow() + timedelta(days=30)).date().isoformat(),
+            period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         )
         db.session.add(invoice)
         sub.next_billing_at = (
-            (datetime.utcnow() + timedelta(days=30)).date().isoformat()
+            (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
         )
         actions += 1
         log.info(
@@ -126,7 +126,7 @@ def _generate_invoices(app):
 def _enforce_payment_policy(app):
     overdue_suspend_days = app.config["HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"]
     overdue_deprovision_days = app.config["HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"]
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     actions = 0
     errors = 0
 
@@ -251,7 +251,7 @@ def _needs_storage_alert(customer_email, instance_id, new_status):
     last_sent = HarborMeta.get(key)
     if last_sent:
         try:
-            elapsed = datetime.utcnow() - datetime.fromisoformat(last_sent)
+            elapsed = datetime.now(UTC) - datetime.fromisoformat(last_sent)
             if elapsed.total_seconds() < ALERT_COOLDOWN_HOURS * 3600:
                 return False
         except (ValueError, TypeError):
@@ -284,7 +284,7 @@ def _send_storage_alert(app, customer_email, instance_id, new_status, customer_n
 
     subject = f"[Admiral] Storage {label} for instance {instance_id}"
     body = (
-        f"Hello{ ' ' + customer_name if customer_name else ''},\n\n"
+        f"Hello{' ' + customer_name if customer_name else ''},\n\n"
         f"This is an automated notification from Admiral.\n\n"
         f"Your instance {instance_id} has reached the storage {label}.\n"
         f"Current storage state: {new_status}\n\n"
@@ -311,7 +311,7 @@ def _send_storage_alert(app, customer_email, instance_id, new_status, customer_n
             smtp.send_message(msg)
 
         key = _storage_alert_key(customer_email, instance_id)
-        HarborMeta.set(key, datetime.utcnow().isoformat())
+        HarborMeta.set(key, datetime.now(UTC).isoformat())
         log.info(
             "Storage alert sent to %s for instance %s (state=%s)",
             customer_email,
@@ -428,7 +428,7 @@ def _last_worker_run_at():
 def main():
     app = create_app()
     with app.app_context():
-        started_at = datetime.utcnow()
+        started_at = datetime.now(UTC)
         log.info("Worker started at %s", started_at.isoformat())
 
         total_actions = 0
@@ -454,13 +454,13 @@ def main():
         total_actions += sa
         total_errors += se
 
-        HarborMeta.set("last_worker_run_at", datetime.utcnow().isoformat())
+        HarborMeta.set("last_worker_run_at", datetime.now(UTC).isoformat())
 
         summary = f"Actions: {total_actions}, Errors: {total_errors}"
         db.session.add(
             WorkerLog(
                 started_at=started_at,
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(UTC),
                 actions_taken=total_actions,
                 errors=total_errors,
                 summary=summary,
