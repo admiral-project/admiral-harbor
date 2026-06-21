@@ -6,6 +6,9 @@ import os
 
 class Config:
     SECRET_KEY = os.environ.get("HARBOR_SECRET_KEY", "dev-secret-change-me")
+    ALEMBIC = {
+        "version_locations": ["migrations/versions"],
+    }
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "HARBOR_DATABASE_URL",
         "sqlite:///harbor.db",
