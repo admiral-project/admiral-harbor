@@ -1,10 +1,13 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import ipaddress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 from uuid import uuid4
+
+from sqlalchemy import text
 
 from flask import (
     Blueprint,
@@ -82,6 +85,22 @@ def _event(instance_id, customer_email, event_type, message):
     db.session.commit()
 
 
+def _is_allowed_ip(remote_addr):
+    if not remote_addr:
+        return False
+    try:
+        addr = ipaddress.ip_address(remote_addr)
+        if addr == ipaddress.ip_address("127.0.0.1"):
+            return True
+        if addr == ipaddress.ip_address("::1"):
+            return True
+        if addr in ipaddress.ip_network("10.99.0.0/16"):
+            return True
+    except ValueError:
+        return False
+    return False
+
+
 def _provision_subscription(subscription):
     customer = (
         db.session.query(Customer).filter_by(email=subscription.customer_email).one()
@@ -157,7 +176,39 @@ def apps_index():
 
 @bp.route("/health")
 def health():
+    if not _is_allowed_ip(request.remote_addr):
+        return jsonify({"status": "forbidden"}), 403
     return jsonify({"status": "healthy"})
+
+
+@bp.route("/ready")
+def ready():
+    if not _is_allowed_ip(request.remote_addr):
+        return jsonify({"status": "forbidden"}), 403
+
+    timestamp = datetime.now(UTC).isoformat()
+    result = {"status": "ok", "database": "ok", "admirald": "ok", "timestamp": timestamp}
+    status_code = 200
+    errors = []
+
+    try:
+        db.session.execute(text("SELECT 1"))
+    except Exception as exc:
+        result["database"] = "error"
+        errors.append(f"database: {exc}")
+
+    try:
+        admiral_client._request("GET", "/api/v1/status", timeout=10)
+    except Exception as exc:
+        result["admirald"] = "error"
+        errors.append(f"admirald: {exc}")
+
+    if errors:
+        result["status"] = "degraded"
+        result["error"] = "; ".join(errors)
+        status_code = 503
+
+    return jsonify(result), status_code
 
 
 @bp.route("/branding/<kind>")
