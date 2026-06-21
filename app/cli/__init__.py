@@ -11,6 +11,7 @@ def print_usage():
     print("")
     print("Commands:")
     print("  user <action>   Manage users")
+    print("  ping            Check connectivity to admirald")
 
 
 def main():
@@ -26,6 +27,12 @@ def main():
         app = create_app()
         with app.app_context():
             handle_user()
+    elif command == "ping":
+        from app.cli.ping import handle_ping
+
+        app = create_app()
+        with app.app_context():
+            handle_ping()
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)
