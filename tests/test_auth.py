@@ -50,9 +50,12 @@ def test_register_accepts_terms(client):
 
 def test_login_failure_returns_generic_unauthorized(client):
     from argon2.exceptions import VerifyMismatchError
-    from unittest.mock import patch
+    from unittest.mock import Mock, patch
 
-    with patch("app.auth.ph.verify", side_effect=VerifyMismatchError):
+    mock_hasher = Mock()
+    mock_hasher.verify.side_effect = VerifyMismatchError
+
+    with patch("app.auth.ph", mock_hasher):
         response = client.post(
             "/auth/login",
             json={"email": "user@example.com", "password": "secret"},
