@@ -179,6 +179,39 @@ def test_paypal_return_live_marks_order_approved_without_provision(
         assert db.session.query(Payment).count() == 0
 
 
+def test_mock_paypal_approve_requires_mock_mode(client, app):
+    app.config.update(HARBOR_PAYPAL_MODE="live")
+
+    response = client.get(
+        "/mock-paypal/approve?subscription_id=sub_123&return_url=https://localhost:5000/billing/return"
+    )
+
+    assert response.status_code == 404
+    assert response.json == {"error": "not found"}
+
+
+def test_mock_paypal_approve_rejects_cross_origin_return_url(client, app):
+    app.config.update(HARBOR_PAYPAL_MODE="mock")
+
+    response = client.get(
+        "/mock-paypal/approve?subscription_id=sub_123&return_url=https://evil.example.com/billing/return"
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"error": "invalid return_url"}
+
+
+def test_mock_paypal_approve_redirects_same_origin_return_url(client, app):
+    app.config.update(HARBOR_PAYPAL_MODE="mock")
+
+    response = client.get(
+        "/mock-paypal/approve?subscription_id=sub_123&return_url=https://localhost:5000/billing/return"
+    )
+
+    assert response.status_code in {302, 303}
+    assert response.headers["Location"] == "https://localhost:5000/billing/return?token=sub_123"
+
+
 def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
     with client.application.app_context():
         subscription = Subscription(

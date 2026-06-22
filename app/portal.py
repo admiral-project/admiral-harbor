@@ -101,6 +101,16 @@ def _is_allowed_ip(remote_addr):
     return False
 
 
+def _same_origin(url_a, url_b):
+    parsed_a = urlparse(url_a)
+    parsed_b = urlparse(url_b)
+    return (
+        parsed_a.scheme == parsed_b.scheme
+        and parsed_a.netloc == parsed_b.netloc
+        and parsed_a.netloc != ""
+    )
+
+
 def _provision_subscription(subscription):
     customer = (
         db.session.query(Customer).filter_by(email=subscription.customer_email).one()
@@ -431,10 +441,17 @@ def paypal_webhook():
 
 @bp.route("/mock-paypal/approve")
 def mock_paypal_approve():
+    if current_app.config.get("HARBOR_PAYPAL_MODE", "mock") != "mock":
+        return jsonify({"error": "not found"}), 404
+
     subscription_id = request.args.get("subscription_id", "")
     return_url = request.args.get("return_url", "")
-    if not return_url and not subscription_id:
+    if not return_url or not subscription_id:
         return jsonify({"error": "missing subscription_id or return_url"}), 400
+
+    external_url = current_app.config.get("HARBOR_EXTERNAL_URL", "")
+    if not external_url or not _same_origin(return_url, external_url):
+        return jsonify({"error": "invalid return_url"}), 400
 
     parsed = list(urlparse(return_url))
     query = dict(parse_qs(parsed[4]))
