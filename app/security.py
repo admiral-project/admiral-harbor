@@ -85,7 +85,7 @@ def init_security_headers(app: Flask) -> None:
         )
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; "
+            "script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; "
             "style-src 'self' https://cdnjs.cloudflare.com https://unpkg.com; "
             "img-src 'self' data:; "
             "font-src 'self' https://cdnjs.cloudflare.com https://unpkg.com; "

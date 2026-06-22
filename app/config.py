@@ -73,6 +73,9 @@ class Config:
     HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME = os.environ.get(
         "HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME", "Harbor Bootstrap Admin"
     )
+    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "1") == "1"
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
 
 def overdue_policy(config):

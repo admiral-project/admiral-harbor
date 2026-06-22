@@ -20,7 +20,7 @@ import time
 import secrets
 import logging
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from flask import Flask, redirect, request, jsonify, abort
 
@@ -45,7 +45,7 @@ mock_app = Flask("admirald-mock")
 
 # ── Mock Data ──────────────────────────────────────────────────────────────
 
-NOW = datetime.utcnow()
+NOW = datetime.now(UTC)
 
 CATALOG_APPS = [
     {
@@ -661,7 +661,7 @@ def _wait_for_mock(host, port, timeout=10):
 def _fleet_simulation():
     while True:
         time.sleep(5)
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for op in _operations_store:
             if op["status"] != "running":
                 continue
