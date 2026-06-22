@@ -42,8 +42,10 @@ from app.models import (
     UploadedBackup,
 )
 from app.paypal import verify_webhook_signature
+from app.rate_limit import RateLimiter
 
 bp = Blueprint("main", __name__)
+api_token_limiter = RateLimiter(max_attempts=10, window_seconds=300)
 
 
 def _local_catalog():
@@ -463,8 +465,18 @@ def mock_paypal_approve():
 @bp.route("/api/v1/backups/uploads/<backup_id>/download")
 def api_download_uploaded_backup(backup_id):
     token = request.headers.get("X-Admiral-Token", "")
+    ip = request.remote_addr or "unknown"
+    limiter_key = f"api-token:{ip}"
+    allowed, _remaining = api_token_limiter.is_allowed(limiter_key)
+    if not allowed:
+        return jsonify({"error": "too many authentication failures"}), 429
     if token != current_app.config["ADMIRAL_ADMIN_TOKEN"]:
+        current_app.logger.warning(
+            "uploaded backup download authentication failed",
+            extra={"status": 401, "ip": ip, "backup_id": backup_id},
+        )
         return jsonify({"error": "unauthorized"}), 401
+    api_token_limiter.reset(limiter_key)
     backup = (
         db.session.query(UploadedBackup).filter_by(backup_id=backup_id).one_or_none()
     )

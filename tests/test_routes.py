@@ -212,6 +212,23 @@ def test_mock_paypal_approve_redirects_same_origin_return_url(client, app):
     assert response.headers["Location"] == "https://localhost:5000/billing/return?token=sub_123"
 
 
+def test_uploaded_backup_download_temporarily_blocks_repeated_invalid_token(client):
+    for _ in range(10):
+        response = client.get(
+            "/api/v1/backups/uploads/bad/download",
+            headers={"X-Admiral-Token": "wrong"},
+        )
+        assert response.status_code == 401
+        assert response.json["error"] == "unauthorized"
+
+    response = client.get(
+        "/api/v1/backups/uploads/bad/download",
+        headers={"X-Admiral-Token": "wrong"},
+    )
+    assert response.status_code == 429
+    assert response.json["error"] == "too many authentication failures"
+
+
 def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
     with client.application.app_context():
         subscription = Subscription(

@@ -32,6 +32,7 @@ from app.branding import (
     update_portal_branding,
 )
 from app.identity import admin_required, create_user_session, clear_user_session
+from app.rate_limit import RateLimiter
 from app.admiral_client import (
     AdmiralAPIError,
     get_operation,
@@ -64,6 +65,7 @@ from app.models import (
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 ph = PasswordHasher()
+admin_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
 
 @bp.before_request
@@ -94,6 +96,14 @@ def login_page():
 def login():
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "")
+    ip = request.remote_addr or "unknown"
+    allowed, remaining = admin_login_limiter.is_allowed(f"admin-login:{ip}")
+    if not allowed:
+        flash(
+            f"Too many admin login attempts. Try again in {remaining} second(s).",
+            "error",
+        )
+        return redirect(url_for("admin.login_page"))
     admin = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
     if admin is None:
         flash("Invalid admin credentials.", "error")
@@ -107,6 +117,7 @@ def login():
     session.pop("customer_email", None)
     session.pop("customer_public_id", None)
     _set_admin_session(admin)
+    admin_login_limiter.reset(f"admin-login:{ip}")
     login_user(admin)
     db.session.add(
         AuditLog(

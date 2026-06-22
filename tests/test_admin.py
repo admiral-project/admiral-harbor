@@ -17,6 +17,24 @@ def test_admin_login_and_dashboard(client):
     assert b"Dashboard Administrativo" in response.data
 
 
+def test_admin_login_rate_limited(client):
+    for _ in range(5):
+        response = client.post(
+            "/admin/login",
+            data={"username": "testadmin", "password": "wrong"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+
+    response = client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "wrong"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    assert b"Too many admin login attempts" in response.data
+
+
 def test_admin_layout_includes_csrf_helper(client):
     client.post(
         "/admin/login",
