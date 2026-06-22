@@ -115,6 +115,22 @@ def create_app(config_object="app.config.Config"):
 
             return redirect(url_for("main.index"))
 
+    @app.errorhandler(401)
+    def _unauthorized_error(_error):
+        if request.path.startswith("/api/"):
+            from flask import jsonify as _jsonify
+
+            return _jsonify({"error": "unauthorized"}), 401
+        return "Unauthorized", 401
+
+    @app.errorhandler(403)
+    def _forbidden_error(_error):
+        if request.path.startswith("/api/"):
+            from flask import jsonify as _jsonify
+
+            return _jsonify({"error": "forbidden"}), 403
+        return "Forbidden", 403
+
     with app.app_context():
         try:
             if _database_has_tables():

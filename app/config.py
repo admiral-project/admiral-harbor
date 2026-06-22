@@ -33,10 +33,10 @@ class Config:
     )
     HARBOR_PAYPAL_MODE = os.environ.get("HARBOR_PAYPAL_MODE", "mock")
     HARBOR_PAYPAL_RETURN_URL = os.environ.get(
-        "HARBOR_PAYPAL_RETURN_URL", "http://localhost:5000/billing/return"
+        "HARBOR_PAYPAL_RETURN_URL", "https://localhost:5000/billing/return"
     )
     HARBOR_PAYPAL_CANCEL_URL = os.environ.get(
-        "HARBOR_PAYPAL_CANCEL_URL", "http://localhost:5000/billing/cancel"
+        "HARBOR_PAYPAL_CANCEL_URL", "https://localhost:5000/billing/cancel"
     )
     HARBOR_SMTP_FROM = os.environ.get("HARBOR_SMTP_FROM", "noreply@example.com")
     HARBOR_SMTP_HOST = os.environ.get("HARBOR_SMTP_HOST", "")
@@ -50,7 +50,7 @@ class Config:
     )
     HARBOR_PORTAL_NAME = "Admiral Harbor"
     HARBOR_PORTAL_DESCRIPTION = "Customer portal"
-    HARBOR_EXTERNAL_URL = os.environ.get("HARBOR_EXTERNAL_URL", "http://localhost:5000")
+    HARBOR_EXTERNAL_URL = os.environ.get("HARBOR_EXTERNAL_URL", "https://localhost:5000")
     HARBOR_OVERDUE_POLICY_VERSION = os.environ.get(
         "HARBOR_OVERDUE_POLICY_VERSION", "overdue-policy-v1"
     )

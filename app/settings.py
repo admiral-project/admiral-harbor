@@ -23,7 +23,7 @@ OVERDUE_LAST_BACKUP_RETENTION_DAYS_KEY = "harbor_overdue_last_backup_retention_d
 
 _DEFAULTS = {
     SMTP_FROM_KEY: "noreply@example.com",
-    EXTERNAL_URL_KEY: "http://localhost:5000",
+    EXTERNAL_URL_KEY: "https://localhost:5000",
     MAX_BACKUP_UPLOAD_BYTES_KEY: "536870912",
     OVERDUE_POLICY_VERSION_KEY: "overdue-policy-v1",
     OVERDUE_SUSPEND_AFTER_DAYS_KEY: "5",

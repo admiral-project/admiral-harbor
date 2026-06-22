@@ -18,6 +18,7 @@ def test_login_logout_me(client):
 
     response = client.get("/auth/me")
     assert response.status_code == 401
+    assert response.json["error"] == "unauthorized"
 
 
 def test_register_requires_terms(client):
@@ -45,3 +46,16 @@ def test_register_accepts_terms(client):
     )
     assert response.status_code == 202
     assert response.json["customer"]["terms_policy_version"] == "overdue-policy-v1"
+
+
+def test_login_failure_returns_generic_unauthorized(client):
+    from argon2.exceptions import VerifyMismatchError
+    from unittest.mock import patch
+
+    with patch("app.auth.ph.verify", side_effect=VerifyMismatchError):
+        response = client.post(
+            "/auth/login",
+            json={"email": "user@example.com", "password": "secret"},
+        )
+    assert response.status_code == 401
+    assert response.json["error"] == "unauthorized"

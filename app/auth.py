@@ -42,6 +42,10 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
 
+def _generic_auth_failure(status=401):
+    return jsonify({"error": "unauthorized"}), status
+
+
 def _login_customer(customer):
     session["customer_token"] = f"customer:{customer.public_id}"
     session["customer_email"] = customer.email
@@ -157,7 +161,16 @@ def login():
     customer = db.session.query(Customer).filter_by(email=email).one_or_none()
     if customer is None:
         if request.is_json:
-            return jsonify({"error": "invalid credentials"}), 401
+            current_app.logger.warning(
+                "customer login failed",
+                extra={
+                    "email": email,
+                    "reason": "invalid_credentials",
+                    "status": 401,
+                    "ip": ip,
+                },
+            )
+            return _generic_auth_failure()
         flash("Invalid credentials.", "error")
         return redirect(url_for("auth.login_page"))
 
@@ -165,13 +178,31 @@ def login():
         ph.verify(customer.password_hash, password)
     except VerifyMismatchError:
         if request.is_json:
-            return jsonify({"error": "invalid credentials"}), 401
+            current_app.logger.warning(
+                "customer login failed",
+                extra={
+                    "email": email,
+                    "reason": "invalid_credentials",
+                    "status": 401,
+                    "ip": ip,
+                },
+            )
+            return _generic_auth_failure()
         flash("Invalid credentials.", "error")
         return redirect(url_for("auth.login_page"))
 
     if not customer.can_access():
         if request.is_json:
-            return jsonify({"error": "account pending activation"}), 403
+            current_app.logger.warning(
+                "customer login failed",
+                extra={
+                    "email": email,
+                    "reason": "account_not_accessible",
+                    "status": 403,
+                    "ip": ip,
+                },
+            )
+            return _generic_auth_failure(403)
         if customer.signup_status == "rejected":
             flash("Your account was rejected by Harbor administration.", "error")
         else:
@@ -360,7 +391,7 @@ def logout():
 def me():
     customer = current_customer()
     if customer is None:
-        return jsonify({"error": "not authenticated"}), 401
+        return _generic_auth_failure()
     return jsonify(
         {
             "email": customer.email,
