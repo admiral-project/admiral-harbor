@@ -15,6 +15,15 @@ def test_health(client):
     assert response.json == {"status": "healthy"}
 
 
+def test_health_rejects_external_ip(client):
+    response = client.get(
+        "/health",
+        environ_overrides={"REMOTE_ADDR": "198.51.100.10"},
+    )
+    assert response.status_code == 403
+    assert response.json == {"status": "forbidden"}
+
+
 def test_index(client):
     response = client.get("/")
     assert response.status_code == 200
