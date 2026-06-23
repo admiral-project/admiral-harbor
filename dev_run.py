@@ -396,7 +396,16 @@ OPERATIONS = [
 ]
 
 # In-memory mutable stores (copies of above for mutation during dev)
-_apps_store = list(CATALOG_APPS)
+_apps_store = [
+    {
+        **app,
+        "raw_yaml": APP_YAMLS.get(app["name"], ""),
+        "availability": app.get("availability", "available"),
+        "revision": app.get("revision", 1),
+        "checksum": app.get("checksum", f"dev-{app['name']}-checksum"),
+    }
+    for app in CATALOG_APPS
+]
 _instances_store = list(CUSTOMER_APPS)
 _backups_store = list(BACKUPS)
 _operations_store = list(OPERATIONS)
@@ -410,6 +419,14 @@ def _next_instance_id():
 
 def _next_inst_id():
     return f"inst_{secrets.token_hex(8)}"
+
+
+def _find_app(slug):
+    return next((a for a in _apps_store if a["name"] == slug), None)
+
+
+def _find_instance(instance_id):
+    return next((i for i in _instances_store if i["id"] == instance_id), None)
 
 
 # ── Request logging ────────────────────────────────────────────────────────
@@ -432,21 +449,121 @@ def _require_shared_token():
 # ── API v1 endpoints ───────────────────────────────────────────────────────
 
 
+@mock_app.route("/health")
+@mock_app.route("/api/v1/health")
+def health():
+    return jsonify({"status": "healthy"})
+
+
+@mock_app.route("/api/v1/status")
+def v1_status():
+    _require_shared_token()
+    return jsonify({"status": "healthy", "database": "connected"})
+
+
 @mock_app.route("/api/v1/apps")
 def v1_apps_list():
     _require_shared_token()
     return jsonify(_apps_store)
 
 
+@mock_app.route("/api/v1/apps/<slug>/validate-provisioning", methods=["POST"])
+def v1_app_validate_provisioning(slug):
+    _require_shared_token()
+    app = _find_app(slug)
+    data = request.get_json(silent=True) or {}
+    tier_id = data.get("tier_id", "")
+    if not app:
+        return jsonify({"valid": False, "reason": "app_not_found"})
+    if app.get("availability", "available") != "available":
+        return (
+            jsonify(
+                {
+                    "valid": False,
+                    "app_id": slug,
+                    "reason": "app_not_available",
+                    "revision": app.get("revision", 0),
+                    "checksum": app.get("checksum", ""),
+                }
+            ),
+            200,
+        )
+    if tier_id not in APP_YAMLS.get(slug, ""):
+        return (
+            jsonify(
+                {
+                    "valid": False,
+                    "app_id": slug,
+                    "reason": "tier_not_found",
+                    "revision": app.get("revision", 0),
+                    "checksum": app.get("checksum", ""),
+                }
+            ),
+            200,
+        )
+    expected_revision = int(data.get("expected_revision") or 0)
+    if expected_revision > 0 and expected_revision != app.get("revision", 0):
+        return (
+            jsonify(
+                {
+                    "valid": False,
+                    "app_id": slug,
+                    "tier_id": tier_id,
+                    "reason": "revision_mismatch",
+                    "revision": app.get("revision", 0),
+                    "checksum": app.get("checksum", ""),
+                }
+            ),
+            200,
+        )
+    expected_checksum = data.get("expected_checksum", "")
+    if expected_checksum and expected_checksum != app.get("checksum", ""):
+        return (
+            jsonify(
+                {
+                    "valid": False,
+                    "app_id": slug,
+                    "tier_id": tier_id,
+                    "reason": "checksum_mismatch",
+                    "revision": app.get("revision", 0),
+                    "checksum": app.get("checksum", ""),
+                }
+            ),
+            200,
+        )
+    return jsonify(
+        {
+            "valid": True,
+            "app_id": slug,
+            "tier_id": tier_id,
+            "revision": app.get("revision", 0),
+            "checksum": app.get("checksum", ""),
+        }
+    )
+
+
+@mock_app.route("/api/v1/apps/<slug>/availability", methods=["PATCH"])
+def v1_app_availability(slug):
+    _require_shared_token()
+    app = _find_app(slug)
+    if not app:
+        return jsonify({"error": "App not found"}), 404
+    data = request.get_json(silent=True) or {}
+    availability = str(data.get("availability", "")).strip().lower()
+    if availability not in {"available", "unavailable"}:
+        return jsonify({"error": "invalid availability"}), 400
+    app["availability"] = availability
+    app["last_availability_reason"] = data.get("reason", "")
+    return jsonify({"success": True, "app_id": slug, "availability": availability})
+
+
 @mock_app.route("/api/v1/apps/<slug>")
 def v1_app_detail(slug):
     _require_shared_token()
-    app = next((a for a in _apps_store if a["name"] == slug), None)
+    app = _find_app(slug)
     if not app:
         return jsonify({"error": "App definition not found"}), 404
     result = dict(app)
-    yaml_text = APP_YAMLS.get(app["name"], "")
-    result["raw_yaml"] = yaml_text
     return jsonify(result)
 
 
@@ -463,10 +580,23 @@ def v1_customer_apps_list():
 @mock_app.route("/api/v1/customer-apps/<instance_id>")
 def v1_customer_app_detail(instance_id):
     _require_shared_token()
-    inst = next((i for i in _instances_store if i["id"] == instance_id), None)
+    inst = _find_instance(instance_id)
     if not inst:
         return jsonify({"error": "instance not found"}), 404
     return jsonify(inst)
+
+
+@mock_app.route("/api/v1/customer-apps/<instance_id>/credentials")
+def v1_customer_app_credentials(instance_id):
+    _require_shared_token()
+    if not _find_instance(instance_id):
+        return jsonify({"error": "instance not found"}), 404
+    return jsonify(
+        [
+            {"service": "web", "name": "ADMIN_URL", "value": "https://example.test"},
+            {"service": "web", "name": "ADMIN_PASSWORD", "value": "dev-password"},
+        ]
+    )
 
 
 @mock_app.route("/api/v1/customer-apps", methods=["POST"])
@@ -603,6 +733,33 @@ def v1_operations_list():
     return jsonify(_operations_store)
 
 
+@mock_app.route("/api/admin/instances/<instance_id>/inspect")
+def admin_instance_inspect(instance_id):
+    _require_shared_token()
+    inst = _find_instance(instance_id)
+    if not inst:
+        return jsonify({"error": "Instance not found"}), 404
+    return jsonify(
+        {
+            "instance_id": instance_id,
+            "containers": [
+                {
+                    "name": f"admiral-{instance_id}-web",
+                    "image": f"docker.io/admiral/{inst['app_definition_name']}:latest",
+                    "state": inst.get("technical_status", "unknown"),
+                }
+            ],
+            "volumes": [
+                {
+                    "name": f"{instance_id}-data",
+                    "mountpoint": f"/var/lib/containers/storage/volumes/{instance_id}-data",
+                }
+            ],
+            "inspected_at": datetime.now(UTC).isoformat() + "Z",
+        }
+    )
+
+
 # ── Mock PayPal ────────────────────────────────────────────────────────────
 
 
@@ -647,9 +804,11 @@ def _wait_for_mock(host, port, timeout=10):
     start = time.time()
     while time.time() - start < timeout:
         try:
-            resp = urllib.request.urlopen(
-                f"http://{host}:{port}/api/v1/apps", timeout=1
-            )  # nosec - controlled dev mock
+            req = urllib.request.Request(
+                f"http://{host}:{port}/api/v1/status",
+                headers={"X-Admiral-Token": SHARED_TOKEN},
+            )
+            resp = urllib.request.urlopen(req, timeout=1)  # nosec - controlled dev mock
             if resp.status == 200:
                 return True
         except Exception:
