@@ -32,6 +32,13 @@ def validate_production_config(config):
     _warn_default("ADMIRAL_ADMIN_TOKEN", admiral_token)
     _warn_default("HARBOR_ENCRYPTION_KEY", encryption_key)
 
+    paypal_mode = config.get("HARBOR_PAYPAL_MODE", "mock")
+    if paypal_mode == "mock":
+        logger.warning(
+            "HARBOR_PAYPAL_MODE is 'mock': no real PayPal calls will be made. "
+            "Set HARBOR_PAYPAL_MODE=sandbox or live for payment processing."
+        )
+
     if os.environ.get("ENV", "").lower() != "production":
         return
 
@@ -67,6 +74,12 @@ def validate_production_config(config):
 
     if config.get("ADMIRAL_INSECURE_SKIP_VERIFY"):
         errors.append("ADMIRAL_INSECURE_SKIP_VERIFY must be false in production")
+
+    if paypal_mode == "mock":
+        errors.append(
+            "HARBOR_PAYPAL_MODE must not be 'mock' in production; "
+            "use 'sandbox' or 'live'"
+        )
 
     if errors:
         raise ValueError(

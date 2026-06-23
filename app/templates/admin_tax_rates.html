@@ -1,0 +1,81 @@
+{% extends "admin_layout.html" %}
+{% block title %}Tax Rates - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Tasas de Impuesto{% endblock %}
+{% block page_subtitle %}IVA/ISV por país de cliente — se aplica automáticamente al momento de contratar{% endblock %}
+
+{% block content %}
+<div class="panel" style="margin-bottom:1.5rem;">
+  <h2><i class="fas fa-percentage pf-u-mr-sm"></i> Tasas configuradas</h2>
+
+  {% if rates %}
+  <table class="pf-c-table pf-m-compact" style="width:100%;margin-top:1rem;">
+    <thead>
+      <tr>
+        <th>País</th>
+        <th>Código</th>
+        <th style="text-align:right;">Tasa (%)</th>
+        <th style="text-align:right;">Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in rates %}
+      <tr>
+        <td>{{ entry.country_name }}</td>
+        <td><code>{{ entry.code }}</code></td>
+        <td style="text-align:right;font-weight:600;">{{ entry.rate }}%</td>
+        <td style="text-align:right;">
+          <form method="post" style="display:inline;">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="country_code" value="{{ entry.code }}">
+            <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('¿Eliminar tasa de {{ entry.country_name }}?')">
+              <i class="fas fa-trash-alt"></i> Eliminar
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta" style="margin-top:1rem;">No hay tasas configuradas. Los clientes no pagarán impuestos hasta que se agregue al menos un país.</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2><i class="fas fa-plus-circle pf-u-mr-sm"></i> Agregar / actualizar tasa</h2>
+  <p class="meta">Si el país ya existe en la tabla, se actualizará su tasa.</p>
+
+  <form method="post" style="margin-top:1rem;">
+    <input type="hidden" name="action" value="add">
+    <div class="grid" style="grid-template-columns:1fr 1fr auto;gap:1rem;align-items:end;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label for="country_code">País</label>
+        <select id="country_code" name="country_code" required>
+          <option value="">Seleccionar país…</option>
+          {% for code, name in countries %}
+          <option value="{{ code }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label for="tax_percent">Tasa de impuesto (%)</label>
+        <input type="number" id="tax_percent" name="tax_percent"
+               min="0" max="100" step="0.01" required
+               placeholder="Ej: 15">
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-save pf-u-mr-sm"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div style="margin-top:1rem;">
+  <a class="btn btn-secondary" href="{{ url_for('admin.portal_branding') }}">
+    <i class="fas fa-arrow-left pf-u-mr-sm"></i> Volver a Branding
+  </a>
+</div>
+{% endblock %}

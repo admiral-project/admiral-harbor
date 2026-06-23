@@ -1,0 +1,109 @@
+{% extends "admin_layout.html" %}
+{% block title %}Solicitud {{ req.request_id }} - Admin{% endblock %}
+{% block page_title %}Solicitud Fiscal{% endblock %}
+{% block page_subtitle %}{{ req.request_id }}{% endblock %}
+
+{% block content %}
+<div class="grid" style="grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+  <div class="panel">
+    <h2><i class="fas fa-user pf-u-mr-sm"></i> Datos de la solicitud</h2>
+    <table class="pf-c-table pf-m-compact" style="width:100%;margin-top:0.75rem;">
+      <tr><td><strong>Cliente</strong></td><td>{{ req.customer_email }}</td></tr>
+      <tr><td><strong>País cliente</strong></td><td>{{ customer.country or '—' }}</td></tr>
+      <tr><td><strong>Tratamiento</strong></td><td>{{ req.treatment_type.name }}</td></tr>
+      <tr><td><strong>Efecto</strong></td><td>
+        <span style="font-weight:700;font-size:1.1rem;color:{% if req.treatment_type.direction == '+' %}green{% else %}#c9190b{% endif %}">
+          {{ req.treatment_type.direction }}{{ req.treatment_type.percent }}%
+        </span>
+      </td></tr>
+      <tr><td><strong>Descripción</strong></td><td>{{ req.treatment_type.description or '—' }}</td></tr>
+      <tr><td><strong>Estado</strong></td><td>
+        {% if req.status == 'pending' %}<span style="color:#f0ab00;font-weight:600;">Pendiente</span>
+        {% elif req.status == 'approved' %}<span style="color:green;font-weight:600;">Aprobada</span>
+        {% else %}<span style="color:#c9190b;font-weight:600;">Revocada</span>{% endif %}
+      </td></tr>
+      <tr><td><strong>Solicitado</strong></td><td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+      {% if req.reviewed_at %}
+      <tr><td><strong>Revisado</strong></td><td>{{ req.reviewed_at.strftime('%Y-%m-%d %H:%M') }} por {{ req.reviewed_by }}</td></tr>
+      {% endif %}
+    </table>
+
+    {% if req.request_notes %}
+    <div style="margin-top:1rem;">
+      <strong>Notas del cliente:</strong>
+      <p class="meta" style="margin-top:0.25rem;white-space:pre-wrap;">{{ req.request_notes }}</p>
+    </div>
+    {% endif %}
+
+    {% if req.evidence_original_name %}
+    <div style="margin-top:1rem;">
+      <strong>Evidencia adjunta:</strong><br>
+      <a href="{{ url_for('admin.fiscal_request_evidence', request_id=req.request_id) }}"
+         class="btn btn-secondary btn-sm" style="margin-top:0.5rem;" target="_blank">
+        <i class="fas fa-download pf-u-mr-sm"></i> {{ req.evidence_original_name }}
+      </a>
+    </div>
+    {% endif %}
+
+    {% if req.reviewer_notes %}
+    <div style="margin-top:1rem;">
+      <strong>Notas del revisor:</strong>
+      <p class="meta" style="margin-top:0.25rem;white-space:pre-wrap;">{{ req.reviewer_notes }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2><i class="fas fa-gavel pf-u-mr-sm"></i> Resolución</h2>
+    {% if req.status == 'pending' %}
+    <form method="post" action="{{ url_for('admin.fiscal_request_approve', request_id=req.request_id) }}" style="margin-bottom:1rem;">
+      <div class="form-group">
+        <label for="reviewer_notes_approve">Notas de aprobación (opcional)</label>
+        <textarea id="reviewer_notes_approve" name="reviewer_notes" rows="3"
+                  placeholder="Documento verificado, autorización válida…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary"
+              onclick="return confirm('¿Aprobar esta solicitud? Se aplicará la retención/ajuste a futuras órdenes del cliente.')">
+        <i class="fas fa-check pf-u-mr-sm"></i> Aprobar
+      </button>
+    </form>
+
+    <hr>
+
+    <form method="post" action="{{ url_for('admin.fiscal_request_revoke', request_id=req.request_id) }}">
+      <div class="form-group">
+        <label for="reviewer_notes_revoke">Motivo de rechazo</label>
+        <textarea id="reviewer_notes_revoke" name="reviewer_notes" rows="3" required
+                  placeholder="Documentación insuficiente, no aplica para este régimen…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-times pf-u-mr-sm"></i> Rechazar / Revocar
+      </button>
+    </form>
+
+    {% elif req.status == 'approved' %}
+    <p style="color:green;"><i class="fas fa-check-circle pf-u-mr-sm"></i> Aprobada. El ajuste fiscal se aplica a las órdenes del cliente.</p>
+    <hr>
+    <form method="post" action="{{ url_for('admin.fiscal_request_revoke', request_id=req.request_id) }}" style="margin-top:1rem;">
+      <div class="form-group">
+        <label for="reviewer_notes_revoke">Motivo de revocación</label>
+        <textarea id="reviewer_notes_revoke" name="reviewer_notes" rows="3" required
+                  placeholder="Autorización expirada, cambio de régimen fiscal…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-ban pf-u-mr-sm"></i> Revocar aprobación
+      </button>
+    </form>
+    {% else %}
+    <p style="color:#c9190b;"><i class="fas fa-times-circle pf-u-mr-sm"></i> Revocada / Rechazada.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div style="margin-top:1rem;">
+  <a class="btn btn-secondary" href="{{ url_for('admin.fiscal_requests_list') }}">
+    <i class="fas fa-arrow-left pf-u-mr-sm"></i> Volver a solicitudes
+  </a>
+</div>
+{% endblock %}

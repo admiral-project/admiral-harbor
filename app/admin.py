@@ -29,6 +29,8 @@ from app.branding import (
     get_portal_branding,
     get_tax_rates,
     save_catalog_asset,
+    set_portal_currency,
+    set_portal_tos_url,
     set_tax_rates,
     update_portal_branding,
 )
@@ -54,6 +56,8 @@ from app.models import (
     CatalogSyncAudit,
     Customer,
     CustomerApp,
+    CustomerFiscalRequest,
+    FiscalTreatmentType,
     HarborAdminUser,
     HarborMeta,
     Invoice,
@@ -63,6 +67,7 @@ from app.models import (
     Payment,
     HarborPayPalConfig,
 )
+from app.countries import COUNTRIES, COUNTRY_NAMES
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 ph = PasswordHasher()
@@ -1193,6 +1198,8 @@ def portal_branding():
         logo_file = request.files.get("portal_logo")
         favicon_file = request.files.get("portal_favicon")
         tax_rates_raw = request.form.get("tax_rates_json", "").strip()
+        tos_url = request.form.get("portal_tos_url", "").strip()
+        portal_currency = request.form.get("portal_currency", "").strip().upper()
         try:
             if tax_rates_raw:
                 parsed_tax_rates = json.loads(tax_rates_raw)
@@ -1207,6 +1214,9 @@ def portal_branding():
                     favicon_file if favicon_file and favicon_file.filename else None
                 ),
             )
+            set_portal_tos_url(tos_url)
+            if portal_currency:
+                set_portal_currency(portal_currency)
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             flash(f"Portal branding not updated: {exc}", "error")
             return redirect(url_for("admin.portal_branding"))
@@ -2327,3 +2337,264 @@ def sla_dashboard():
         violations_by_priority=violations_by_priority,
         violations=violations_sorted,
     )
+
+
+# ── Tax Rates ──────────────────────────────────────────────────────────────────
+
+
+@bp.route("/tax-rates", methods=["GET", "POST"])
+@admin_required
+def tax_rates():
+    from app.branding import get_tax_rates, set_tax_rates
+    rates = get_tax_rates()
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "add":
+            code = request.form.get("country_code", "").strip().upper()
+            try:
+                pct = float(request.form.get("tax_percent", "0"))
+            except ValueError:
+                flash("Porcentaje inválido.", "error")
+                return redirect(url_for("admin.tax_rates"))
+            if not code or pct < 0:
+                flash("País y porcentaje son requeridos.", "error")
+                return redirect(url_for("admin.tax_rates"))
+            rates[code] = pct
+            set_tax_rates(rates)
+            flash(f"Tasa actualizada: {code} → {pct}%", "success")
+        elif action == "delete":
+            code = request.form.get("country_code", "").strip().upper()
+            rates.pop(code, None)
+            set_tax_rates(rates)
+            flash(f"Tasa eliminada para {code}.", "success")
+        return redirect(url_for("admin.tax_rates"))
+
+    rate_rows = [
+        {
+            "code": code,
+            "country_name": COUNTRY_NAMES.get(code, code),
+            "rate": rate,
+        }
+        for code, rate in sorted(rates.items())
+    ]
+    return render_template(
+        "admin_tax_rates.html",
+        rates=rate_rows,
+        countries=COUNTRIES,
+    )
+
+
+# ── Fiscal Treatment Types ─────────────────────────────────────────────────────
+
+
+@bp.route("/fiscal-types", methods=["GET", "POST"])
+@admin_required
+def fiscal_types():
+    if request.method == "POST":
+        code = request.form.get("country_code", "").strip().upper()
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip() or None
+        direction = request.form.get("direction", "+")
+        is_optional = request.form.get("is_optional", "1") == "1"
+        requires_evidence = bool(request.form.get("requires_evidence"))
+        try:
+            percent = float(request.form.get("percent", "0"))
+        except ValueError:
+            flash("Porcentaje inválido.", "error")
+            return redirect(url_for("admin.fiscal_types"))
+        if not code or not name or direction not in ("+", "-") or percent <= 0:
+            flash("Todos los campos son requeridos y el porcentaje debe ser mayor a 0.", "error")
+            return redirect(url_for("admin.fiscal_types"))
+        t = FiscalTreatmentType(
+            country_code=code,
+            name=name,
+            description=description,
+            direction=direction,
+            percent=percent,
+            is_optional=is_optional,
+            requires_evidence=requires_evidence,
+            is_active=True,
+        )
+        db.session.add(t)
+        db.session.add(AuditLog(
+            actor=request.environ.get("HARBOR_ADMIN_USER", "admin"),
+            action="fiscal_type_created",
+            resource_type="FiscalTreatmentType",
+            resource_id="new",
+            detail=f"Created fiscal treatment {name} for {code} ({direction}{percent}%)",
+            ip_address=request.remote_addr or "",
+        ))
+        db.session.commit()
+        flash(f"Tratamiento '{name}' creado.", "success")
+        return redirect(url_for("admin.fiscal_types"))
+
+    types_raw = db.session.query(FiscalTreatmentType).order_by(
+        FiscalTreatmentType.country_code, FiscalTreatmentType.name
+    ).all()
+    types = [
+        {
+            **t.__dict__,
+            "id": t.id,
+            "country_name": COUNTRY_NAMES.get(t.country_code, t.country_code),
+            "name": t.name,
+            "description": t.description,
+            "direction": t.direction,
+            "percent": float(t.percent),
+            "is_optional": t.is_optional,
+            "requires_evidence": t.requires_evidence,
+            "is_active": t.is_active,
+        }
+        for t in types_raw
+    ]
+    return render_template(
+        "admin_fiscal_types.html",
+        types=types,
+        countries=COUNTRIES,
+    )
+
+
+@bp.route("/fiscal-types/<int:type_id>/toggle", methods=["POST"])
+@admin_required
+def fiscal_type_toggle(type_id):
+    t = db.session.get(FiscalTreatmentType, type_id)
+    if not t:
+        flash("Tratamiento no encontrado.", "error")
+        return redirect(url_for("admin.fiscal_types"))
+    t.is_active = not t.is_active
+    db.session.commit()
+    flash(f"Tratamiento '{t.name}' {'activado' if t.is_active else 'desactivado'}.", "success")
+    return redirect(url_for("admin.fiscal_types"))
+
+
+@bp.route("/fiscal-types/<int:type_id>/delete", methods=["POST"])
+@admin_required
+def fiscal_type_delete(type_id):
+    t = db.session.get(FiscalTreatmentType, type_id)
+    if not t:
+        flash("Tratamiento no encontrado.", "error")
+        return redirect(url_for("admin.fiscal_types"))
+    db.session.delete(t)
+    db.session.commit()
+    flash(f"Tratamiento '{t.name}' eliminado.", "success")
+    return redirect(url_for("admin.fiscal_types"))
+
+
+# ── Fiscal Requests ────────────────────────────────────────────────────────────
+
+
+@bp.route("/fiscal-requests")
+@admin_required
+def fiscal_requests_list():
+    status_filter = request.args.get("status", "").strip() or None
+    q = db.session.query(CustomerFiscalRequest)
+    if status_filter:
+        q = q.filter_by(status=status_filter)
+    requests_list = q.order_by(CustomerFiscalRequest.created_at.desc()).all()
+    pending_count = (
+        db.session.query(CustomerFiscalRequest).filter_by(status="pending").count()
+    )
+    return render_template(
+        "admin_fiscal_requests.html",
+        requests=requests_list,
+        status_filter=status_filter,
+        pending_count=pending_count,
+    )
+
+
+@bp.route("/fiscal-requests/<request_id>")
+@admin_required
+def fiscal_request_detail(request_id):
+    req = (
+        db.session.query(CustomerFiscalRequest)
+        .filter_by(request_id=request_id)
+        .one_or_none()
+    )
+    if not req:
+        flash("Solicitud no encontrada.", "error")
+        return redirect(url_for("admin.fiscal_requests_list"))
+    customer = db.session.query(Customer).filter_by(email=req.customer_email).one_or_none()
+    return render_template(
+        "admin_fiscal_request_detail.html",
+        req=req,
+        customer=customer,
+    )
+
+
+@bp.route("/fiscal-requests/<request_id>/evidence")
+@admin_required
+def fiscal_request_evidence(request_id):
+    from flask import send_file
+    req = (
+        db.session.query(CustomerFiscalRequest)
+        .filter_by(request_id=request_id)
+        .one_or_none()
+    )
+    if not req or not req.evidence_path:
+        flash("Evidencia no encontrada.", "error")
+        return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))
+    return send_file(
+        req.evidence_path,
+        as_attachment=True,
+        download_name=req.evidence_original_name or "evidencia",
+    )
+
+
+@bp.route("/fiscal-requests/<request_id>/approve", methods=["POST"])
+@admin_required
+def fiscal_request_approve(request_id):
+    req = (
+        db.session.query(CustomerFiscalRequest)
+        .filter_by(request_id=request_id)
+        .one_or_none()
+    )
+    if not req:
+        flash("Solicitud no encontrada.", "error")
+        return redirect(url_for("admin.fiscal_requests_list"))
+    reviewer_notes = request.form.get("reviewer_notes", "").strip() or None
+    req.status = "approved"
+    req.reviewer_notes = reviewer_notes
+    req.reviewed_by = request.environ.get("HARBOR_ADMIN_USER", "admin")
+    req.reviewed_at = datetime.now(UTC)
+    db.session.add(AuditLog(
+        actor=req.reviewed_by,
+        action="fiscal_request_approved",
+        resource_type="CustomerFiscalRequest",
+        resource_id=req.request_id,
+        detail=f"Fiscal request {request_id} approved for {req.customer_email}",
+        ip_address=request.remote_addr or "",
+    ))
+    db.session.commit()
+    flash("Solicitud aprobada. El ajuste fiscal se aplicará a las próximas órdenes del cliente.", "success")
+    return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))
+
+
+@bp.route("/fiscal-requests/<request_id>/revoke", methods=["POST"])
+@admin_required
+def fiscal_request_revoke(request_id):
+    req = (
+        db.session.query(CustomerFiscalRequest)
+        .filter_by(request_id=request_id)
+        .one_or_none()
+    )
+    if not req:
+        flash("Solicitud no encontrada.", "error")
+        return redirect(url_for("admin.fiscal_requests_list"))
+    reviewer_notes = request.form.get("reviewer_notes", "").strip()
+    if not reviewer_notes:
+        flash("El motivo de rechazo es requerido.", "error")
+        return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))
+    req.status = "revoked"
+    req.reviewer_notes = reviewer_notes
+    req.reviewed_by = request.environ.get("HARBOR_ADMIN_USER", "admin")
+    req.reviewed_at = datetime.now(UTC)
+    db.session.add(AuditLog(
+        actor=req.reviewed_by,
+        action="fiscal_request_revoked",
+        resource_type="CustomerFiscalRequest",
+        resource_id=req.request_id,
+        detail=f"Fiscal request {request_id} revoked for {req.customer_email}: {reviewer_notes}",
+        ip_address=request.remote_addr or "",
+    ))
+    db.session.commit()
+    flash("Solicitud revocada.", "success")
+    return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))

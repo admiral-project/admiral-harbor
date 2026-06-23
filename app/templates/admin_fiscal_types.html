@@ -1,0 +1,153 @@
+{% extends "admin_layout.html" %}
+{% block title %}Tratamientos Fiscales - Admiral Harbor Admin{% endblock %}
+{% block page_title %}Tratamientos Fiscales{% endblock %}
+{% block page_subtitle %}Impuestos y retenciones por país — aplican automáticamente o por solicitud del cliente{% endblock %}
+
+{% block content %}
+<div class="panel" style="margin-bottom:1.5rem;">
+  <h2><i class="fas fa-globe pf-u-mr-sm"></i> Tratamientos configurados</h2>
+  <p class="meta">
+    <strong>+</strong> = incrementa el monto (IVA, ISV, etc.) &nbsp;|&nbsp;
+    <strong>−</strong> = reduce el monto (retención IR, ISR, etc.) &nbsp;|&nbsp;
+    <span style="color:var(--pf-global--warning-color--100,#f0ab00);">Optativo</span> = el cliente debe solicitarlo
+  </p>
+
+  {% if types %}
+  <table class="pf-c-table pf-m-compact" style="width:100%;margin-top:1rem;">
+    <thead>
+      <tr>
+        <th>País</th>
+        <th>Nombre</th>
+        <th>Efecto</th>
+        <th style="text-align:right;">%</th>
+        <th>Tipo</th>
+        <th>Evidencia</th>
+        <th>Estado</th>
+        <th style="text-align:right;">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in types %}
+      <tr style="{% if not t.is_active %}opacity:0.5{% endif %}">
+        <td><strong>{{ t.country_code }}</strong> — {{ t.country_name }}</td>
+        <td>{{ t.name }}</td>
+        <td style="font-size:1.2rem;font-weight:700;color:{% if t.direction == '+' %}var(--pf-global--success-color--100,#3e8635){% else %}var(--pf-global--danger-color--100,#c9190b){% endif %}">
+          {{ t.direction }}
+        </td>
+        <td style="text-align:right;font-weight:600;">{{ t.percent }}%</td>
+        <td>
+          {% if t.is_optional %}
+          <span class="badge" style="background:#f0ab00;color:#000;padding:2px 6px;border-radius:4px;font-size:0.75rem;">Optativo</span>
+          {% else %}
+          <span class="badge" style="background:#3e8635;color:#fff;padding:2px 6px;border-radius:4px;font-size:0.75rem;">Obligatorio</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if t.requires_evidence %}
+          <i class="fas fa-paperclip" title="Requiere evidencia"></i>
+          {% else %}
+          <span class="meta">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if t.is_active %}
+          <span style="color:var(--pf-global--success-color--100,#3e8635);"><i class="fas fa-check-circle"></i> Activo</span>
+          {% else %}
+          <span style="color:var(--pf-global--danger-color--100,#c9190b);"><i class="fas fa-times-circle"></i> Inactivo</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right;">
+          <form method="post" action="{{ url_for('admin.fiscal_type_toggle', type_id=t.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-sm {% if t.is_active %}btn-secondary{% else %}btn-primary{% endif %}">
+              {% if t.is_active %}<i class="fas fa-pause"></i>{% else %}<i class="fas fa-play"></i>{% endif %}
+            </button>
+          </form>
+          <form method="post" action="{{ url_for('admin.fiscal_type_delete', type_id=t.id) }}" style="display:inline;"
+                onsubmit="return confirm('¿Eliminar este tratamiento? Se perderán las solicitudes asociadas.')">
+            <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="meta" style="margin-top:1rem;">No hay tratamientos configurados aún.</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2><i class="fas fa-plus-circle pf-u-mr-sm"></i> Agregar tratamiento fiscal</h2>
+  <form method="post" style="margin-top:1rem;">
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:1rem;">
+      <div class="form-group">
+        <label for="country_code">País</label>
+        <select id="country_code" name="country_code" required>
+          <option value="">Seleccionar país…</option>
+          {% for code, name in countries %}
+          <option value="{{ code }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="name">Nombre del tratamiento</label>
+        <input type="text" id="name" name="name" required placeholder="Ej: Retención IR, IVA, ISV…">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="description">Descripción (visible para el cliente)</label>
+      <textarea id="description" name="description" rows="2"
+                placeholder="Explica al cliente cuándo aplica y qué documentación necesita presentar."></textarea>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+      <div class="form-group">
+        <label for="direction">Efecto sobre el monto</label>
+        <select id="direction" name="direction" required>
+          <option value="+">+ Suma (impuesto)</option>
+          <option value="-">− Resta (retención / exención)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="percent">Porcentaje (%)</label>
+        <input type="number" id="percent" name="percent" min="0.01" max="100" step="0.0001" required placeholder="Ej: 15">
+      </div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+          <label style="font-weight:normal;cursor:pointer;">
+            <input type="radio" name="is_optional" value="1" checked> Optativo
+          </label>
+          <label style="font-weight:normal;cursor:pointer;">
+            <input type="radio" name="is_optional" value="0"> Obligatorio
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label style="font-weight:normal;cursor:pointer;">
+        <input type="checkbox" name="requires_evidence" value="1" checked>
+        Requiere evidencia documental del cliente
+      </label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      <i class="fas fa-save pf-u-mr-sm"></i> Guardar tratamiento
+    </button>
+  </form>
+</div>
+
+<div style="margin-top:1rem;display:flex;gap:0.75rem;">
+  <a class="btn btn-secondary" href="{{ url_for('admin.tax_rates') }}">
+    <i class="fas fa-percentage pf-u-mr-sm"></i> Tasas de Impuesto (IVA base)
+  </a>
+  <a class="btn btn-secondary" href="{{ url_for('admin.fiscal_requests_list') }}">
+    <i class="fas fa-inbox pf-u-mr-sm"></i> Solicitudes de clientes
+  </a>
+  <a class="btn btn-secondary" href="{{ url_for('admin.portal_branding') }}">
+    <i class="fas fa-arrow-left pf-u-mr-sm"></i> Branding
+  </a>
+</div>
+{% endblock %}

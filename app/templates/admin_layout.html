@@ -74,16 +74,19 @@
  <li class="pf-c-nav__item"><a href="{{ url_for('admin.backups_list') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.backups_list', 'admin.backup_detail') %}pf-m-current{% endif %}">Backups</a></li>
  </ul>
  </li>
- <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.subscriptions_list', 'admin.payments_list', 'admin.billing', 'admin.metrics') %}pf-m-expanded{% endif %}">
+ <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.subscriptions_list', 'admin.payments_list', 'admin.billing', 'admin.metrics', 'admin.tax_rates', 'admin.fiscal_types', 'admin.fiscal_requests_list', 'admin.fiscal_request_detail') %}pf-m-expanded{% endif %}">
  <a class="pf-c-nav__link" href="#" data-action="toggle-subnav">
  <i class="fas fa-dollar-sign pf-u-mr-sm"></i><span>Commercial</span>
  <span class="pf-c-nav__toggle"><i class="fas fa-angle-right"></i></span>
  </a>
- <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.subscriptions_list', 'admin.payments_list', 'admin.billing', 'admin.metrics') %}{% else %}hidden{% endif %}>
+ <ul class="pf-c-nav__subnav" {% if request.endpoint in ('admin.subscriptions_list', 'admin.payments_list', 'admin.billing', 'admin.metrics', 'admin.tax_rates', 'admin.fiscal_types', 'admin.fiscal_requests_list', 'admin.fiscal_request_detail') %}{% else %}hidden{% endif %}>
  <li class="pf-c-nav__item"><a href="{{ url_for('admin.subscriptions_list') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.subscriptions_list' %}pf-m-current{% endif %}">Suscripciones</a></li>
  <li class="pf-c-nav__item"><a href="{{ url_for('admin.payments_list') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.payments_list' %}pf-m-current{% endif %}">Pagos</a></li>
  <li class="pf-c-nav__item"><a href="{{ url_for('admin.billing') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.billing' %}pf-m-current{% endif %}">Facturación</a></li>
  <li class="pf-c-nav__item"><a href="{{ url_for('admin.metrics') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.metrics' %}pf-m-current{% endif %}">Métricas</a></li>
+ <li class="pf-c-nav__item"><a href="{{ url_for('admin.tax_rates') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.tax_rates' %}pf-m-current{% endif %}">Tasas IVA Base</a></li>
+ <li class="pf-c-nav__item"><a href="{{ url_for('admin.fiscal_types') }}" class="pf-c-nav__link {% if request.endpoint == 'admin.fiscal_types' %}pf-m-current{% endif %}">Tratamientos Fiscales</a></li>
+ <li class="pf-c-nav__item"><a href="{{ url_for('admin.fiscal_requests_list') }}" class="pf-c-nav__link {% if request.endpoint in ('admin.fiscal_requests_list','admin.fiscal_request_detail') %}pf-m-current{% endif %}">Solicitudes Fiscales</a></li>
  </ul>
  </li>
  <li class="pf-c-nav__item pf-m-expandable {% if request.endpoint in ('admin.tickets_list', 'admin.ticket_detail', 'admin.sla_dashboard') %}pf-m-expanded{% endif %}">

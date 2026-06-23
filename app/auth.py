@@ -33,9 +33,7 @@ from app.identity import (
 from app.models import AuditLog, Customer
 from app.rate_limit import RateLimiter
 
-_COUNTRIES = [
-    ("NI", "Nicaragua"),
-]
+from app.countries import COUNTRIES as _COUNTRIES
 
 ph = PasswordHasher()
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -123,7 +121,12 @@ def login_page():
 
 @bp.route("/register", methods=["GET"])
 def register_page():
-    return render_template("auth_register.html", countries=_COUNTRIES)
+    from app.branding import get_tos_url
+    return render_template(
+        "auth_register.html",
+        countries=_COUNTRIES,
+        tos_url=get_tos_url(),
+    )
 
 
 @bp.route("/login", methods=["POST"])

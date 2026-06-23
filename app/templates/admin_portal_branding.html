@@ -35,10 +35,64 @@
    </div>
   </div>
 
-  <div class="form-group">
-   <label for="tax_rates_json">Tax rates JSON</label>
-   <textarea id="tax_rates_json" name="tax_rates_json" rows="8" style="width:100%;font-family:monospace;">{{ tax_rates_json }}</textarea>
-   <p class="meta">Example: { "NI": 15 }</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+   <div class="form-group">
+    <label for="portal_tos_url">URL de Términos de Servicio</label>
+    <input type="url" id="portal_tos_url" name="portal_tos_url" value="{{ settings.portal_tos_url }}" placeholder="https://example.com/terms">
+    <p class="meta" style="margin-top:0.25rem;">Se mostrará como enlace en el formulario de registro. Dejar vacío para mostrar solo texto.</p>
+   </div>
+   <div class="form-group">
+    <label for="portal_currency">Moneda</label>
+    <select id="portal_currency" name="portal_currency">
+     {% set currencies = [
+       ("AED", "AED — UAE Dirham"),
+       ("ARS", "ARS — Argentine Peso"),
+       ("AUD", "AUD — Australian Dollar"),
+       ("BRL", "BRL — Brazilian Real"),
+       ("CAD", "CAD — Canadian Dollar"),
+       ("CHF", "CHF — Swiss Franc"),
+       ("CLP", "CLP — Chilean Peso"),
+       ("CNY", "CNY — Chinese Yuan"),
+       ("COP", "COP — Colombian Peso"),
+       ("CRC", "CRC — Costa Rican Colón"),
+       ("DKK", "DKK — Danish Krone"),
+       ("EUR", "EUR — Euro"),
+       ("GBP", "GBP — British Pound"),
+       ("GTQ", "GTQ — Guatemalan Quetzal"),
+       ("HNL", "HNL — Honduran Lempira"),
+       ("HUF", "HUF — Hungarian Forint"),
+       ("IDR", "IDR — Indonesian Rupiah"),
+       ("ILS", "ILS — Israeli Shekel"),
+       ("INR", "INR — Indian Rupee"),
+       ("JPY", "JPY — Japanese Yen"),
+       ("KRW", "KRW — South Korean Won"),
+       ("MXN", "MXN — Mexican Peso"),
+       ("MYR", "MYR — Malaysian Ringgit"),
+       ("NIO", "NIO — Nicaraguan Córdoba"),
+       ("NOK", "NOK — Norwegian Krone"),
+       ("NZD", "NZD — New Zealand Dollar"),
+       ("PEN", "PEN — Peruvian Sol"),
+       ("PHP", "PHP — Philippine Peso"),
+       ("PLN", "PLN — Polish Zloty"),
+       ("PYG", "PYG — Paraguayan Guaraní"),
+       ("RON", "RON — Romanian Leu"),
+       ("SEK", "SEK — Swedish Krona"),
+       ("SGD", "SGD — Singapore Dollar"),
+       ("THB", "THB — Thai Baht"),
+       ("TRY", "TRY — Turkish Lira"),
+       ("TWD", "TWD — New Taiwan Dollar"),
+       ("UAH", "UAH — Ukrainian Hryvnia"),
+       ("USD", "USD — US Dollar"),
+       ("UYU", "UYU — Uruguayan Peso"),
+       ("VES", "VES — Venezuelan Bolívar"),
+       ("ZAR", "ZAR — South African Rand"),
+     ] %}
+     {% for code, label in currencies %}
+     <option value="{{ code }}" {% if settings.portal_currency == code %}selected{% endif %}>{{ label }}</option>
+     {% endfor %}
+    </select>
+    <p class="meta" style="margin-top:0.25rem;">Moneda usada en órdenes y facturación. Debe ser soportada por el proveedor de pagos (PayPal).</p>
+   </div>
   </div>
 
   <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
@@ -46,5 +100,21 @@
    <a class="btn btn-secondary" href="{{ url_for('admin.dashboard') }}">Back</a>
   </div>
  </form>
+</div>
+
+<div class="panel" style="margin-top:1.5rem;">
+ <h2><i class="fas fa-percentage pf-u-mr-sm"></i> Configuración Fiscal</h2>
+ <p class="meta">Gestiona tasas de impuesto base (IVA/ISV) y tratamientos optativos (retenciones, exenciones) por país de cliente.</p>
+ <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
+  <a href="{{ url_for('admin.tax_rates') }}" class="btn btn-secondary">
+   <i class="fas fa-percentage pf-u-mr-sm"></i> Tasas IVA base (por país)
+  </a>
+  <a href="{{ url_for('admin.fiscal_types') }}" class="btn btn-secondary">
+   <i class="fas fa-sliders-h pf-u-mr-sm"></i> Tratamientos Fiscales (+/−)
+  </a>
+  <a href="{{ url_for('admin.fiscal_requests_list') }}" class="btn btn-secondary">
+   <i class="fas fa-inbox pf-u-mr-sm"></i> Solicitudes de clientes
+  </a>
+ </div>
 </div>
 {% endblock %}

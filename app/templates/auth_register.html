@@ -18,7 +18,14 @@
  {% endfor %}
  </select>
  </label>
- <label class="checkbox-row"><input name="accept_terms" type="checkbox" value="1"> Accept terms</label>
+ <label class="checkbox-row">
+   <input name="accept_terms" type="checkbox" value="1">
+   {% if tos_url %}
+     Accept the <a href="{{ tos_url }}" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+   {% else %}
+     Accept the Terms of Service
+   {% endif %}
+ </label>
  <button class="primary" type="submit">Register</button>
  </form>
  </section>

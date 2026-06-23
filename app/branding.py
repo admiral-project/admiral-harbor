@@ -13,6 +13,7 @@ from app.models import HarborMeta
 DEFAULT_PORTAL_NAME = "Admiral Harbor"
 DEFAULT_PORTAL_DESCRIPTION = "Customer portal"
 DEFAULT_TAX_RATES = {"NI": 15}
+DEFAULT_CURRENCY = "USD"
 ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".svg"}
 CATALOG_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 
@@ -21,6 +22,8 @@ PORTAL_DESCRIPTION_KEY = "portal_description"
 PORTAL_LOGO_FILE_KEY = "portal_logo_file"
 PORTAL_FAVICON_FILE_KEY = "portal_favicon_file"
 TAX_RATES_KEY = "tax_rates_json"
+PORTAL_TOS_URL_KEY = "portal_tos_url"
+PORTAL_CURRENCY_KEY = "portal_currency"
 
 
 def _meta_value(key, default=None):
@@ -131,6 +134,31 @@ def portal_asset_url(kind):
     )
 
 
+def get_currency():
+    """Return the portal's configured billing currency (ISO 4217 code)."""
+    return (
+        _meta_value(PORTAL_CURRENCY_KEY, None)
+        or current_app.config.get("HARBOR_DEFAULT_CURRENCY", DEFAULT_CURRENCY)
+    )
+
+
+def get_tos_url():
+    """Return the configured Terms of Service URL, or empty string if not set."""
+    return _meta_value(PORTAL_TOS_URL_KEY, "") or ""
+
+
+def set_portal_tos_url(url):
+    _upsert_meta(PORTAL_TOS_URL_KEY, (url or "").strip())
+    db.session.commit()
+
+
+def set_portal_currency(code):
+    code = (code or "").strip().upper()
+    if code:
+        _upsert_meta(PORTAL_CURRENCY_KEY, code)
+        db.session.commit()
+
+
 def get_portal_branding():
     return {
         "portal_name": _meta_value(
@@ -144,6 +172,8 @@ def get_portal_branding():
         ),
         "portal_logo_url": portal_asset_url("logo"),
         "portal_favicon_url": portal_asset_url("favicon"),
+        "portal_tos_url": get_tos_url(),
+        "portal_currency": get_currency(),
     }
 
 
@@ -167,4 +197,6 @@ def ensure_default_portal_settings():
         _upsert_meta(PORTAL_DESCRIPTION_KEY, DEFAULT_PORTAL_DESCRIPTION)
     if HarborMeta.get(TAX_RATES_KEY) in (None, ""):
         _upsert_meta(TAX_RATES_KEY, json.dumps(DEFAULT_TAX_RATES, sort_keys=True))
+    if HarborMeta.get(PORTAL_CURRENCY_KEY) in (None, ""):
+        _upsert_meta(PORTAL_CURRENCY_KEY, DEFAULT_CURRENCY)
     db.session.commit()
