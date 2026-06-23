@@ -16,7 +16,7 @@ Usage:
 import logging
 import smtplib
 import ssl
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 
 from app import create_app
@@ -284,7 +284,7 @@ def _send_storage_alert(app, customer_email, instance_id, new_status, customer_n
 
     subject = f"[Admiral] Storage {label} for instance {instance_id}"
     body = (
-        f"Hello{ ' ' + customer_name if customer_name else ''},\n\n"
+        f"Hello{' ' + customer_name if customer_name else ''},\n\n"
         f"This is an automated notification from Admiral.\n\n"
         f"Your instance {instance_id} has reached the storage {label}.\n"
         f"Current storage state: {new_status}\n\n"

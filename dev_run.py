@@ -20,7 +20,7 @@ import time
 import secrets
 import logging
 import threading
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from flask import Flask, redirect, request, jsonify, abort
 

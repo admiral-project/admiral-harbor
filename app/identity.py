@@ -79,7 +79,7 @@ def customer_required(view):
 def admin_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if session.get("customer_email"):
+        if session.get("customer_email") or not current_user.is_authenticated:
             abort(403)
         if not current_user.is_authenticated:
             return redirect(url_for("admin.login_page", next=request.path))
