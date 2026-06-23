@@ -97,15 +97,6 @@ def login_page():
 
 @bp.route("/login", methods=["POST"])
 def login():
-    ip = request.remote_addr or "unknown"
-    allowed, remaining = admin_login_limiter.is_allowed(ip)
-    if not allowed:
-        flash(
-            f"Too many login attempts. Try again in {remaining} second(s).",
-            "error",
-        )
-        return redirect(url_for("admin.login_page")), 429
-
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "")
     ip = request.remote_addr or "unknown"
@@ -115,7 +106,7 @@ def login():
             f"Too many admin login attempts. Try again in {remaining} second(s).",
             "error",
         )
-        return redirect(url_for("admin.login_page"))
+        return redirect(url_for("admin.login_page")), 429
     admin = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
     if admin is None:
         flash("Invalid admin credentials.", "error")
@@ -131,7 +122,6 @@ def login():
     _set_admin_session(admin)
     admin_login_limiter.reset(f"admin-login:{ip}")
     login_user(admin)
-    admin_login_limiter.reset(ip)
     db.session.add(
         AuditLog(
             actor=username,
