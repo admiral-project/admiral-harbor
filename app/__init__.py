@@ -26,6 +26,7 @@ from app.identity import (
 from app.models import HarborAdminUser
 from app.security import init_security_headers, validate_production_config
 from app.portal import bp as main_bp
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 logger = logging.getLogger("admiral-harbor")
 
@@ -42,6 +43,7 @@ def _database_has_tables() -> bool:
 def create_app(config_object="app.config.Config"):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_object)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     Path(app.config["HARBOR_UPLOAD_DIR"]).mkdir(parents=True, exist_ok=True)
     validate_production_config(app.config)
 

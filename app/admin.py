@@ -6,6 +6,7 @@ from argon2.exceptions import VerifyMismatchError
 import json
 from flask import (
     Blueprint,
+    abort,
     flash,
     jsonify,
     redirect,
@@ -77,6 +78,8 @@ def _ensure_authenticated():
         "static",
     ):
         return None
+    if session.get("customer_email"):
+        abort(403)
     if not current_user.is_authenticated:
         return redirect(url_for("admin.login_page"))
 

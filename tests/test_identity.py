@@ -103,7 +103,7 @@ def test_admin_required_allows_admin(client):
 def test_admin_required_blocks_customer(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.get("/admin/", follow_redirects=False)
-    assert response.status_code == 302
+    assert response.status_code == 403
 
 
 def test_admin_required_redirects_anonymous_to_login(client):
@@ -126,7 +126,7 @@ def test_customer_login_clears_admin_session(client):
     assert response.status_code == 200
     assert response.json["email"] == "user@example.com"
     response = client.get("/admin/", follow_redirects=False)
-    assert response.status_code == 302
+    assert response.status_code == 403
 
 
 def test_admin_login_clears_customer_session(client):
@@ -145,7 +145,7 @@ def test_admin_login_clears_customer_session(client):
 # ---- cross-role barrier integration ----
 
 
-def test_customer_redirected_from_admin_routes(client):
+def test_customer_blocked_from_admin_routes(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     admin_urls = [
         "/admin/",
@@ -164,8 +164,8 @@ def test_customer_redirected_from_admin_routes(client):
     for url in admin_urls:
         response = client.get(url, follow_redirects=False)
         assert (
-            response.status_code == 302
-        ), f"Expected 302 for {url}, got {response.status_code}"
+            response.status_code == 403
+        ), f"Expected 403 for {url}, got {response.status_code}"
 
 
 def test_admin_blocked_from_all_client_routes(client):

@@ -81,6 +81,8 @@ def admin_required(view):
     def wrapped(*args, **kwargs):
         if session.get("customer_email"):
             abort(403)
+        if not current_user.is_authenticated:
+            return redirect(url_for("admin.login_page", next=request.path))
         return view(*args, **kwargs)
 
     return wrapped
