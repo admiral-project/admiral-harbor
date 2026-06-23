@@ -523,6 +523,13 @@ def subscription_cancel(subscription_id):
                 subscription.paypal_subscription_id,
                 exc,
             )
+            flash(
+                "We could not cancel the PayPal subscription. Please try again.",
+                "error",
+            )
+            return redirect(
+                url_for("client.subscription_cancel_page", subscription_id=subscription_id)
+            )
     subscription.status = "cancelled"
     change = SubscriptionChange(
         subscription_id=subscription.id,
@@ -1090,7 +1097,6 @@ def instance_action(instance_id):
                 return redirect(
                     url_for("client.instance_detail", instance_id=instance_id)
                 )
-            response = admiral_client.action(instance.instance_id, "deprovision")
             subscription = db.session.get(Subscription, instance.subscription_id)
             if subscription:
                 if subscription.paypal_subscription_id:
@@ -1105,6 +1111,15 @@ def instance_action(instance_id):
                             subscription.paypal_subscription_id,
                             exc,
                         )
+                        flash(
+                            "We could not cancel the PayPal subscription. Please try again.",
+                            "error",
+                        )
+                        return redirect(
+                            url_for("client.instance_detail", instance_id=instance_id)
+                        )
+            response = admiral_client.action(instance.instance_id, "deprovision")
+            if subscription:
                 subscription.status = "cancelled"
             _event(
                 instance.instance_id,

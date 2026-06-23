@@ -3,8 +3,16 @@
 
 """Tests for customer-protected routes under /client/ blueprint."""
 
+from app import admiral_client
 from app.extensions import db
-from app.models import Customer, CustomerFiscalRequest, FiscalTreatmentType, Order
+from app.models import (
+    Customer,
+    CustomerFiscalRequest,
+    FiscalTreatmentType,
+    Order,
+    Subscription,
+)
+from app.paypal import PayPalError
 
 
 def test_client_root(client):
@@ -169,6 +177,113 @@ def test_client_deploy_uses_contractual_fiscal_snapshot(client):
         assert order.fiscal_country_code == "NI"
         assert '"tax_percent":15' in order.fiscal_snapshot_json
         assert '"name":"Retencion IR"' in order.fiscal_snapshot_json
+
+
+def test_subscription_cancel_blocks_local_cancellation_when_paypal_cancel_fails(client, monkeypatch):
+    def fail_cancel(subscription_id, reason):
+        raise PayPalError("paypal unavailable")
+
+    monkeypatch.setattr("app.client.paypal_cancel_subscription", fail_cancel)
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/subscriptions/1/cancel",
+        data={"confirm": "on", "reason": "Need to stop"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+    assert response.headers["Location"].endswith("/client/subscriptions/1/cancel")
+
+    with client.application.app_context():
+        subscription = db.session.get(Subscription, 1)
+        assert subscription is not None
+        assert subscription.status == "active"
+
+
+def test_subscription_cancel_marks_local_cancellation_after_paypal_success(client, monkeypatch):
+    calls = []
+
+    def ok_cancel(subscription_id, reason):
+        calls.append((subscription_id, reason))
+
+    monkeypatch.setattr("app.client.paypal_cancel_subscription", ok_cancel)
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/subscriptions/1/cancel",
+        data={"confirm": "on", "reason": "Need to stop"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+    assert response.headers["Location"].endswith("/client/subscriptions")
+    assert calls == [("paypal_sub_1", "Need to stop")]
+
+    with client.application.app_context():
+        subscription = db.session.get(Subscription, 1)
+        assert subscription is not None
+        assert subscription.status == "cancelled"
+
+
+def test_instance_cancel_blocks_deprovision_when_paypal_cancel_fails(client, monkeypatch):
+    deprovision_calls = []
+
+    def fail_cancel(subscription_id, reason):
+        raise PayPalError("paypal unavailable")
+
+    def record_action(instance_id, action_name, tier=None, service=None):
+        deprovision_calls.append((instance_id, action_name))
+        return {"operation_id": f"op_{action_name}", "status": "queued"}
+
+    monkeypatch.setattr("app.client.paypal_cancel_subscription", fail_cancel)
+    monkeypatch.setattr(admiral_client, "action", record_action)
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/instances/inst_123/actions",
+        data={"action": "cancel", "confirm_text": "wordpress"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+    assert response.headers["Location"].endswith("/client/instances/inst_123")
+    assert deprovision_calls == []
+
+    with client.application.app_context():
+        subscription = db.session.get(Subscription, 1)
+        assert subscription is not None
+        assert subscription.status == "active"
+
+
+def test_instance_cancel_deprovisions_after_paypal_success(client, monkeypatch):
+    deprovision_calls = []
+
+    def ok_cancel(subscription_id, reason):
+        return None
+
+    def record_action(instance_id, action_name, tier=None, service=None):
+        deprovision_calls.append((instance_id, action_name))
+        return {"operation_id": f"op_{action_name}", "status": "queued"}
+
+    monkeypatch.setattr("app.client.paypal_cancel_subscription", ok_cancel)
+    monkeypatch.setattr(admiral_client, "action", record_action)
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/instances/inst_123/actions",
+        data={"action": "cancel", "confirm_text": "wordpress"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+    assert response.headers["Location"].endswith("/client/instances/inst_123")
+    assert deprovision_calls == [("inst_123", "deprovision")]
+
+    with client.application.app_context():
+        subscription = db.session.get(Subscription, 1)
+        assert subscription is not None
+        assert subscription.status == "cancelled"
 
 
 def test_client_blocks_anonymous_all_routes(client):
