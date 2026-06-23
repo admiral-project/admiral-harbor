@@ -9,14 +9,15 @@
 </header>
 
 <section class="panel">
+ {% set fiscal = invoice.fiscal_snapshot_json | from_json %}
  <table>
  <tr><td>Customer</td><td>{{ invoice.customer_email }}</td></tr>
  <tr><td>App</td><td>{{ invoice.app_slug }}</td></tr>
  <tr><td>Tier</td><td>{{ invoice.tier_name }}</td></tr>
  <tr><td>Subtotal</td><td>${{ "%.2f"|format(invoice.subtotal_cents / 100) }}</td></tr>
- {% if invoice.tax_percent > 0 %}
- <tr><td>Tax ({{ invoice.tax_percent }}%)</td><td>${{ "%.2f"|format(invoice.tax_cents / 100) }}</td></tr>
- {% endif %}
+ {% for item in fiscal.line_items or [] %}
+ <tr><td>{{ item.name }}{% if item.percent %} ({{ item.direction }}{{ item.percent }}%){% endif %}</td><td>{{ "-" if item.amount_cents < 0 else "" }}${{ "%.2f"|format((item.amount_cents | abs) / 100) }}</td></tr>
+ {% endfor %}
  <tr><td><strong>Total</strong></td><td><strong>${{ "%.2f"|format(invoice.total_cents / 100) }}</strong></td></tr>
  <tr><td>Currency</td><td>{{ invoice.currency }}</td></tr>
  <tr><td>Status</td><td><span class="status-pill">{{ invoice.status }}</span></td></tr>

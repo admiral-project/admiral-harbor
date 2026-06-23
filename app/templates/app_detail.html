@@ -1,6 +1,58 @@
 {% extends "layout.html" %}
 {% block title %}{{ app.name }} - {{ portal_name }}{% endblock %}
 {% block body %}
+{% if customer and fiscal_gate and fiscal_gate.requires_review %}
+<div id="fiscal-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;display:flex;align-items:center;justify-content:center;">
+  <div class="panel" style="max-width:640px;width:92%;padding:2rem;position:relative;">
+    <h2 style="margin-top:0;"><i class="fas fa-file-invoice-dollar" style="margin-right:0.5rem;"></i> Fiscal Configuration Required</h2>
+    <p>We detected that you reside in <strong>{{ fiscal_gate.country_code }}</strong>. Review your fiscal configuration before you can contract apps.</p>
+
+    {% if not fiscal_gate.mandatory_accepted %}
+    <div class="panel" style="border-left:4px solid #c9190b;margin:1rem 0;padding:1rem;">
+      <p style="margin-top:0;"><strong>Mandatory taxes</strong></p>
+      <ul style="margin:0.5rem 0 0 1.25rem;">
+        {% set snapshot = tier_quotes[remote.tiers[0].name] if remote.tiers else None %}
+        {% if snapshot and snapshot.tax_percent > 0 %}
+        <li>Base tax: +{{ snapshot.tax_percent }}%</li>
+        {% endif %}
+        {% for treatment in fiscal_gate.mandatory_types %}
+        <li>{{ treatment.name }}: {{ treatment.direction }}{{ treatment.percent }}%</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{{ url_for('client.accept_fiscal_terms') }}" style="margin-top:1rem;">
+        <input type="hidden" name="next" value="{{ url_for('main.app_detail', slug=app.slug) }}">
+        <label style="display:flex;gap:0.5rem;align-items:flex-start;">
+          <input type="checkbox" name="accept_mandatory" value="on" required style="margin-top:0.3rem;">
+          <span>I accept the mandatory fiscal charges that apply to my country.</span>
+        </label>
+        <button type="submit" class="btn primary" style="margin-top:1rem;">Accept mandatory fiscal configuration</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if fiscal_gate.available_optional_types %}
+    <div class="panel" style="border-left:4px solid #2b9af3;margin:1rem 0;padding:1rem;">
+      <p style="margin-top:0;"><strong>Optional fiscal treatments</strong></p>
+      <ul style="margin:0.5rem 0 0 1.25rem;">
+        {% for treatment in fiscal_gate.available_optional_types %}
+        <li>{{ treatment.name }}: {{ treatment.direction }}{{ treatment.percent }}%</li>
+        {% endfor %}
+      </ul>
+      <p class="meta" style="margin-top:0.75rem;">Optional treatments require Harbor admin review and supporting documentation.</p>
+      <a href="{{ url_for('client.fiscal_request_new') }}" class="btn secondary" style="margin-top:0.5rem;">Request optional treatment</a>
+    </div>
+    {% endif %}
+
+    {% if fiscal_gate.pending_requests %}
+    <div class="panel" style="border-left:4px solid #f0ab00;margin:1rem 0;padding:1rem;">
+      <p style="margin:0;"><strong>Pending review</strong></p>
+      <p class="meta" style="margin-top:0.5rem;">Harbor must approve or deny your optional fiscal request before contracting can continue.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
 <section class="detail-intro">
   <p class="breadcrumb"><a href="{{ url_for('main.index') }}">Catalog</a> / {{ app.name }}</p>
   <div class="detail-head">
@@ -42,11 +94,23 @@
       <p class="price free">Free</p>
       {% else %}
       <p class="price">${{ "%.2f"|format(tier.price_monthly_cents / 100) }}<span class="period">/month</span></p>
+      {% if customer and tier_quotes.get(tier.name) %}
+      {% set quote = tier_quotes[tier.name] %}
+      <p class="meta">
+        {% if quote.tax_cents %}
+        Tax: ${{ "%.2f"|format(quote.tax_cents / 100) }}
+        {% endif %}
+        {% if quote.fiscal_adjustment_cents %}
+        · Fiscal adjustment: {{ "-" if quote.fiscal_adjustment_cents < 0 else "+" }}${{ "%.2f"|format((quote.fiscal_adjustment_cents | abs) / 100) }}
+        {% endif %}
+      </p>
+      <p class="meta"><strong>Contract total: ${{ "%.2f"|format(quote.total_cents / 100) }}/month</strong></p>
+      {% endif %}
       {% endif %}
       {% if customer %}
       <form method="post" action="{{ url_for('client.deploy_app', slug=app.slug) }}">
         <input type="hidden" name="tier_name" value="{{ tier.name }}">
-        <button type="submit" class="btn primary">{% if tier.free %}Deploy{% else %}Subscribe{% endif %}</button>
+        <button type="submit" class="btn primary" {% if fiscal_gate and fiscal_gate.requires_review %}disabled{% endif %}>{% if tier.free %}Deploy{% else %}Subscribe{% endif %}</button>
       </form>
       {% else %}
       <a href="{{ url_for('auth.login_page') }}" class="btn">Sign in to deploy</a>

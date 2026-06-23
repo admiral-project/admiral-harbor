@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+{% block title %}Solicitar Tratamiento Fiscal - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="form-page">
+  <section class="panel form-panel">
+    <h1><i class="fas fa-file-invoice-dollar" style="margin-right:0.5rem;"></i> Solicitar Tratamiento Fiscal</h1>
+    <p class="meta">Selecciona el tratamiento fiscal que aplica a tu situación y adjunta la documentación que lo respalde. El equipo revisará tu solicitud y te notificará.</p>
+
+    {% if not available_types %}
+    <div class="alert alert-info">
+      Tu país no tiene tratamientos fiscales optativos disponibles, o ya tienes solicitudes activas para todos ellos.
+    </div>
+    <a href="{{ url_for('client.fiscal_requests') }}" class="btn btn-secondary">Volver</a>
+    {% else %}
+    <form method="post" enctype="multipart/form-data" class="stack" style="margin-top:1rem;">
+
+      <div class="form-group">
+        <label for="treatment_type_id">Tratamiento fiscal</label>
+        <select id="treatment_type_id" name="treatment_type_id" required onchange="showDescription(this)">
+          <option value="">Seleccionar…</option>
+          {% for t in available_types %}
+          <option value="{{ t.id }}"
+                  data-description="{{ t.description or '' }}"
+                  data-direction="{{ t.direction }}"
+                  data-percent="{{ t.percent }}"
+                  data-evidence="{{ '1' if t.requires_evidence else '0' }}">
+            {{ t.name }} ({{ t.direction }}{{ t.percent }}%)
+          </option>
+          {% endfor %}
+        </select>
+        <p id="treatment-description" class="meta" style="margin-top:0.25rem;display:none;"></p>
+        <p id="treatment-effect" class="meta" style="margin-top:0.25rem;display:none;"></p>
+      </div>
+
+      <div class="form-group" id="evidence-section" style="display:none;">
+        <label for="evidence">Evidencia documental <span style="color:#c9190b;">*</span></label>
+        <input type="file" id="evidence" name="evidence"
+               accept=".pdf,.png,.jpg,.jpeg,.doc,.docx">
+        <p class="meta" style="margin-top:0.25rem;">Resolución, carta de autorización, cédula RUC u otro documento que respalde tu solicitud. Formatos: PDF, imagen, Word.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="request_notes">Notas adicionales (opcional)</label>
+        <textarea id="request_notes" name="request_notes" rows="3"
+                  placeholder="Número de resolución, fecha de vigencia, observaciones…"></textarea>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-paper-plane pf-u-mr-sm"></i> Enviar solicitud
+        </button>
+        <a href="{{ url_for('client.fiscal_requests') }}" class="btn btn-secondary">Cancelar</a>
+      </div>
+    </form>
+    {% endif %}
+  </section>
+</section>
+
+<script>
+function showDescription(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var desc = opt.getAttribute('data-description');
+  var dir = opt.getAttribute('data-direction');
+  var pct = opt.getAttribute('data-percent');
+  var needsEvidence = opt.getAttribute('data-evidence') === '1';
+
+  var descEl = document.getElementById('treatment-description');
+  var effEl = document.getElementById('treatment-effect');
+  var evSection = document.getElementById('evidence-section');
+
+  if (desc) {
+    descEl.textContent = desc;
+    descEl.style.display = '';
+  } else {
+    descEl.style.display = 'none';
+  }
+
+  if (dir && pct) {
+    var sign = dir === '+' ? 'suma' : 'resta';
+    effEl.textContent = 'Este tratamiento ' + sign + ' un ' + pct + '% al monto de tu suscripción.';
+    effEl.style.display = '';
+  } else {
+    effEl.style.display = 'none';
+  }
+
+  evSection.style.display = needsEvidence ? '' : 'none';
+  if (needsEvidence) {
+    document.getElementById('evidence').setAttribute('required', 'required');
+  } else {
+    document.getElementById('evidence').removeAttribute('required');
+  }
+}
+</script>
+{% endblock %}

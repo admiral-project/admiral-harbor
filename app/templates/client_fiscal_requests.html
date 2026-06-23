@@ -1,0 +1,98 @@
+{% extends "layout.html" %}
+{% block title %}Configuración Fiscal - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="content-page">
+  <h1><i class="fas fa-file-invoice-dollar" style="margin-right:0.5rem;"></i> Configuración Fiscal</h1>
+  <p class="meta">Si tu país tiene regímenes fiscales especiales (retenciones, exenciones), puedes solicitarlos aquí adjuntando la documentación que te habilita.</p>
+
+  {% if fiscal_gate and fiscal_gate.configured and not fiscal_gate.mandatory_accepted %}
+  <div class="panel" style="border-left:4px solid #c9190b;margin-bottom:1.5rem;">
+    <h3 style="margin-top:0;">Aceptación fiscal obligatoria pendiente</h3>
+    <form method="post" action="{{ url_for('client.accept_fiscal_terms') }}" style="margin-top:0.75rem;">
+      <input type="hidden" name="next" value="{{ url_for('client.fiscal_requests') }}">
+      <label style="display:flex;gap:0.5rem;align-items:flex-start;">
+        <input type="checkbox" name="accept_mandatory" value="on" required style="margin-top:0.3rem;">
+        <span>Acepto los impuestos y tratamientos fiscales no optativos aplicables a mi país.</span>
+      </label>
+      <button type="submit" class="btn btn-primary" style="margin-top:0.75rem;">Aceptar configuración obligatoria</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if pending_types %}
+  <div class="panel" style="border-left:4px solid #f0ab00;margin-bottom:1.5rem;">
+    <h3 style="color:#f0ab00;margin-top:0;"><i class="fas fa-exclamation-triangle pf-u-mr-sm"></i> Tratamientos disponibles no solicitados</h3>
+    <p>Tu país (<strong>{{ customer.country }}</strong>) tiene los siguientes tratamientos fiscales optativos que aún no has solicitado:</p>
+    <ul>
+      {% for t in pending_types %}
+      <li>
+        <strong>{{ t.name }}</strong> —
+        <span style="font-weight:700;color:{% if t.direction == '+' %}green{% else %}#c9190b{% endif %}">
+          {{ t.direction }}{{ t.percent }}%
+        </span>
+        {% if t.description %}<br><span class="meta">{{ t.description }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <a href="{{ url_for('client.fiscal_request_new') }}" class="btn btn-primary">
+      <i class="fas fa-plus pf-u-mr-sm"></i> Solicitar tratamiento fiscal
+    </a>
+  </div>
+  {% endif %}
+
+  {% if requests %}
+  <div class="panel">
+    <h2>Mis solicitudes</h2>
+    <table class="pf-c-table pf-m-compact" style="width:100%;margin-top:0.75rem;">
+      <thead>
+        <tr>
+          <th>Tratamiento</th>
+          <th>Efecto</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+          <th>Notas del revisor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr>
+          <td>{{ r.treatment_type.name }}</td>
+          <td>
+            <span style="font-weight:700;color:{% if r.treatment_type.direction == '+' %}green{% else %}#c9190b{% endif %}">
+              {{ r.treatment_type.direction }}{{ r.treatment_type.percent }}%
+            </span>
+          </td>
+          <td>
+            {% if r.status == 'pending' %}
+            <span style="color:#f0ab00;font-weight:600;"><i class="fas fa-clock"></i> En revisión</span>
+            {% elif r.status == 'approved' %}
+            <span style="color:green;font-weight:600;"><i class="fas fa-check-circle"></i> Aprobado</span>
+            {% else %}
+            <span style="color:#c9190b;font-weight:600;"><i class="fas fa-times-circle"></i> Rechazado</span>
+            {% endif %}
+          </td>
+          <td>{{ r.created_at.strftime('%Y-%m-%d') }}</td>
+          <td class="meta">{{ r.reviewer_notes or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="panel">
+    <p class="meta">Aún no tienes solicitudes fiscales.</p>
+    {% if available_types %}
+    <a href="{{ url_for('client.fiscal_request_new') }}" class="btn btn-primary">
+      <i class="fas fa-plus pf-u-mr-sm"></i> Solicitar tratamiento fiscal
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div style="margin-top:1rem;">
+    <a href="{{ url_for('client.dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left pf-u-mr-sm"></i> Volver al panel
+    </a>
+  </div>
+</section>
+{% endblock %}

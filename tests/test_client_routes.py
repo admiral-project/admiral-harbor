@@ -3,6 +3,9 @@
 
 """Tests for customer-protected routes under /client/ blueprint."""
 
+from app.extensions import db
+from app.models import Customer, CustomerFiscalRequest, FiscalTreatmentType, Order
+
 
 def test_client_root(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
@@ -71,10 +74,101 @@ def test_client_deploy_as_customer(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.post(
         "/client/apps/wordpress/deploy",
-        data={"tier": "starter"},
+        data={"tier_name": "starter"},
         follow_redirects=False,
     )
     assert response.status_code in (302, 303)
+
+
+def test_client_deploy_blocks_until_mandatory_fiscal_terms_are_accepted(client):
+    with client.application.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        customer.country = "NI"
+        db.session.commit()
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/apps/wordpress/deploy",
+        data={"tier_name": "starter"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+    assert response.headers["Location"].endswith("/apps/wordpress")
+
+    with client.application.app_context():
+        assert db.session.query(Order).count() == 0
+
+
+def test_client_accepts_mandatory_fiscal_terms_and_persists_snapshot(client):
+    with client.application.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        customer.country = "NI"
+        db.session.commit()
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/fiscal/accept",
+        data={"accept_mandatory": "on", "next": "/client/fiscal-requests"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+
+    with client.application.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        assert customer.fiscal_acceptance_country_code == "NI"
+        assert customer.fiscal_acceptance_snapshot_json is not None
+        assert customer.fiscal_accepted_at is not None
+
+
+def test_client_deploy_uses_contractual_fiscal_snapshot(client):
+    with client.application.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        customer.country = "NI"
+        fiscal_type = FiscalTreatmentType(
+            country_code="NI",
+            name="Retencion IR",
+            direction="-",
+            percent=2,
+            is_optional=True,
+            requires_evidence=True,
+            is_active=True,
+        )
+        db.session.add(fiscal_type)
+        db.session.flush()
+        db.session.add(
+            CustomerFiscalRequest(
+                customer_email=customer.email,
+                treatment_type_id=fiscal_type.id,
+                status="approved",
+            )
+        )
+        db.session.commit()
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    client.post(
+        "/client/fiscal/accept",
+        data={"accept_mandatory": "on", "next": "/client/fiscal-requests"},
+        follow_redirects=False,
+    )
+    response = client.post(
+        "/client/apps/wordpress/deploy",
+        data={"tier_name": "starter"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+
+    with client.application.app_context():
+        order = db.session.query(Order).filter_by(customer_email="user@example.com").one()
+        assert order.tax_percent == 15
+        assert order.tax_cents == 375
+        assert order.fiscal_adjustment_cents == -50
+        assert order.total_cents == 2825
+        assert order.fiscal_country_code == "NI"
+        assert '"tax_percent":15' in order.fiscal_snapshot_json
+        assert '"name":"Retencion IR"' in order.fiscal_snapshot_json
 
 
 def test_client_blocks_anonymous_all_routes(client):

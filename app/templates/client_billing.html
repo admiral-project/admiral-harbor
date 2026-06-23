@@ -14,7 +14,16 @@
  <article class="card app-card">
  <h3>{{ order.app_slug }}</h3>
  <p class="status-line"><span class="status-pill">{{ order.status }}</span></p>
- <p>{{ order.tier_name }} · ${{ "%.2f"|format(order.monthly_price_cents / 100) }}/month{% if order.tax_percent > 0 %} + {{ order.tax_percent }}% tax{% endif %}</p>
+ <p>{{ order.tier_name }} · Base ${{ "%.2f"|format(order.monthly_price_cents / 100) }}/month</p>
+ {% set fiscal = order.fiscal_snapshot_json | from_json %}
+ {% if fiscal.line_items %}
+ <p class="meta">
+ {% for item in fiscal.line_items %}
+ {{ item.name }} {{ item.direction }}${{ "%.2f"|format((item.amount_cents | abs) / 100) }}{% if not loop.last %} · {% endif %}
+ {% endfor %}
+ </p>
+ {% endif %}
+ <p><strong>Contract total: ${{ "%.2f"|format(order.total_cents / 100) }}/month</strong></p>
  <p class="meta">Order {{ order.order_id }}</p>
  {% if order.status == "pending_payment" and order.paypal_subscription_id %}
  <form method="get" action="{{ url_for('client.billing_return', order_id=order.order_id) }}">
@@ -34,7 +43,16 @@
  <article class="card app-card">
  <h3>{{ sub.app_slug }}</h3>
  <p class="status-line"><span class="status-pill">{{ sub.status }}</span></p>
- <p>{{ sub.tier_name }} · ${{ "%.2f"|format(sub.monthly_price_cents / 100) }}/month{% if sub.tax_percent > 0 %} + {{ sub.tax_percent }}% tax{% endif %}</p>
+ <p>{{ sub.tier_name }} · Base ${{ "%.2f"|format(sub.monthly_price_cents / 100) }}/month</p>
+ {% set fiscal = sub.fiscal_snapshot_json | from_json %}
+ {% if fiscal.line_items %}
+ <p class="meta">
+ {% for item in fiscal.line_items %}
+ {{ item.name }} {{ item.direction }}${{ "%.2f"|format((item.amount_cents | abs) / 100) }}{% if not loop.last %} · {% endif %}
+ {% endfor %}
+ </p>
+ {% endif %}
+ <p><strong>Contract total: ${{ "%.2f"|format(sub.total_cents / 100) }}/month</strong></p>
  <p class="meta">Next billing: {{ sub.next_billing_at or "-" }}</p>
  </article>
  {% else %}

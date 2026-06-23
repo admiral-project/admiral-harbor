@@ -24,9 +24,13 @@ from werkzeug.utils import secure_filename
 
 from app import admiral_client
 from app.admiral_client import AdmiralAPIError
-from app.branding import get_tax_rates
 from app.config import overdue_policy
 from app.extensions import db
+from app.fiscal import (
+    acceptance_snapshot,
+    contract_snapshot,
+    gate as fiscal_gate,
+)
 from app.identity import current_customer, customer_required, login_required
 from app.models import (
     AppCourse,
@@ -36,7 +40,9 @@ from app.models import (
     CatalogAppTier,
     Customer,
     CustomerApp,
+    CustomerFiscalRequest,
     CustomerReply,
+    FiscalTreatmentType,
     InstanceEvent,
     Invoice,
     Order,
@@ -50,6 +56,7 @@ from app.models import (
 )
 from app.paypal import (
     PayPalError,
+    cancel_subscription as paypal_cancel_subscription,
     create_subscription,
     get_subscription,
 )
@@ -196,10 +203,6 @@ def _course_price(course_id, tier_name):
     return price
 
 
-def _tax_percent(country):
-    return get_tax_rates().get((country or "").upper(), 0)
-
-
 def _audit(actor, action, resource_type="", resource_id="", detail=""):
     db.session.add(
         AuditLog(
@@ -239,6 +242,11 @@ def _provision_from_order(order):
         or (datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         billing_email=order.billing_email or order.customer_email,
         tax_percent=order.tax_percent,
+        tax_cents=order.tax_cents,
+        fiscal_adjustment_cents=order.fiscal_adjustment_cents,
+        total_cents=order.total_cents,
+        fiscal_country_code=order.fiscal_country_code,
+        fiscal_snapshot_json=order.fiscal_snapshot_json,
         paypal_subscription_id=order.paypal_subscription_id,
         paypal_plan_id=order.paypal_plan_id,
     )
@@ -335,6 +343,16 @@ def dashboard():
         .scalar()
         or 0
     )
+    fiscal_reminder = None
+    gate = fiscal_gate(customer)
+    if gate["configured"]:
+        fiscal_reminder = {
+            "country": gate["country_code"],
+            "types": gate["available_optional_types"],
+            "mandatory_accepted": gate["mandatory_accepted"],
+            "pending_requests": gate["pending_requests"],
+            "requires_review": gate["requires_review"],
+        }
     return render_template(
         "client_dashboard.html",
         subscriptions=subscriptions,
@@ -345,6 +363,8 @@ def dashboard():
         failed_payments=failed_payments,
         pending_payments=pending_payments,
         total_charged_cents=total_charged_cents,
+        fiscal_reminder=fiscal_reminder,
+        fiscal_gate=gate,
     )
 
 
@@ -491,6 +511,18 @@ def subscription_cancel(subscription_id):
         return redirect(
             url_for("client.subscription_cancel_page", subscription_id=subscription_id)
         )
+    if subscription.paypal_subscription_id:
+        try:
+            paypal_cancel_subscription(
+                subscription.paypal_subscription_id,
+                reason or "Cancelled by customer",
+            )
+        except PayPalError as exc:
+            current_app.logger.warning(
+                "PayPal cancel failed for subscription %s: %s",
+                subscription.paypal_subscription_id,
+                exc,
+            )
     subscription.status = "cancelled"
     change = SubscriptionChange(
         subscription_id=subscription.id,
@@ -589,8 +621,6 @@ def billing_return():
                 flash(f"Provisioning failed: {exc}", "error")
                 return redirect(url_for("client.billing"))
 
-            tax_cents = int(order.monthly_price_cents * order.tax_percent / 100)
-            total_cents = order.monthly_price_cents + tax_cents
             invoice = Invoice(
                 subscription_external_id=subscription.external_id,
                 customer_email=customer.email,
@@ -598,8 +628,11 @@ def billing_return():
                 tier_name=order.tier_name,
                 subtotal_cents=order.monthly_price_cents,
                 tax_percent=order.tax_percent,
-                tax_cents=tax_cents,
-                total_cents=total_cents,
+                tax_cents=order.tax_cents,
+                fiscal_adjustment_cents=order.fiscal_adjustment_cents,
+                total_cents=order.total_cents,
+                fiscal_country_code=order.fiscal_country_code,
+                fiscal_snapshot_json=order.fiscal_snapshot_json,
                 status="paid",
                 paypal_transaction_id=order.paypal_subscription_id,
                 period_start=order.next_billing_at,
@@ -612,7 +645,7 @@ def billing_return():
                 customer_email=customer.email,
                 provider="paypal",
                 provider_reference=order.paypal_subscription_id,
-                amount_cents=total_cents,
+                amount_cents=order.total_cents,
                 status="completed",
             )
             db.session.add(payment)
@@ -622,7 +655,7 @@ def billing_return():
                 "payment_completed",
                 "order",
                 order.order_id,
-                f"Payment confirmed for {order.app_slug} ({order.tier_name}) — ${total_cents / 100:.2f}",
+                f"Payment confirmed for {order.app_slug} ({order.tier_name}) — ${order.total_cents / 100:.2f}",
             )
             session["provision_credentials"] = credentials if credentials else []
             session["provision_instance_id"] = instance_id
@@ -690,6 +723,20 @@ def billing_receipt(invoice_id):
 @customer_required
 def deploy_app(slug):
     customer = current_customer()
+    gate = fiscal_gate(customer)
+    if gate["configured"]:
+        if not gate["mandatory_accepted"]:
+            flash(
+                "Review and accept the mandatory fiscal configuration before contracting apps.",
+                "error",
+            )
+            return redirect(url_for("main.app_detail", slug=slug))
+        if gate["pending_requests"]:
+            flash(
+                "You have fiscal requests pending review. Contracting is blocked until Harbor resolves them.",
+                "error",
+            )
+            return redirect(url_for("main.app_detail", slug=slug))
     tier_name = request.form.get("tier_name", "").strip()
     remote = admiral_client.get_app(slug)
     tier = next((item for item in remote["tiers"] if item["name"] == tier_name), None)
@@ -715,10 +762,8 @@ def deploy_app(slug):
             )
             return redirect(url_for("main.app_detail", slug=slug))
 
-    tax_pct = _tax_percent(customer.country)
-    total_cents = tier["price_monthly_cents"] + int(
-        tier["price_monthly_cents"] * tax_pct / 100
-    )
+    base_cents = tier["price_monthly_cents"]
+    fiscal_contract = contract_snapshot(customer, base_cents)
     local_tier = (
         db.session.query(CatalogAppTier)
         .join(CatalogApp)
@@ -741,10 +786,13 @@ def deploy_app(slug):
         customer_email=customer.email,
         app_slug=slug,
         tier_name=tier_name,
-        monthly_price_cents=tier["price_monthly_cents"],
-        tax_percent=tax_pct,
-        tax_cents=int(tier["price_monthly_cents"] * tax_pct / 100),
-        total_cents=total_cents,
+        monthly_price_cents=base_cents,
+        tax_percent=fiscal_contract["tax_percent"],
+        tax_cents=fiscal_contract["tax_cents"],
+        fiscal_adjustment_cents=fiscal_contract["fiscal_adjustment_cents"],
+        total_cents=fiscal_contract["total_cents"],
+        fiscal_country_code=fiscal_contract["country_code"],
+        fiscal_snapshot_json=fiscal_contract["snapshot_json"],
         requires_billing=requires_billing,
         next_billing_at=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         billing_email=customer.email,
@@ -756,7 +804,7 @@ def deploy_app(slug):
         "order_created",
         "order",
         order.order_id,
-        f"Order for {slug} ({tier_name}) — ${total_cents / 100:.2f}",
+        f"Order for {slug} ({tier_name}) — ${order.total_cents / 100:.2f}",
     )
 
     if requires_billing:
@@ -769,7 +817,12 @@ def deploy_app(slug):
                 "client.billing_cancel", order_id=order.order_id, _external=True
             )
             paypal_sub = create_subscription(
-                plan_id, return_url, cancel_url, custom_id=order.order_id
+                plan_id,
+                return_url,
+                cancel_url,
+                custom_id=order.order_id,
+                amount_cents=order.total_cents,
+                currency=order.currency,
             )
             order.paypal_subscription_id = paypal_sub["id"]
             order.paypal_plan_id = plan_id
@@ -826,6 +879,32 @@ def deploy_app(slug):
     session["provision_credentials"] = credentials if credentials else []
     session["provision_instance_id"] = instance_id
     return redirect(url_for("client.provision_success", instance_id=instance_id))
+
+
+@bp.route("/fiscal/accept", methods=["POST"])
+@login_required
+@customer_required
+def accept_fiscal_terms():
+    customer = current_customer()
+    gate = fiscal_gate(customer)
+    if not gate["configured"]:
+        return redirect(request.form.get("next") or url_for("client.dashboard"))
+    if request.form.get("accept_mandatory") != "on":
+        flash("You must accept the mandatory fiscal configuration to continue.", "error")
+        return redirect(request.form.get("next") or url_for("client.dashboard"))
+    customer.fiscal_acceptance_country_code = gate["country_code"]
+    customer.fiscal_acceptance_snapshot_json = acceptance_snapshot(customer.country)
+    customer.fiscal_accepted_at = datetime.now(UTC)
+    db.session.commit()
+    _audit(
+        customer.email,
+        "fiscal_terms_accepted",
+        "Customer",
+        customer.public_id,
+        f"Accepted fiscal configuration for {gate['country_code']}",
+    )
+    flash("Mandatory fiscal configuration accepted.", "success")
+    return redirect(request.form.get("next") or url_for("client.dashboard"))
 
 
 # ── Instances ────────────────────────────────────────────────────────────────
@@ -1014,6 +1093,18 @@ def instance_action(instance_id):
             response = admiral_client.action(instance.instance_id, "deprovision")
             subscription = db.session.get(Subscription, instance.subscription_id)
             if subscription:
+                if subscription.paypal_subscription_id:
+                    try:
+                        paypal_cancel_subscription(
+                            subscription.paypal_subscription_id,
+                            "Instance cancelled by customer",
+                        )
+                    except PayPalError as exc:
+                        current_app.logger.warning(
+                            "PayPal cancel failed for subscription %s: %s",
+                            subscription.paypal_subscription_id,
+                            exc,
+                        )
                 subscription.status = "cancelled"
             _event(
                 instance.instance_id,
@@ -1531,3 +1622,139 @@ def enroll_course(course_id):
         "success",
     )
     return redirect(url_for("client.help_center"))
+
+
+# ── Fiscal Requests ───────────────────────────────────────────────────────────
+
+
+@bp.route("/fiscal-requests")
+@login_required
+@customer_required
+def fiscal_requests():
+    customer = current_customer()
+    gate = fiscal_gate(customer)
+    requests_list = (
+        db.session.query(CustomerFiscalRequest)
+        .filter_by(customer_email=customer.email)
+        .order_by(CustomerFiscalRequest.created_at.desc())
+        .all()
+    )
+    country_code = (customer.country or "").upper()
+    available_types = (
+        db.session.query(FiscalTreatmentType)
+        .filter_by(country_code=country_code, is_optional=True, is_active=True)
+        .all()
+        if country_code
+        else []
+    )
+    active_request_type_ids = {
+        r.treatment_type_id
+        for r in requests_list
+        if r.status in ("pending", "approved")
+    }
+    pending_types = [t for t in available_types if t.id not in active_request_type_ids]
+    return render_template(
+        "client_fiscal_requests.html",
+        requests=requests_list,
+        customer=customer,
+        available_types=available_types,
+        pending_types=pending_types,
+        fiscal_gate=gate,
+    )
+
+
+@bp.route("/fiscal-requests/new", methods=["GET", "POST"])
+@login_required
+@customer_required
+def fiscal_request_new():
+    import os
+
+    customer = current_customer()
+    country_code = (customer.country or "").upper()
+    available_types_raw = (
+        db.session.query(FiscalTreatmentType)
+        .filter_by(country_code=country_code, is_optional=True, is_active=True)
+        .all()
+        if country_code
+        else []
+    )
+    already_active_ids = {
+        r.treatment_type_id
+        for r in db.session.query(CustomerFiscalRequest)
+        .filter(
+            CustomerFiscalRequest.customer_email == customer.email,
+            CustomerFiscalRequest.status.in_(["pending", "approved"]),
+        )
+        .all()
+    }
+    available_types = [t for t in available_types_raw if t.id not in already_active_ids]
+
+    if request.method == "POST":
+        type_id_str = request.form.get("treatment_type_id", "").strip()
+        if not type_id_str:
+            flash("Debes seleccionar un tratamiento fiscal.", "error")
+            return render_template(
+                "client_fiscal_request_new.html",
+                available_types=available_types,
+                customer=customer,
+            )
+        try:
+            type_id = int(type_id_str)
+        except ValueError:
+            flash("Tratamiento inválido.", "error")
+            return redirect(url_for("client.fiscal_request_new"))
+
+        treatment = db.session.get(FiscalTreatmentType, type_id)
+        if not treatment or treatment.country_code != country_code or not treatment.is_active or not treatment.is_optional:
+            flash("Tratamiento no disponible.", "error")
+            return redirect(url_for("client.fiscal_request_new"))
+
+        evidence_path = None
+        evidence_name = None
+        if treatment.requires_evidence:
+            ev_file = request.files.get("evidence")
+            if not ev_file or ev_file.filename == "":
+                flash("Este tratamiento requiere evidencia documental.", "error")
+                return render_template(
+                    "client_fiscal_request_new.html",
+                    available_types=available_types,
+                    customer=customer,
+                )
+            upload_dir = os.path.join(
+                current_app.config.get("HARBOR_UPLOAD_DIR", "/tmp/harbor-uploads"),
+                "fiscal",
+            )
+            os.makedirs(upload_dir, exist_ok=True)
+            safe_name = compute_sha256(ev_file.read())
+            ev_file.stream.seek(0)
+            ext = os.path.splitext(ev_file.filename)[-1].lower()
+            evidence_name = ev_file.filename
+            evidence_path = os.path.join(upload_dir, f"{safe_name}{ext}")
+            ev_file.save(evidence_path)
+
+        request_notes = request.form.get("request_notes", "").strip() or None
+        fiscal_req = CustomerFiscalRequest(
+            customer_email=customer.email,
+            treatment_type_id=type_id,
+            status="pending",
+            evidence_path=evidence_path,
+            evidence_original_name=evidence_name,
+            request_notes=request_notes,
+        )
+        db.session.add(fiscal_req)
+        _audit(
+            customer.email,
+            "fiscal_request_submitted",
+            "CustomerFiscalRequest",
+            fiscal_req.request_id,
+            f"Fiscal request for {treatment.name} ({treatment.direction}{treatment.percent}%)",
+        )
+        db.session.commit()
+        flash("Solicitud enviada. El equipo la revisará en breve.", "success")
+        return redirect(url_for("client.fiscal_requests"))
+
+    return render_template(
+        "client_fiscal_request_new.html",
+        available_types=available_types,
+        customer=customer,
+    )
