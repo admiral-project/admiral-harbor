@@ -147,6 +147,46 @@ def test_paypal_create_subscription_live_payload(monkeypatch, app):
     assert "tax" not in captured["json"]
 
 
+def test_paypal_create_subscription_live_payload_supports_amount_override(
+    monkeypatch, app
+):
+    app.config.update(
+        HARBOR_PAYPAL_MODE="live",
+        HARBOR_PAYPAL_BASE_URL="https://api-m.paypal.com",
+        HARBOR_PAYPAL_CLIENT_ID="client",
+        HARBOR_PAYPAL_CLIENT_SECRET="secret",
+    )
+
+    captured = {}
+
+    def fake_post(url, headers=None, data=None, json=None, timeout=None):
+        captured["json"] = json
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {
+                "id": "P-123",
+                "status": "APPROVAL_PENDING",
+                "links": [{"rel": "approve", "href": "https://paypal.test/approve"}],
+            },
+        )
+
+    monkeypatch.setattr("app.paypal._get_access_token", lambda: "token")
+    monkeypatch.setattr("app.paypal.requests.post", fake_post)
+
+    with app.app_context():
+        create_subscription(
+            "P-PLAN-123",
+            "https://return",
+            "https://cancel",
+            custom_id="ord_1",
+            amount_cents=11300,
+        )
+
+    assert captured["json"]["plan_override"]["billing_cycles"][0]["pricing_scheme"][
+        "fixed_price"
+    ] == {"value": "113.00", "currency_code": "USD"}
+
+
 def test_paypal_return_live_marks_order_approved_without_provision(
     client, monkeypatch, app
 ):
@@ -247,7 +287,12 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
             monthly_price_cents=2500,
             tier_name="starter",
             paypal_subscription_id="sub_123",
-            tax_percent=0,
+            tax_percent=15,
+            tax_cents=375,
+            fiscal_adjustment_cents=-50,
+            total_cents=2825,
+            fiscal_country_code="NI",
+            fiscal_snapshot_json='{"base_tax_percent":15,"country_code":"NI","fiscal_adjustment_cents":-50,"line_items":[{"amount_cents":375,"direction":"+","is_optional":false,"kind":"base_tax","name":"Base tax","percent":15},{"amount_cents":-50,"direction":"-","is_optional":true,"kind":"treatment","name":"Retencion IR","percent":2.0,"treatment_type_id":1}],"subtotal_cents":2500,"tax_cents":375,"tax_percent":15,"total_cents":2825}',
         )
         db.session.add(subscription)
         db.session.flush()
@@ -256,9 +301,12 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
             app_slug="wordpress",
             tier_name="starter",
             monthly_price_cents=2500,
-            tax_percent=0,
-            tax_cents=0,
-            total_cents=2500,
+            tax_percent=15,
+            tax_cents=375,
+            fiscal_adjustment_cents=-50,
+            total_cents=2825,
+            fiscal_country_code="NI",
+            fiscal_snapshot_json=subscription.fiscal_snapshot_json,
             requires_billing=True,
             status="approved",
             paypal_subscription_id="sub_123",
@@ -293,4 +341,8 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
         assert stored_order.status == "paid"
         assert stored_subscription.instance_id is not None
         assert invoice.paypal_transaction_id == "sale_123"
+        assert invoice.tax_cents == 375
+        assert invoice.fiscal_adjustment_cents == -50
+        assert invoice.total_cents == 2825
         assert payment.provider_reference == "sale_123"
+        assert payment.amount_cents == 2825

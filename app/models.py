@@ -44,6 +44,9 @@ class Customer(db.Model):
         db.String(50), nullable=False, default="overdue-policy-v1"
     )
     terms_accepted_at = db.Column(db.DateTime, nullable=True)
+    fiscal_acceptance_country_code = db.Column(db.String(2), nullable=True)
+    fiscal_acceptance_snapshot_json = db.Column(db.Text, nullable=True)
+    fiscal_accepted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(UTC), nullable=False
     )
@@ -78,6 +81,10 @@ class Customer(db.Model):
             "terms_policy_version": self.terms_policy_version,
             "terms_accepted_at": (
                 self.terms_accepted_at.isoformat() if self.terms_accepted_at else None
+            ),
+            "fiscal_acceptance_country_code": self.fiscal_acceptance_country_code,
+            "fiscal_accepted_at": (
+                self.fiscal_accepted_at.isoformat() if self.fiscal_accepted_at else None
             ),
         }
 
@@ -330,6 +337,11 @@ class Subscription(db.Model):
         default=lambda: f"sub_{uuid4().hex[:20]}",
     )
     tax_percent = db.Column(db.Integer, default=0, nullable=False)
+    tax_cents = db.Column(db.Integer, default=0, nullable=False)
+    fiscal_adjustment_cents = db.Column(db.Integer, default=0, nullable=False)
+    total_cents = db.Column(db.Integer, default=0, nullable=False)
+    fiscal_country_code = db.Column(db.String(2), nullable=True)
+    fiscal_snapshot_json = db.Column(db.Text, nullable=True)
     is_test_app = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(UTC), nullable=False
@@ -353,6 +365,10 @@ class Subscription(db.Model):
             "billing_email": self.billing_email,
             "technical_email": self.technical_email,
             "tax_percent": self.tax_percent,
+            "tax_cents": self.tax_cents,
+            "fiscal_adjustment_cents": self.fiscal_adjustment_cents,
+            "total_cents": self.total_cents,
+            "fiscal_country_code": self.fiscal_country_code,
         }
 
 
@@ -371,7 +387,10 @@ class Invoice(db.Model):
     subtotal_cents = db.Column(db.Integer, nullable=False, default=0)
     tax_percent = db.Column(db.Integer, nullable=False, default=0)
     tax_cents = db.Column(db.Integer, nullable=False, default=0)
+    fiscal_adjustment_cents = db.Column(db.Integer, nullable=False, default=0)
     total_cents = db.Column(db.Integer, nullable=False, default=0)
+    fiscal_country_code = db.Column(db.String(2), nullable=True)
+    fiscal_snapshot_json = db.Column(db.Text, nullable=True)
     currency = db.Column(db.String(3), nullable=False, default="USD")
     status = db.Column(db.String(30), nullable=False, default="pending")
     paypal_transaction_id = db.Column(db.String(255), nullable=True)
@@ -392,7 +411,9 @@ class Invoice(db.Model):
             "subtotal_cents": self.subtotal_cents,
             "tax_percent": self.tax_percent,
             "tax_cents": self.tax_cents,
+            "fiscal_adjustment_cents": self.fiscal_adjustment_cents,
             "total_cents": self.total_cents,
+            "fiscal_country_code": self.fiscal_country_code,
             "currency": self.currency,
             "status": self.status,
             "paypal_transaction_id": self.paypal_transaction_id,
@@ -722,7 +743,10 @@ class Order(db.Model):
     monthly_price_cents = db.Column(db.Integer, nullable=False, default=0)
     tax_percent = db.Column(db.Integer, nullable=False, default=0)
     tax_cents = db.Column(db.Integer, nullable=False, default=0)
+    fiscal_adjustment_cents = db.Column(db.Integer, nullable=False, default=0)
     total_cents = db.Column(db.Integer, nullable=False, default=0)
+    fiscal_country_code = db.Column(db.String(2), nullable=True)
+    fiscal_snapshot_json = db.Column(db.Text, nullable=True)
     currency = db.Column(db.String(3), nullable=False, default="USD")
     status = db.Column(
         db.String(30), nullable=False, default="pending_payment", index=True
@@ -748,7 +772,9 @@ class Order(db.Model):
             "monthly_price_cents": self.monthly_price_cents,
             "tax_percent": self.tax_percent,
             "tax_cents": self.tax_cents,
+            "fiscal_adjustment_cents": self.fiscal_adjustment_cents,
             "total_cents": self.total_cents,
+            "fiscal_country_code": self.fiscal_country_code,
             "subscription_external_id": self.subscription_external_id,
         }
 
@@ -857,6 +883,63 @@ class RateLimit(db.Model):
     identifier = db.Column(db.String(255), nullable=False, index=True)
     window_start = db.Column(db.Float, nullable=False)
     attempts = db.Column(db.Integer, default=0, nullable=False)
+
+
+class FiscalTreatmentType(db.Model):
+    """Admin-defined fiscal adjustments per country (taxes + or deductions -)."""
+
+    __tablename__ = "fiscal_treatment_type"
+
+    id = db.Column(db.Integer, primary_key=True)
+    country_code = db.Column(db.String(2), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    direction = db.Column(db.String(1), nullable=False)  # "+" or "-"
+    percent = db.Column(db.Numeric(8, 4), nullable=False)
+    is_optional = db.Column(db.Boolean, default=True, nullable=False)
+    requires_evidence = db.Column(db.Boolean, default=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
+
+    requests = db.relationship(
+        "CustomerFiscalRequest", back_populates="treatment_type", lazy="dynamic"
+    )
+
+
+class CustomerFiscalRequest(db.Model):
+    """Customer request for an optional fiscal treatment."""
+
+    __tablename__ = "customer_fiscal_request"
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(
+        db.String(64),
+        unique=True,
+        nullable=False,
+        default=lambda: f"fr_{uuid4().hex[:12]}",
+    )
+    customer_email = db.Column(db.String(255), nullable=False, index=True)
+    treatment_type_id = db.Column(
+        db.Integer, db.ForeignKey("fiscal_treatment_type.id"), nullable=False
+    )
+    status = db.Column(
+        db.String(20), nullable=False, default="pending", index=True
+    )  # pending | approved | revoked
+    evidence_path = db.Column(db.String(500), nullable=True)
+    evidence_original_name = db.Column(db.String(255), nullable=True)
+    request_notes = db.Column(db.Text, nullable=True)
+    reviewer_notes = db.Column(db.Text, nullable=True)
+    reviewed_by = db.Column(db.String(255), nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC), nullable=False
+    )
+
+    treatment_type = db.relationship(
+        "FiscalTreatmentType", back_populates="requests"
+    )
 
 
 class UserSession(db.Model):

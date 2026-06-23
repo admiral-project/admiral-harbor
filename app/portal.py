@@ -25,6 +25,7 @@ from app import admiral_client
 from app.admiral_client import AdmiralAPIError
 from app.config import overdue_policy
 from app.extensions import db
+from app.fiscal import contract_snapshot, gate as fiscal_gate
 from app.identity import current_customer
 from app.models import (
     AppCourse,
@@ -268,19 +269,30 @@ def app_detail(slug):
     except AdmiralAPIError:
         remote = {"tiers": []}
     settings = LMSSettings.singleton()
+    customer = current_customer()
+    gate = fiscal_gate(customer) if customer is not None else None
     courses = (
         db.session.query(AppCourse)
         .filter_by(app_slug=slug, active=True)
         .order_by(AppCourse.course_code.asc())
         .all()
     )
+    tier_quotes = {}
+    if customer is not None:
+        for tier in remote.get("tiers", []):
+            tier_quotes[tier["name"]] = contract_snapshot(
+                customer,
+                tier.get("price_monthly_cents", 0),
+            )
     return render_template(
         "app_detail.html",
         app=app.as_dict(),
         remote=remote,
         lms_enabled=settings.enabled,
         courses=courses,
-        customer=current_customer(),
+        customer=customer,
+        fiscal_gate=gate,
+        tier_quotes=tier_quotes,
     )
 
 
@@ -306,9 +318,13 @@ def paypal_webhook():
     ):
         return jsonify({"status": "duplicate"}), 200
 
+    # Use SELECT FOR UPDATE to serialise concurrent webhooks for the same
+    # subscription and prevent double-provisioning when two events (e.g.
+    # BILLING.SUBSCRIPTION.ACTIVATED + PAYMENT.SALE.COMPLETED) arrive together.
     subscription = (
         db.session.query(Subscription)
         .filter_by(paypal_subscription_id=subscription_id)
+        .with_for_update()
         .one_or_none()
     )
     if subscription is None:
@@ -321,7 +337,13 @@ def paypal_webhook():
     status = subscription.status
     if event_type in {"BILLING.SUBSCRIPTION.ACTIVATED", "PAYMENT.SALE.COMPLETED"}:
         status = "active"
-    elif event_type in {"PAYMENT.SALE.DENIED", "BILLING.SUBSCRIPTION.SUSPENDED"}:
+    elif event_type in {
+        "PAYMENT.SALE.DENIED",
+        "BILLING.SUBSCRIPTION.SUSPENDED",
+        "PAYMENT.SALE.REFUNDED",
+        "PAYMENT.SALE.REVERSED",
+        "CUSTOMER.DISPUTE.CREATED",
+    }:
         status = "past_due"
     elif event_type in {
         "BILLING.SUBSCRIPTION.CANCELLED",
@@ -353,10 +375,6 @@ def paypal_webhook():
                 order.status = "approved"
 
     if event_type == "PAYMENT.SALE.COMPLETED":
-        tax_cents = int(
-            subscription.monthly_price_cents * subscription.tax_percent / 100
-        )
-        total_cents = subscription.monthly_price_cents + tax_cents
         existing = (
             db.session.query(Invoice).filter_by(paypal_event_id=event_id).one_or_none()
         )
@@ -368,8 +386,11 @@ def paypal_webhook():
                 tier_name=subscription.tier_name,
                 subtotal_cents=subscription.monthly_price_cents,
                 tax_percent=subscription.tax_percent,
-                tax_cents=tax_cents,
-                total_cents=total_cents,
+                tax_cents=subscription.tax_cents,
+                fiscal_adjustment_cents=subscription.fiscal_adjustment_cents,
+                total_cents=subscription.total_cents,
+                fiscal_country_code=subscription.fiscal_country_code,
+                fiscal_snapshot_json=subscription.fiscal_snapshot_json,
                 status="paid",
                 paypal_transaction_id=resource.get("id", ""),
                 paypal_event_id=event_id,
@@ -390,7 +411,7 @@ def paypal_webhook():
                     customer_email=subscription.customer_email,
                     provider="paypal",
                     provider_reference=resource.get("id", ""),
-                    amount_cents=total_cents,
+                    amount_cents=subscription.total_cents,
                     status="completed",
                 )
             )
@@ -437,6 +458,18 @@ def paypal_webhook():
             "subscription",
             subscription.external_id,
             f"Subscription {event_type.split('.')[-1].lower()} for {subscription.app_slug}",
+        )
+    elif event_type in (
+        "PAYMENT.SALE.REFUNDED",
+        "PAYMENT.SALE.REVERSED",
+        "CUSTOMER.DISPUTE.CREATED",
+    ):
+        _audit(
+            subscription.customer_email,
+            "billing_payment_reversed",
+            "subscription",
+            subscription.external_id,
+            f"Payment reversal/dispute ({event_type}) for {subscription.app_slug}",
         )
     return jsonify({"status": status})
 

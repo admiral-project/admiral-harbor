@@ -93,6 +93,10 @@ def client(app):
                 tier_name="starter",
                 instance_id="inst_123",
                 paypal_subscription_id="paypal_sub_1",
+                tax_percent=0,
+                tax_cents=0,
+                fiscal_adjustment_cents=0,
+                total_cents=2500,
             )
             db.session.add(subscription)
             db.session.commit()

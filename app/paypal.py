@@ -54,13 +54,29 @@ def _db_paypal_config():
     }
 
 
+_PAYPAL_BASE_URLS = {
+    "sandbox": "https://api-m.sandbox.paypal.com",
+    "live": "https://api-m.paypal.com",
+}
+
+
+def _base_url():
+    """Resolve PayPal REST API base URL from mode.
+
+    Priority: HARBOR_PAYPAL_BASE_URL env var > mode-derived default.
+    In live mode defaults to api-m.paypal.com without requiring the env var,
+    so switching mode in the admin panel is enough — no env var change needed.
+    """
+    pp = _db_paypal_config()
+    derived = _PAYPAL_BASE_URLS.get(pp["mode"], _PAYPAL_BASE_URLS["sandbox"])
+    return current_app.config.get("HARBOR_PAYPAL_BASE_URL", derived)
+
+
 def _api_url():
     pp = _db_paypal_config()
     if pp["mode"] == "mock":
         return _external_url() + "/mock-paypal"
-    return current_app.config.get(
-        "HARBOR_PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com"
-    )
+    return _base_url()
 
 
 def _external_url():
@@ -80,7 +96,7 @@ def _get_access_token():
     client_secret = pp["client_secret"]
     if not client_id or not client_secret:
         return "mock-token"
-    base_url = current_app.config["HARBOR_PAYPAL_BASE_URL"]
+    base_url = _base_url()
     auth = b64encode(f"{client_id}:{client_secret}".encode()).decode()
     try:
         resp = requests.post(
@@ -96,7 +112,14 @@ def _get_access_token():
         raise PayPalError(f"PayPal authentication failed: {exc}") from exc
 
 
-def create_subscription(plan_id, return_url, cancel_url, custom_id=None):
+def create_subscription(
+    plan_id,
+    return_url,
+    cancel_url,
+    custom_id=None,
+    amount_cents=None,
+    currency="USD",
+):
     if _is_mock():
         sub_id = f"MOCK-SUB-{uuid.uuid4().hex[:16]}"
         approval_url = f"{_api_url()}/approve?subscription_id={sub_id}&return_url={return_url}&cancel_url={cancel_url}"
@@ -110,7 +133,7 @@ def create_subscription(plan_id, return_url, cancel_url, custom_id=None):
         raise PayPalError("PayPal plan ID is required")
 
     token = _get_access_token()
-    base_url = current_app.config["HARBOR_PAYPAL_BASE_URL"]
+    base_url = _base_url()
     body = {
         "plan_id": plan_id,
         "application_context": {
@@ -120,6 +143,20 @@ def create_subscription(plan_id, return_url, cancel_url, custom_id=None):
     }
     if custom_id:
         body["custom_id"] = custom_id
+    if amount_cents is not None:
+        body["plan_override"] = {
+            "billing_cycles": [
+                {
+                    "sequence": 1,
+                    "pricing_scheme": {
+                        "fixed_price": {
+                            "value": f"{amount_cents / 100:.2f}",
+                            "currency_code": currency,
+                        }
+                    },
+                }
+            ]
+        }
     try:
         resp = requests.post(
             f"{base_url}/v1/billing/subscriptions",
@@ -148,7 +185,7 @@ def capture_subscription(subscription_id):
             },
         }
     token = _get_access_token()
-    base_url = current_app.config["HARBOR_PAYPAL_BASE_URL"]
+    base_url = _base_url()
     try:
         resp = requests.post(
             f"{base_url}/v1/billing/subscriptions/{subscription_id}/activate",
@@ -173,7 +210,7 @@ def get_subscription(subscription_id):
             },
         }
     token = _get_access_token()
-    base_url = current_app.config["HARBOR_PAYPAL_BASE_URL"]
+    base_url = _base_url()
     try:
         resp = requests.get(
             f"{base_url}/v1/billing/subscriptions/{subscription_id}",
@@ -187,6 +224,32 @@ def get_subscription(subscription_id):
         raise PayPalError(f"Failed to get PayPal subscription: {exc}") from exc
 
 
+def cancel_subscription(subscription_id, reason="Cancelled by customer"):
+    """Cancel a PayPal subscription.
+
+    PayPal returns 204 No Content on success. Raises PayPalError on failure.
+    The cancellation is a no-op in mock mode.
+    """
+    if _is_mock():
+        return
+    token = _get_access_token()
+    base_url = _base_url()
+    try:
+        resp = requests.post(
+            f"{base_url}/v1/billing/subscriptions/{subscription_id}/cancel",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json={"reason": reason[:128]},
+            timeout=30,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        logger.error("PayPal cancel subscription failed", extra={"error": str(exc)})
+        raise PayPalError(f"Failed to cancel PayPal subscription: {exc}") from exc
+
+
 def verify_webhook_signature(headers, body):
     if _is_mock():
         return True
@@ -195,7 +258,7 @@ def verify_webhook_signature(headers, body):
         logger.warning("PayPal webhook ID not configured")
         return False
     token = _get_access_token()
-    base_url = current_app.config["HARBOR_PAYPAL_BASE_URL"]
+    base_url = _base_url()
     verification = {
         "auth_algo": headers.get("PAYPAL-AUTH-ALGO", ""),
         "cert_url": headers.get("PAYPAL-CERT-URL", ""),

@@ -93,8 +93,6 @@ def _generate_invoices(app):
                 errors += 1
                 continue
 
-        tax_cents = int(sub.monthly_price_cents * sub.tax_percent / 100)
-        total_cents = sub.monthly_price_cents + tax_cents
         invoice = Invoice(
             subscription_external_id=sub.external_id,
             customer_email=sub.customer_email,
@@ -102,8 +100,11 @@ def _generate_invoices(app):
             tier_name=sub.tier_name,
             subtotal_cents=sub.monthly_price_cents,
             tax_percent=sub.tax_percent,
-            tax_cents=tax_cents,
-            total_cents=total_cents,
+            tax_cents=sub.tax_cents,
+            fiscal_adjustment_cents=sub.fiscal_adjustment_cents,
+            total_cents=sub.total_cents,
+            fiscal_country_code=sub.fiscal_country_code,
+            fiscal_snapshot_json=sub.fiscal_snapshot_json,
             status="paid" if paypal_active else "pending",
             period_start=sub.next_billing_at,
             period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
@@ -161,7 +162,10 @@ def _enforce_payment_policy(app):
             )
             try:
                 admiral_action(sub.instance_id, "deprovision")
-                sub.status = "cancelled"
+                # Mark as suspended, not cancelled: the customer did not request
+                # cancellation — the app was removed due to non-payment and can
+                # be reactivated once payment is restored.
+                sub.status = "suspended"
                 actions += 1
             except AdmiralAPIError as exc:
                 log.error("Deprovision failed for %s: %s", sub.instance_id, exc)
