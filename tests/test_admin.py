@@ -29,10 +29,10 @@ def test_admin_login_rate_limited(client):
     response = client.post(
         "/admin/login",
         data={"username": "testadmin", "password": "wrong"},
-        follow_redirects=True,
+        follow_redirects=False,
     )
-    assert response.status_code == 200
-    assert b"Too many admin login attempts" in response.data
+    assert response.status_code == 429
+    assert response.headers["Location"] == "/admin/login"
 
 
 def test_admin_layout_includes_csrf_helper(client):
