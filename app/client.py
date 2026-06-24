@@ -66,6 +66,7 @@ bp = Blueprint("client", __name__, url_prefix="/client")
 OPERATIONAL_STATUSES = {
     "pending_provision": "Provisioning",
     "provisioning": "Provisioning",
+    "initializing": "Inicializando",
     "running": "Running",
     "stopped": "Paused",
     "paused": "Paused",
@@ -73,6 +74,7 @@ OPERATIONAL_STATUSES = {
     "restoring": "Restore in progress",
     "deprovisioning": "Cancelling",
     "deprovisioned": "Cancelled",
+    "setup_failed": "Error de inicialización",
     "failed": "Error",
 }
 
@@ -105,12 +107,14 @@ STATUS_TONES = {
     "pending": "attention",
     "pending_provision": "attention",
     "provisioning": "attention",
+    "initializing": "attention",
     "backup_running": "attention",
     "restoring": "attention",
     "warning": "attention",
     "critical": "danger",
     "over_quota": "danger",
     "suspended": "danger",
+    "setup_failed": "danger",
     "failed": "danger",
     "deprovisioning": "danger",
     "deprovisioned": "danger",
@@ -166,6 +170,7 @@ def _sync_remote_instances(customer):
             )
             db.session.add(app)
         app.status = item.get("technical_status", app.status)
+        app.commercial_status = item.get("commercial_status", app.commercial_status)
         app.storage_status = item.get("storage_state", app.storage_status)
         app.tier_name = item.get("tier_name", app.tier_name)
         app.domain = item.get("hostname", app.domain)
@@ -365,6 +370,8 @@ def dashboard():
         total_charged_cents=total_charged_cents,
         fiscal_reminder=fiscal_reminder,
         fiscal_gate=gate,
+        operational_labels=OPERATIONAL_STATUSES,
+        operational_tones=STATUS_TONES,
     )
 
 
@@ -957,6 +964,9 @@ def instance_detail(instance_id):
     try:
         remote_state = admiral_client.get_customer_app(instance.instance_id)
         instance.status = remote_state.get("technical_status", instance.status)
+        instance.commercial_status = remote_state.get(
+            "commercial_status", instance.commercial_status
+        )
         instance.storage_status = remote_state.get(
             "storage_state", instance.storage_status
         )

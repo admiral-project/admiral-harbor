@@ -439,6 +439,7 @@ class CustomerApp(db.Model):
     app_slug = db.Column(db.String(120), nullable=False, index=True)
     domain = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(50), nullable=False, default="running")
+    commercial_status = db.Column(db.String(50), nullable=False, default="active")
     backup_status = db.Column(db.String(50), nullable=False, default="ok")
     storage_status = db.Column(db.String(50), nullable=False, default="ok")
     tier_name = db.Column(db.String(120), nullable=False, default="starter")
@@ -456,6 +457,7 @@ class CustomerApp(db.Model):
             "app_slug": self.app_slug,
             "domain": self.domain,
             "status": self.status,
+            "commercial_status": self.commercial_status,
             "backup_status": self.backup_status,
             "storage_status": self.storage_status,
             "tier_name": self.tier_name,

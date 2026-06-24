@@ -62,17 +62,24 @@
  <h2>My Applications</h2>
  <div class="grid app-grid">
  {% for instance in customer_apps %}
- <article class="card app-card">
- <h3>{{ instance.app_slug }}</h3>
- <p class="status-line"><span class="status-pill">{{ instance.status }}</span></p>
-  {% if instance.domain and not instance.domain.startswith('inst_') %}
-  <p><a href="https://{{ instance.domain }}">{{ instance.domain }}</a></p>
-  {% elif instance.domain %}
-  <p class="meta">Provisioning…</p>
-  {% endif %}
-  <p class="meta">Tier: {{ instance.tier_name }} · Storage: {{ instance.storage_status }} · Next billing: {{ instance.next_billing_at or "-" }}</p>
- <a href="{{ url_for('client.instance_detail', instance_id=instance.instance_id) }}" class="secondary">Manage</a>
- </article>
+<article class="card app-card">
+  <h3>{{ instance.app_slug }}</h3>
+  <p class="status-line"><span class="status-pill tone-{{ operational_tones.get(instance.status, 'attention') }}">{{ operational_labels.get(instance.status, instance.status) }}</span></p>
+   {% if instance.status == "initializing" %}
+   <p class="meta" style="color:#1e40af;">Su aplicación se está inicializando</p>
+   {% elif instance.status == "setup_failed" %}
+   <p class="meta" style="color:#991b1b;">Su app falló al inicializar, hemos realizado un reembolso a su cuenta</p>
+   {% elif instance.status == "running" and instance.commercial_status == "active" %}
+   <p class="meta" style="color:#065f46;">Su app fue inicializada correctamente</p>
+   {% endif %}
+   {% if instance.domain and not instance.domain.startswith('inst_') and instance.status not in ["initializing", "setup_failed"] %}
+   <p><a href="https://{{ instance.domain }}">{{ instance.domain }}</a></p>
+   {% elif instance.domain and instance.status != "setup_failed" %}
+   <p class="meta">Provisioning…</p>
+   {% endif %}
+   <p class="meta">Tier: {{ instance.tier_name }} · Storage: {{ instance.storage_status }} · Next billing: {{ instance.next_billing_at or "-" }}</p>
+  <a href="{{ url_for('client.instance_detail', instance_id=instance.instance_id) }}" class="secondary">Manage</a>
+  </article>
  {% else %}
  <p class="meta">No active apps yet.</p>
  {% endfor %}

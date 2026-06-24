@@ -352,6 +352,9 @@ def _sync_remote_instances(app):
             old_storage = local.storage_status
             new_storage = item.get("storage_state", old_storage)
             local.status = item.get("technical_status", local.status)
+            local.commercial_status = item.get(
+                "commercial_status", local.commercial_status
+            )
             local.storage_status = new_storage
             actions += 1
 
