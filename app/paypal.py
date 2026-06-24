@@ -5,6 +5,7 @@ import json
 import logging
 import uuid
 from base64 import b64encode
+from datetime import UTC, datetime, timedelta
 
 import requests
 from flask import current_app
@@ -248,6 +249,90 @@ def cancel_subscription(subscription_id, reason="Cancelled by customer"):
     except requests.RequestException as exc:
         logger.error("PayPal cancel subscription failed", extra={"error": str(exc)})
         raise PayPalError(f"Failed to cancel PayPal subscription: {exc}") from exc
+
+
+def refund_last_sale(subscription_id):
+    """Refund the most recent captured payment for a PayPal subscription.
+
+    Used when setup_command fails and the customer must be reimbursed.
+    The function:
+      1. Lists transactions for the subscription (last 30 days).
+      2. Picks the most recent PAYMENT.CAPTURE.COMPLETED transaction.
+      3. Issues a full refund via POST /v2/payments/captures/{id}/refund.
+
+    Returns the refund transaction ID on success, or None in mock mode
+    or when no capturable transaction is found.
+
+    Raises PayPalError if the PayPal API returns an error.
+    """
+    if _is_mock():
+        logger.info(
+            "refund_last_sale: mock mode, no real refund for %s",
+            subscription_id,
+        )
+        return None
+
+    token = _get_access_token()
+    base_url = _base_url()
+
+    start_time = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_time = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    try:
+        resp = requests.get(
+            f"{base_url}/v1/billing/subscriptions/{subscription_id}/transactions",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"start_time": start_time, "end_time": end_time},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        transactions = resp.json().get("transactions", [])
+    except requests.RequestException as exc:
+        logger.error(
+            "PayPal list transactions failed for %s: %s",
+            subscription_id,
+            exc,
+        )
+        raise PayPalError(f"Failed to list PayPal transactions: {exc}") from exc
+
+    capture_id = None
+    for tx in reversed(transactions):
+        status = tx.get("status", "")
+        if status == "COMPLETED":
+            capture_id = tx.get("id")
+            break
+
+    if capture_id is None:
+        logger.warning(
+            "refund_last_sale: no completed capture found for %s",
+            subscription_id,
+        )
+        return None
+
+    try:
+        refund_resp = requests.post(
+            f"{base_url}/v2/payments/captures/{capture_id}/refund",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json={},
+            timeout=30,
+        )
+        refund_resp.raise_for_status()
+        refund_data = refund_resp.json()
+        logger.info(
+            "Refund issued for capture %s on subscription %s: %s",
+            capture_id,
+            subscription_id,
+            refund_data.get("id", ""),
+        )
+        return refund_data.get("id")
+    except requests.RequestException as exc:
+        logger.error(
+            "PayPal refund failed for capture %s: %s", capture_id, exc
+        )
+        raise PayPalError(f"Failed to refund PayPal capture {capture_id}: {exc}") from exc
 
 
 def verify_webhook_signature(headers, body):

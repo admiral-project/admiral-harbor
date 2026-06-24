@@ -422,6 +422,98 @@ def _reconcile_operations(app):
     return actions, errors
 
 
+def _reconcile_setup_failed(app):
+    """Cancel PayPal subscription and refund last payment for instances
+    whose setup_command failed.
+
+    When admirald marks an instance as setup_failed it also sets
+    commercial_status to 'cancelled'. This function finds subscriptions
+    still active (or past_due) whose local CustomerApp has
+    commercial_status 'cancelled' and technical_status 'setup_failed',
+    cancels the PayPal subscription, and issues a full refund for the
+    last captured payment.
+
+    This is a critical business flow: the customer paid for the first
+    month, the app failed to initialize, and we must not keep the money.
+    """
+    from app.paypal import (
+        PayPalError,
+        cancel_subscription as paypal_cancel,
+        refund_last_sale as paypal_refund,
+    )
+
+    actions = 0
+    errors = 0
+
+    apps = db.session.query(CustomerApp).filter(
+        CustomerApp.commercial_status == "cancelled",
+        CustomerApp.status == "setup_failed",
+    ).all()
+
+    for local_app in apps:
+        subscription = (
+            db.session.query(Subscription)
+            .filter_by(instance_id=local_app.instance_id)
+            .one_or_none()
+        )
+        if subscription is None:
+            continue
+        if subscription.status in ("cancelled", "suspended"):
+            continue
+        if not subscription.paypal_subscription_id:
+            continue
+
+        log.info(
+            "setup_failed for instance %s: cancelling PayPal subscription %s "
+            "and refunding last payment",
+            local_app.instance_id,
+            subscription.paypal_subscription_id,
+        )
+
+        refund_id = None
+        try:
+            refund_id = paypal_refund(subscription.paypal_subscription_id)
+        except PayPalError as exc:
+            log.error(
+                "Refund failed for subscription %s: %s",
+                subscription.paypal_subscription_id,
+                exc,
+            )
+            errors += 1
+
+        try:
+            paypal_cancel(
+                subscription.paypal_subscription_id,
+                reason="Setup command failed, application could not be initialized",
+            )
+        except PayPalError as exc:
+            log.error(
+                "Cancel failed for subscription %s: %s",
+                subscription.paypal_subscription_id,
+                exc,
+            )
+            errors += 1
+
+        subscription.status = "cancelled"
+        actions += 1
+
+        db.session.add(
+            WorkerLog(
+                started_at=datetime.now(UTC),
+                completed_at=datetime.now(UTC),
+                actions_taken=1,
+                errors=errors,
+                summary=(
+                    f"setup_failed refund+cancel for instance "
+                    f"{local_app.instance_id} (refund={refund_id})"
+                ),
+            )
+        )
+
+    db.session.commit()
+    return actions, errors
+
+
 def _last_worker_run_at():
     val = HarborMeta.get("last_worker_run_at")
     if val:
@@ -460,6 +552,10 @@ def main():
         sa, se = _sync_remote_instances(app)
         total_actions += sa
         total_errors += se
+
+        sfa, sfe = _reconcile_setup_failed(app)
+        total_actions += sfa
+        total_errors += sfe
 
         HarborMeta.set("last_worker_run_at", datetime.now(UTC).isoformat())
 
