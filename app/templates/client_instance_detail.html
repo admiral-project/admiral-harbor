@@ -49,6 +49,23 @@
   </div>
 </section>
 
+{% if instance.status == "initializing" %}
+<div class="panel" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;margin:1rem 0;">
+  <strong>Su aplicación se está inicializando</strong>
+  <p class="meta" style="color:#1e40af;">Esto puede tardar varios minutos. La aplicación estará disponible una vez completada la inicialización.</p>
+</div>
+{% elif instance.status == "setup_failed" %}
+<div class="panel" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;margin:1rem 0;">
+  <strong>Su app falló al inicializar</strong>
+  <p class="meta" style="color:#991b1b;">Hemos realizado un reembolso a su cuenta y cancelado la suscripción. Si tiene preguntas, contacte soporte.</p>
+</div>
+{% elif instance.status == "running" and instance.commercial_status == "active" %}
+<div class="panel" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;margin:1rem 0;">
+  <strong>Su app fue inicializada correctamente</strong>
+  <p class="meta" style="color:#065f46;">La aplicación está lista y operativa.</p>
+</div>
+{% endif %}
+
 {% if instance.storage_status not in ["ok", "unknown"] %}
 <div class="storage-alert tone-{{ storage_tone }}">
   <div class="storage-alert__icon">{% if storage_tone == "danger" %}<span class="alert-icon">&#9888;</span>{% else %}<span class="alert-icon">&#9888;</span>{% endif %}</div>

@@ -2,14 +2,26 @@
 {% block title %}App provisioned - {{ portal_name }}{% endblock %}
 {% block body %}
 <section class="panel" style="max-width: 640px; margin: 40px auto; text-align: center;">
+  {% if instance.status == "initializing" %}
+  <div style="font-size: 48px; margin-bottom: 16px;">&#9203;</div>
+  <h1>Su aplicación se está inicializando</h1>
+  <p class="lede">Your application <strong>{{ instance.app_slug }}</strong> is being deployed and initialized. This may take a few minutes.</p>
+  {% elif instance.status == "setup_failed" %}
+  <div style="font-size: 48px; margin-bottom: 16px;">&#9888;</div>
+  <h1 style="color:#991b1b;">Su app falló al inicializar</h1>
+  <p class="lede" style="color:#991b1b;">Hemos realizado un reembolso a su cuenta y cancelado la suscripción.</p>
+  {% else %}
   <div style="font-size: 48px; margin-bottom: 16px;">&#10003;</div>
   <h1>Your app is being provisioned</h1>
   <p class="lede">Your application <strong>{{ instance.app_slug }}</strong> is being deployed.</p>
+  {% endif %}
 
+  {% if instance.status != "setup_failed" and instance.domain and not instance.domain.startswith('inst_') %}
   <p style="margin: 20px 0;">
     <strong>URL:</strong>
     <a href="https://{{ instance.domain }}" target="_blank" rel="noopener">{{ instance.domain }}</a>
   </p>
+  {% endif %}
 
   {% if credentials %}
   <div class="panel" style="background: #fff8e1; border-color: #ffc107; text-align: left; margin-top: 24px;">
