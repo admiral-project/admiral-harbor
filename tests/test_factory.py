@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import pytest
+
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -8,7 +10,16 @@ from app.models import HarborAdminUser
 from app import create_app
 
 
-def test_create_app():
+def test_create_app(monkeypatch):
+    def fail_sync_catalog(*_args, **_kwargs):
+        pytest.fail("create_app() must not run catalog sync during startup")
+
+    monkeypatch.setattr(
+        "app.catalog_service.sync_catalog",
+        fail_sync_catalog,
+        raising=True,
+    )
+
     app = create_app()
     assert app is not None
     assert app.config["SQLALCHEMY_DATABASE_URI"]

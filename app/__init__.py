@@ -170,23 +170,6 @@ def create_app(config_object="app.config.Config"):
                 display_name=bootstrap_admin_display_name,
             )
 
-            # Initial handshake: sync catalog from admirald on startup
-            try:
-                from app.catalog_service import sync_catalog
-
-                logger.info("Executing initial catalog sync handshake...")
-                result = sync_catalog(origin="startup", actor=None)
-                if result["success"]:
-                    logger.info(
-                        f"Initial sync: {result['synced']} new, {result['updated']} updated, "
-                        f"{result['marked_missing']} marked missing"
-                    )
-                else:
-                    logger.warning(
-                        f"Initial sync failed: {result.get('error', 'Unknown error')}"
-                    )
-            except Exception as e:
-                logger.error(f"Initial sync error: {str(e)}", exc_info=True)
         except Exception as e:
             logger.error(f"Application startup failed: {str(e)}", exc_info=True)
 

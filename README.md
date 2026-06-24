@@ -39,7 +39,7 @@ The packaged and source entry points are:
 - Secrets are encrypted at rest through `HARBOR_ENCRYPTION_KEY`.
 - CSRF protection and security headers are enabled by default.
 - Login throttling is enforced through the Flask rate limit layer.
-- The app performs an initial catalog sync handshake on startup.
+- Catalog sync runs through the `admiral-harbor-catalog-sync.service` timer, not during web startup.
 
 ## Installation
 
