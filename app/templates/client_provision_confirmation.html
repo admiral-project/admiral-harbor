@@ -31,7 +31,9 @@
     </p>
     <dl class="details" style="margin-top: 12px;">
     {% for cred in credentials %}
-      {% if cred.service != "db" %}
+      {% if cred.kind == "notice" %}
+        <div><dt>{{ cred.name }}</dt><dd><code style="user-select: all;">{{ cred.value }}</code></dd></div>
+      {% elif cred.service != "db" %}
         {% if cred.generate == "username" %}
         <div><dt>Usuario</dt><dd><code style="user-select: all;">{{ cred.value }}</code></dd></div>
         {% elif cred.generate == "password" %}

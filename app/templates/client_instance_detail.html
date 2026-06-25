@@ -172,8 +172,11 @@
             } else {
               var html = '<dl class="creds-list">';
               data.forEach(function(c) {
-                if (c.service === 'db') return;
-                if (c.generate === 'username') {
+                if (c.kind === 'notice') {
+                  html += '<div><dt>' + c.name + '</dt><dd><code class="creds-value">' + c.value + '</code></dd></div>';
+                } else if (c.service === 'db') {
+                  return;
+                } else if (c.generate === 'username') {
                   html += '<div><dt>Usuario</dt><dd><code class="creds-value">' + c.value + '</code></dd></div>';
                 } else if (c.generate === 'password') {
                   html += '<div><dt>Contraseña</dt><dd><code class="creds-value">' + c.value + '</code></dd></div>';
