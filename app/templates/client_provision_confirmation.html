@@ -5,7 +5,7 @@
   {% if instance.status == "initializing" %}
   <div style="font-size: 48px; margin-bottom: 16px;">&#9203;</div>
   <h1>Su aplicación se está inicializando</h1>
-  <p class="lede">Your application <strong>{{ instance.app_slug }}</strong> is being deployed and initialized. This may take a few minutes.</p>
+  <p class="lede">Your application <strong>{{ instance.app_slug }}</strong> is being configured. The URL and access credentials will be available in a few minutes once initialization completes.</p>
   {% elif instance.status == "setup_failed" %}
   <div style="font-size: 48px; margin-bottom: 16px;">&#9888;</div>
   <h1 style="color:#991b1b;">Su app falló al inicializar</h1>

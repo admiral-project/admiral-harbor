@@ -65,8 +65,8 @@
 <article class="card app-card">
   <h3>{{ instance.app_slug }}</h3>
   <p class="status-line"><span class="status-pill tone-{{ operational_tones.get(instance.status, 'attention') }}">{{ operational_labels.get(instance.status, instance.status) }}</span></p>
-   {% if instance.status == "initializing" %}
-   <p class="meta" style="color:#1e40af;">Su aplicación se está inicializando</p>
+    {% if instance.status == "initializing" %}
+    <p class="meta" style="color:#1e40af;">Su aplicación se está configurando — la URL estará disponible en unos minutos.</p>
    {% elif instance.status == "setup_failed" %}
    <p class="meta" style="color:#991b1b;">Su app falló al inicializar, hemos realizado un reembolso a su cuenta</p>
    {% elif instance.status == "running" and instance.commercial_status == "active" %}
