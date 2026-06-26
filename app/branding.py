@@ -99,11 +99,7 @@ def save_portal_asset(file_storage, kind):
 
 
 def _catalog_dir(slug):
-    catalog_dir = (
-        Path(current_app.config["HARBOR_UPLOAD_DIR"])
-        / "catalog"
-        / secure_filename(slug)
-    )
+    catalog_dir = Path(current_app.config["HARBOR_UPLOAD_DIR"]) / "catalog" / secure_filename(slug)
     catalog_dir.mkdir(parents=True, exist_ok=True)
     return catalog_dir
 
@@ -136,10 +132,7 @@ def portal_asset_url(kind):
 
 def get_currency():
     """Return the portal's configured billing currency (ISO 4217 code)."""
-    return (
-        _meta_value(PORTAL_CURRENCY_KEY, None)
-        or current_app.config.get("HARBOR_DEFAULT_CURRENCY", DEFAULT_CURRENCY)
-    )
+    return _meta_value(PORTAL_CURRENCY_KEY, None) or current_app.config.get("HARBOR_DEFAULT_CURRENCY", DEFAULT_CURRENCY)
 
 
 def get_tos_url():
@@ -167,8 +160,7 @@ def get_portal_branding():
         ),
         "portal_description": _meta_value(
             PORTAL_DESCRIPTION_KEY,
-            current_app.config["HARBOR_PORTAL_DESCRIPTION"]
-            or DEFAULT_PORTAL_DESCRIPTION,
+            current_app.config["HARBOR_PORTAL_DESCRIPTION"] or DEFAULT_PORTAL_DESCRIPTION,
         ),
         "portal_logo_url": portal_asset_url("logo"),
         "portal_favicon_url": portal_asset_url("favicon"),

@@ -329,9 +329,7 @@ def refund_last_sale(subscription_id):
         )
         return refund_data.get("id")
     except requests.RequestException as exc:
-        logger.error(
-            "PayPal refund failed for capture %s: %s", capture_id, exc
-        )
+        logger.error("PayPal refund failed for capture %s: %s", capture_id, exc)
         raise PayPalError(f"Failed to refund PayPal capture {capture_id}: {exc}") from exc
 
 

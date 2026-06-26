@@ -148,18 +148,10 @@ def _sync_remote_instances(customer):
         return []
     synced = []
     for item in items:
-        subscription = (
-            db.session.query(Subscription)
-            .filter_by(instance_id=item["id"])
-            .one_or_none()
-        )
+        subscription = db.session.query(Subscription).filter_by(instance_id=item["id"]).one_or_none()
         if subscription is None:
             continue
-        app = (
-            db.session.query(CustomerApp)
-            .filter_by(instance_id=item["id"])
-            .one_or_none()
-        )
+        app = db.session.query(CustomerApp).filter_by(instance_id=item["id"]).one_or_none()
         if app is None:
             app = CustomerApp(
                 subscription_id=subscription.id,
@@ -199,9 +191,7 @@ def _course_price(course_id, tier_name):
         return None
     price = course.base_price_cents
     discount = (
-        db.session.query(AppCourseTierDiscount)
-        .filter_by(app_course_id=course.id, tier_name=tier_name)
-        .one_or_none()
+        db.session.query(AppCourseTierDiscount).filter_by(app_course_id=course.id, tier_name=tier_name).one_or_none()
     )
     if discount is not None:
         price = max(0, int(price - (price * discount.discount_percent / 100)))
@@ -243,8 +233,7 @@ def _provision_from_order(order):
         monthly_price_cents=order.monthly_price_cents,
         tier_name=order.tier_name,
         requires_billing=order.requires_billing,
-        next_billing_at=order.next_billing_at
-        or (datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
+        next_billing_at=order.next_billing_at or (datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         billing_email=order.billing_email or order.customer_email,
         tax_percent=order.tax_percent,
         tax_cents=order.tax_cents,
@@ -258,9 +247,7 @@ def _provision_from_order(order):
     db.session.add(subscription)
     db.session.flush()
 
-    response = admiral_client.provision_app(
-        order.app_slug, order.tier_name, customer.public_id
-    )
+    response = admiral_client.provision_app(order.app_slug, order.tier_name, customer.public_id)
     credentials = response.get("credentials", [])
     hostname = response.get("hostname", "")
     operation_id = response.get("operation_id", "")
@@ -315,27 +302,15 @@ def dashboard():
     _sync_remote_instances(customer)
     subscriptions = [sub.as_dict() for sub in _customer_subscriptions(customer)]
     customer_apps = [item.as_dict() for item in _customer_instances(customer)]
-    monthly_total = sum(
-        sub["monthly_price_cents"]
-        for sub in subscriptions
-        if sub["status"] != "cancelled"
-    )
+    monthly_total = sum(sub["monthly_price_cents"] for sub in subscriptions if sub["status"] != "cancelled")
     open_tickets = (
         db.session.query(SupportIncident)
         .filter_by(customer_email=customer.email)
         .filter(SupportIncident.status != "closed")
         .count()
     )
-    failed_payments = (
-        db.session.query(Payment)
-        .filter_by(customer_email=customer.email, status="failed")
-        .count()
-    )
-    pending_payments = (
-        db.session.query(Payment)
-        .filter_by(customer_email=customer.email, status="pending")
-        .count()
-    )
+    failed_payments = db.session.query(Payment).filter_by(customer_email=customer.email, status="failed").count()
+    pending_payments = db.session.query(Payment).filter_by(customer_email=customer.email, status="pending").count()
     now = datetime.now(UTC)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     total_charged_cents = (
@@ -453,9 +428,7 @@ def subscription_upgrade(subscription_id):
     new_tier = request.form.get("new_tier", "").strip()
     if new_tier == subscription.tier_name:
         flash("Please select a different tier", "error")
-        return redirect(
-            url_for("client.subscription_upgrade_page", subscription_id=subscription_id)
-        )
+        return redirect(url_for("client.subscription_upgrade_page", subscription_id=subscription_id))
     old_tier = subscription.tier_name
     old_amount = subscription.monthly_price_cents
     change = SubscriptionChange(
@@ -485,9 +458,7 @@ def subscription_upgrade(subscription_id):
         "Subscription upgraded to {new_tier}. Changes effective next billing cycle.",
         "success",
     )
-    return redirect(
-        url_for("client.subscription_detail", subscription_id=subscription_id)
-    )
+    return redirect(url_for("client.subscription_detail", subscription_id=subscription_id))
 
 
 @bp.route("/subscriptions/<int:subscription_id>/cancel", methods=["GET"])
@@ -515,9 +486,7 @@ def subscription_cancel(subscription_id):
     confirm = request.form.get("confirm") == "on"
     if not confirm:
         flash("Please confirm cancellation", "error")
-        return redirect(
-            url_for("client.subscription_cancel_page", subscription_id=subscription_id)
-        )
+        return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
     if subscription.paypal_subscription_id:
         try:
             paypal_cancel_subscription(
@@ -534,9 +503,7 @@ def subscription_cancel(subscription_id):
                 "We could not cancel the PayPal subscription. Please try again.",
                 "error",
             )
-            return redirect(
-                url_for("client.subscription_cancel_page", subscription_id=subscription_id)
-            )
+            return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
     subscription.status = "cancelled"
     change = SubscriptionChange(
         subscription_id=subscription.id,
@@ -569,18 +536,10 @@ def subscription_cancel(subscription_id):
 @customer_required
 def billing():
     customer = current_customer()
-    orders = (
-        db.session.query(Order)
-        .filter_by(customer_email=customer.email)
-        .order_by(Order.created_at.desc())
-        .all()
-    )
+    orders = db.session.query(Order).filter_by(customer_email=customer.email).order_by(Order.created_at.desc()).all()
     subscriptions = _customer_subscriptions(customer)
     invoices = (
-        db.session.query(Invoice)
-        .filter_by(customer_email=customer.email)
-        .order_by(Invoice.created_at.desc())
-        .all()
+        db.session.query(Invoice).filter_by(customer_email=customer.email).order_by(Invoice.created_at.desc()).all()
     )
     return render_template(
         "client_billing.html",
@@ -597,11 +556,7 @@ def billing_return():
     customer = current_customer()
     order_id = request.args.get("order_id", "")
     token = request.args.get("token", "").strip()
-    order = (
-        db.session.query(Order)
-        .filter_by(order_id=order_id, customer_email=customer.email)
-        .one_or_none()
-    )
+    order = db.session.query(Order).filter_by(order_id=order_id, customer_email=customer.email).one_or_none()
     if order is None:
         flash("Order not found.", "error")
         return redirect(url_for("client.billing"))
@@ -673,9 +628,7 @@ def billing_return():
             )
             session["provision_credentials"] = credentials if credentials else []
             session["provision_instance_id"] = instance_id
-            return redirect(
-                url_for("client.provision_success", instance_id=instance_id)
-            )
+            return redirect(url_for("client.provision_success", instance_id=instance_id))
 
         order.status = "approved"
         db.session.commit()
@@ -692,11 +645,7 @@ def billing_return():
 def billing_cancel():
     customer = current_customer()
     order_id = request.args.get("order_id", "")
-    order = (
-        db.session.query(Order)
-        .filter_by(order_id=order_id, customer_email=customer.email)
-        .one_or_none()
-    )
+    order = db.session.query(Order).filter_by(order_id=order_id, customer_email=customer.email).one_or_none()
     if order is None:
         flash("Order not found.", "error")
         return redirect(url_for("client.billing"))
@@ -711,22 +660,12 @@ def billing_cancel():
 @customer_required
 def billing_receipt(invoice_id):
     customer = current_customer()
-    invoice = (
-        db.session.query(Invoice)
-        .filter_by(invoice_id=invoice_id, customer_email=customer.email)
-        .one_or_none()
-    )
+    invoice = db.session.query(Invoice).filter_by(invoice_id=invoice_id, customer_email=customer.email).one_or_none()
     if invoice is None:
         flash("Invoice not found.", "error")
         return redirect(url_for("client.billing"))
-    subscription = (
-        db.session.query(Subscription)
-        .filter_by(external_id=invoice.subscription_external_id)
-        .one_or_none()
-    )
-    return render_template(
-        "client_receipt.html", invoice=invoice, subscription=subscription
-    )
+    subscription = db.session.query(Subscription).filter_by(external_id=invoice.subscription_external_id).one_or_none()
+    return render_template("client_receipt.html", invoice=invoice, subscription=subscription)
 
 
 # ── Deploy ───────────────────────────────────────────────────────────────────
@@ -788,11 +727,7 @@ def deploy_app(slug):
         .one_or_none()
     )
     paypal_plan_id = local_tier.paypal_plan_id if local_tier else ""
-    if (
-        requires_billing
-        and current_app.config.get("HARBOR_PAYPAL_MODE", "mock") != "mock"
-        and not paypal_plan_id
-    ):
+    if requires_billing and current_app.config.get("HARBOR_PAYPAL_MODE", "mock") != "mock" and not paypal_plan_id:
         flash("PayPal plan is not configured for this tier.", "error")
         return redirect(url_for("main.app_detail", slug=slug))
 
@@ -824,12 +759,8 @@ def deploy_app(slug):
     if requires_billing:
         try:
             plan_id = paypal_plan_id or f"{slug}:{tier_name}"
-            return_url = url_for(
-                "client.billing_return", order_id=order.order_id, _external=True
-            )
-            cancel_url = url_for(
-                "client.billing_cancel", order_id=order.order_id, _external=True
-            )
+            return_url = url_for("client.billing_return", order_id=order.order_id, _external=True)
+            cancel_url = url_for("client.billing_cancel", order_id=order.order_id, _external=True)
             paypal_sub = create_subscription(
                 plan_id,
                 return_url,
@@ -842,11 +773,7 @@ def deploy_app(slug):
             order.paypal_plan_id = plan_id
             db.session.commit()
             approval_link = next(
-                (
-                    link["href"]
-                    for link in paypal_sub.get("links", [])
-                    if link["rel"] == "approve"
-                ),
+                (link["href"] for link in paypal_sub.get("links", []) if link["rel"] == "approve"),
                 None,
             )
             if approval_link:
@@ -930,9 +857,7 @@ def accept_fiscal_terms():
 def instance_detail(instance_id):
     customer = current_customer()
     instance = (
-        db.session.query(CustomerApp)
-        .filter_by(instance_id=instance_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
     )
     if instance is None:
         return jsonify({"error": "instance not found"}), 404
@@ -964,12 +889,8 @@ def instance_detail(instance_id):
     try:
         remote_state = admiral_client.get_customer_app(instance.instance_id)
         instance.status = remote_state.get("technical_status", instance.status)
-        instance.commercial_status = remote_state.get(
-            "commercial_status", instance.commercial_status
-        )
-        instance.storage_status = remote_state.get(
-            "storage_state", instance.storage_status
-        )
+        instance.commercial_status = remote_state.get("commercial_status", instance.commercial_status)
+        instance.storage_status = remote_state.get("storage_state", instance.storage_status)
         db.session.commit()
     except AdmiralAPIError:
         remote_state = None
@@ -982,21 +903,13 @@ def instance_detail(instance_id):
         events=events,
         incidents=incidents,
         remote_state=remote_state,
-        operational_label=OPERATIONAL_STATUSES.get(
-            instance.status, instance.status.title()
-        ),
-        storage_label=STORAGE_STATUSES.get(
-            instance.storage_status, instance.storage_status.title()
-        ),
-        backup_label=BACKUP_STATUSES.get(
-            instance.backup_status, instance.backup_status.title()
-        ),
+        operational_label=OPERATIONAL_STATUSES.get(instance.status, instance.status.title()),
+        storage_label=STORAGE_STATUSES.get(instance.storage_status, instance.storage_status.title()),
+        backup_label=BACKUP_STATUSES.get(instance.backup_status, instance.backup_status.title()),
         operational_tone=STATUS_TONES.get(instance.status, "attention"),
         storage_tone=STATUS_TONES.get(instance.storage_status, "attention"),
         backup_tone=STATUS_TONES.get(instance.backup_status, "attention"),
-        remote_tone=STATUS_TONES.get(
-            (remote_state or {}).get("technical_status", ""), "attention"
-        ),
+        remote_tone=STATUS_TONES.get((remote_state or {}).get("technical_status", ""), "attention"),
     )
 
 
@@ -1006,9 +919,7 @@ def instance_detail(instance_id):
 def provision_success(instance_id):
     customer = current_customer()
     instance = (
-        db.session.query(CustomerApp)
-        .filter_by(instance_id=instance_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
     )
     if instance is None:
         flash("Instance not found.", "error")
@@ -1033,9 +944,7 @@ def provision_success(instance_id):
 def instance_credentials(instance_id):
     customer = current_customer()
     instance = (
-        db.session.query(CustomerApp)
-        .filter_by(instance_id=instance_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
     )
     if instance is None:
         return jsonify({"error": "instance not found"}), 404
@@ -1052,9 +961,7 @@ def instance_credentials(instance_id):
 def instance_action(instance_id):
     customer = current_customer()
     instance = (
-        db.session.query(CustomerApp)
-        .filter_by(instance_id=instance_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
     )
     if instance is None:
         flash("Instance not found.", "error")
@@ -1073,18 +980,12 @@ def instance_action(instance_id):
                 "restart_requested",
                 "Application restart requested.",
             )
-            flash(
-                f"Restart queued via operations {response['operation_id']}.", "success"
-            )
+            flash(f"Restart queued via operations {response['operation_id']}.", "success")
         elif requested == "resize":
             if instance.status not in {"paused", "stopped"}:
                 flash("Tier changes require the app to be paused first.", "error")
-                return redirect(
-                    url_for("client.instance_detail", instance_id=instance_id)
-                )
-            response = admiral_client.action(
-                instance.instance_id, "resize", tier=tier_name
-            )
+                return redirect(url_for("client.instance_detail", instance_id=instance_id))
+            response = admiral_client.action(instance.instance_id, "resize", tier=tier_name)
             instance.tier_name = tier_name
             subscription = db.session.get(Subscription, instance.subscription_id)
             if subscription is not None:
@@ -1095,18 +996,14 @@ def instance_action(instance_id):
                 "tier_change_requested",
                 f"Tier change requested to {tier_name}.",
             )
-            flash(
-                f"Resize queued with operation {response['operation_id']}.", "success"
-            )
+            flash(f"Resize queued with operation {response['operation_id']}.", "success")
         elif requested == "cancel":
             if confirm_text != instance.app_slug:
                 flash(
                     "Cancellation confirmation text does not match the application slug.",
                     "error",
                 )
-                return redirect(
-                    url_for("client.instance_detail", instance_id=instance_id)
-                )
+                return redirect(url_for("client.instance_detail", instance_id=instance_id))
             subscription = db.session.get(Subscription, instance.subscription_id)
             if subscription:
                 if subscription.paypal_subscription_id:
@@ -1125,9 +1022,7 @@ def instance_action(instance_id):
                             "We could not cancel the PayPal subscription. Please try again.",
                             "error",
                         )
-                        return redirect(
-                            url_for("client.instance_detail", instance_id=instance_id)
-                        )
+                        return redirect(url_for("client.instance_detail", instance_id=instance_id))
             response = admiral_client.action(instance.instance_id, "deprovision")
             if subscription:
                 subscription.status = "cancelled"
@@ -1143,18 +1038,14 @@ def instance_action(instance_id):
             )
         else:
             mapped = {"pause": "pause", "resume": "resume", "backup": "backup"}
-            response = admiral_client.action(
-                instance.instance_id, mapped[requested], service=service
-            )
+            response = admiral_client.action(instance.instance_id, mapped[requested], service=service)
             _event(
                 instance.instance_id,
                 customer.email,
                 f"{requested}_requested",
                 f"Action {requested} requested.",
             )
-            flash(
-                f"Action queued with operation {response['operation_id']}.", "success"
-            )
+            flash(f"Action queued with operation {response['operation_id']}.", "success")
         if requested == "pause":
             instance.status = "paused"
         elif requested == "resume":
@@ -1180,9 +1071,7 @@ def instance_action(instance_id):
 def upload_backup(instance_id):
     customer = current_customer()
     instance = (
-        db.session.query(CustomerApp)
-        .filter_by(instance_id=instance_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
     )
     if instance is None:
         flash("Instance not found.", "error")
@@ -1196,11 +1085,7 @@ def upload_backup(instance_id):
     if request.content_length is not None and request.content_length > max_bytes + 4096:
         flash("Backup file exceeds allowed size.", "error")
         return redirect(url_for("client.instance_detail", instance_id=instance_id))
-    destination = (
-        Path(current_app.config["HARBOR_UPLOAD_DIR"])
-        / customer.public_id
-        / instance.instance_id
-    )
+    destination = Path(current_app.config["HARBOR_UPLOAD_DIR"]) / customer.public_id / instance.instance_id
     destination.mkdir(parents=True, exist_ok=True)
     path = destination / filename
     temp_path = None
@@ -1217,9 +1102,7 @@ def upload_backup(instance_id):
                 size += len(chunk)
                 if size > max_bytes:
                     flash("Backup file exceeds allowed size.", "error")
-                    return redirect(
-                        url_for("client.instance_detail", instance_id=instance_id)
-                    )
+                    return redirect(url_for("client.instance_detail", instance_id=instance_id))
                 temp_file.write(chunk)
             temp_file.flush()
             os.fsync(temp_file.fileno())
@@ -1262,15 +1145,11 @@ def upload_backup(instance_id):
 def download_uploaded_backup(backup_id):
     customer = current_customer()
     backup = (
-        db.session.query(UploadedBackup)
-        .filter_by(backup_id=backup_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(UploadedBackup).filter_by(backup_id=backup_id, customer_email=customer.email).one_or_none()
     )
     if backup is None:
         return jsonify({"error": "backup not found"}), 404
-    return send_file(
-        backup.stored_path, as_attachment=True, download_name=backup.original_filename
-    )
+    return send_file(backup.stored_path, as_attachment=True, download_name=backup.original_filename)
 
 
 @bp.route("/instances/<instance_id>/restore", methods=["POST"])
@@ -1279,9 +1158,7 @@ def download_uploaded_backup(backup_id):
 def request_restore(instance_id):
     customer = current_customer()
     instance = (
-        db.session.query(CustomerApp)
-        .filter_by(instance_id=instance_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
     )
     if instance is None:
         flash("Instance not found.", "error")
@@ -1315,9 +1192,7 @@ def request_restore(instance_id):
             "size_bytes": uploaded.size_bytes,
         }
     try:
-        response = admiral_client.restore_backup(
-            backup_id, instance.instance_id, service_name, source=source
-        )
+        response = admiral_client.restore_backup(backup_id, instance.instance_id, service_name, source=source)
     except AdmiralAPIError as exc:
         flash(f"Restore request failed: {exc}", "error")
         return redirect(url_for("client.instance_detail", instance_id=instance_id))
@@ -1357,19 +1232,13 @@ def request_restore(instance_id):
 def create_incident(instance_id):
     customer = current_customer()
     instance = (
-        db.session.query(CustomerApp)
-        .filter_by(instance_id=instance_id, customer_email=customer.email)
-        .one_or_none()
+        db.session.query(CustomerApp).filter_by(instance_id=instance_id, customer_email=customer.email).one_or_none()
     )
     if instance is None:
         flash("Instance not found.", "error")
         return redirect(url_for("client.dashboard"))
     attachment = request.files.get("attachment")
-    attachment_name = (
-        secure_filename(attachment.filename)
-        if attachment and attachment.filename
-        else None
-    )
+    attachment_name = secure_filename(attachment.filename) if attachment and attachment.filename else None
     incident = SupportIncident(
         instance_id=instance.instance_id,
         customer_email=customer.email,
@@ -1404,9 +1273,7 @@ def support_list():
     status = request.args.get("status")
     if status:
         query = query.filter_by(status=status)
-    paginated = query.order_by(SupportIncident.created_at.desc()).paginate(
-        page=page, per_page=per_page
-    )
+    paginated = query.order_by(SupportIncident.created_at.desc()).paginate(page=page, per_page=per_page)
     return render_template(
         "client_support_list.html",
         tickets=paginated.items,
@@ -1419,11 +1286,7 @@ def support_list():
 @login_required
 @customer_required
 def support_create_page():
-    subscriptions = (
-        db.session.query(Subscription)
-        .filter_by(customer_email=current_customer().email)
-        .all()
-    )
+    subscriptions = db.session.query(Subscription).filter_by(customer_email=current_customer().email).all()
     return render_template("client_support_create.html", subscriptions=subscriptions)
 
 
@@ -1488,10 +1351,7 @@ def support_detail(ticket_id):
         }
     ]
     replies = (
-        db.session.query(CustomerReply)
-        .filter_by(ticket_id=ticket.id)
-        .order_by(CustomerReply.created_at.asc())
-        .all()
+        db.session.query(CustomerReply).filter_by(ticket_id=ticket.id).order_by(CustomerReply.created_at.asc()).all()
     )
     for reply in replies:
         conversation.append(
@@ -1508,11 +1368,7 @@ def support_detail(ticket_id):
         now = datetime.now(UTC)
         if ticket.resolution_deadline and now > ticket.resolution_deadline:
             sla_status = {"status": "overdue", "type": "resolution"}
-        elif (
-            ticket.response_deadline
-            and now > ticket.response_deadline
-            and not ticket.assigned_to
-        ):
+        elif ticket.response_deadline and now > ticket.response_deadline and not ticket.assigned_to:
             sla_status = {"status": "overdue", "type": "response"}
         else:
             if ticket.resolution_deadline:
@@ -1672,11 +1528,7 @@ def fiscal_requests():
         if country_code
         else []
     )
-    active_request_type_ids = {
-        r.treatment_type_id
-        for r in requests_list
-        if r.status in ("pending", "approved")
-    }
+    active_request_type_ids = {r.treatment_type_id for r in requests_list if r.status in ("pending", "approved")}
     pending_types = [t for t in available_types if t.id not in active_request_type_ids]
     return render_template(
         "client_fiscal_requests.html",
@@ -1730,7 +1582,12 @@ def fiscal_request_new():
             return redirect(url_for("client.fiscal_request_new"))
 
         treatment = db.session.get(FiscalTreatmentType, type_id)
-        if not treatment or treatment.country_code != country_code or not treatment.is_active or not treatment.is_optional:
+        if (
+            not treatment
+            or treatment.country_code != country_code
+            or not treatment.is_active
+            or not treatment.is_optional
+        ):
             flash("Tratamiento no disponible.", "error")
             return redirect(url_for("client.fiscal_request_new"))
 

@@ -207,12 +207,7 @@ def _get_platform_status():
 
     # Check payment health
     failed_payments = db.session.query(Payment).filter_by(status="failed").count()
-    failed_payments_cents = (
-        db.session.query(func.sum(Payment.amount_cents))
-        .filter_by(status="failed")
-        .scalar()
-        or 0
-    )
+    failed_payments_cents = db.session.query(func.sum(Payment.amount_cents)).filter_by(status="failed").scalar() or 0
 
     if failed_payments >= 10:
         conditions.append(
@@ -274,11 +269,7 @@ def _get_platform_status():
         )
 
     # Check ticket workload
-    open_tickets = (
-        db.session.query(SupportIncident)
-        .filter(SupportIncident.status.in_(["open", "pending"]))
-        .count()
-    )
+    open_tickets = db.session.query(SupportIncident).filter(SupportIncident.status.in_(["open", "pending"])).count()
     high_priority_tickets = (
         db.session.query(SupportIncident)
         .filter(
@@ -370,9 +361,7 @@ def _calculate_mrr():
     # Calculate growth percentage
     growth_pct = 0
     if last_month_revenue > 0:
-        growth_pct = (
-            (current_mrr_cents - last_month_revenue) / last_month_revenue
-        ) * 100
+        growth_pct = ((current_mrr_cents - last_month_revenue) / last_month_revenue) * 100
 
     return {
         "current_mrr_cents": current_mrr_cents,
@@ -391,12 +380,7 @@ def _get_recent_activity(limit=10):
     activity = []
 
     # Recent audit logs
-    audit_logs = (
-        db.session.query(AuditLog)
-        .order_by(AuditLog.created_at.desc())
-        .limit(limit)
-        .all()
-    )
+    audit_logs = db.session.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).all()
 
     for log in audit_logs:
         activity.append(
@@ -412,12 +396,7 @@ def _get_recent_activity(limit=10):
         )
 
     # Recent tickets
-    tickets = (
-        db.session.query(SupportIncident)
-        .order_by(SupportIncident.created_at.desc())
-        .limit(5)
-        .all()
-    )
+    tickets = db.session.query(SupportIncident).order_by(SupportIncident.created_at.desc()).limit(5).all()
 
     for ticket in tickets:
         activity.append(
@@ -443,9 +422,7 @@ def _export_subscriptions_csv():
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow(
-        ["ID", "Customer", "Status", "Tier", "Created", "Updated", "Billing Email"]
-    )
+    writer.writerow(["ID", "Customer", "Status", "Tier", "Created", "Updated", "Billing Email"])
 
     subs = db.session.query(Subscription).order_by(Subscription.created_at.desc()).all()
     for sub in subs:
@@ -469,9 +446,7 @@ def _export_payments_csv():
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow(
-        ["ID", "Subscription", "Amount", "Status", "Provider", "Created", "Updated"]
-    )
+    writer.writerow(["ID", "Subscription", "Amount", "Status", "Provider", "Created", "Updated"])
 
     payments = db.session.query(Payment).order_by(Payment.created_at.desc()).all()
     for payment in payments:
@@ -482,16 +457,8 @@ def _export_payments_csv():
                 f"${payment.amount_cents / 100:.2f}" if payment.amount_cents else "",
                 payment.status,
                 payment.provider or "",
-                (
-                    payment.created_at.strftime("%Y-%m-%d %H:%M")
-                    if payment.created_at
-                    else ""
-                ),
-                (
-                    payment.updated_at.strftime("%Y-%m-%d %H:%M")
-                    if payment.updated_at
-                    else ""
-                ),
+                (payment.created_at.strftime("%Y-%m-%d %H:%M") if payment.created_at else ""),
+                (payment.updated_at.strftime("%Y-%m-%d %H:%M") if payment.updated_at else ""),
             ]
         )
 
@@ -503,15 +470,9 @@ def _export_tickets_csv():
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow(
-        ["ID", "Subject", "Customer", "Status", "Priority", "Assigned To", "Created"]
-    )
+    writer.writerow(["ID", "Subject", "Customer", "Status", "Priority", "Assigned To", "Created"])
 
-    tickets = (
-        db.session.query(SupportIncident)
-        .order_by(SupportIncident.created_at.desc())
-        .all()
-    )
+    tickets = db.session.query(SupportIncident).order_by(SupportIncident.created_at.desc()).all()
     for ticket in tickets:
         writer.writerow(
             [
@@ -521,11 +482,7 @@ def _export_tickets_csv():
                 ticket.status,
                 ticket.priority,
                 ticket.assigned_to or "Unassigned",
-                (
-                    ticket.created_at.strftime("%Y-%m-%d %H:%M")
-                    if ticket.created_at
-                    else ""
-                ),
+                (ticket.created_at.strftime("%Y-%m-%d %H:%M") if ticket.created_at else ""),
             ]
         )
 
@@ -575,10 +532,7 @@ def _get_sla_status(ticket):
 
     # If resolved, check if resolution deadline was met
     if ticket.resolved_at:
-        if (
-            ticket.resolution_deadline
-            and ticket.resolved_at > ticket.resolution_deadline
-        ):
+        if ticket.resolution_deadline and ticket.resolved_at > ticket.resolution_deadline:
             return {
                 "sla_status": "violated",
                 "detail": "Resolution SLA violated",
@@ -685,9 +639,7 @@ def dashboard():
         except (ValueError, TypeError):
             pass
 
-    published_apps = (
-        db.session.query(CatalogApp).filter_by(catalog_enabled=True).count()
-    )
+    published_apps = db.session.query(CatalogApp).filter_by(catalog_enabled=True).count()
 
     # Bloque B: Resumen comercial mensual
     current_month_revenue = (
@@ -712,66 +664,28 @@ def dashboard():
     )
 
     subscriptions_total = db.session.query(Subscription).count()
-    subscriptions_active = (
-        db.session.query(Subscription).filter_by(status="active").count()
-    )
-    subscriptions_new = (
-        db.session.query(Subscription)
-        .filter(Subscription.created_at >= month_start)
-        .count()
-    )
-    subscriptions_cancelled = (
-        db.session.query(Subscription)
-        .filter(Subscription.status == "cancelled")
-        .count()
-    )
+    subscriptions_active = db.session.query(Subscription).filter_by(status="active").count()
+    subscriptions_new = db.session.query(Subscription).filter(Subscription.created_at >= month_start).count()
+    subscriptions_cancelled = db.session.query(Subscription).filter(Subscription.status == "cancelled").count()
 
-    pending_payments = (
-        db.session.query(func.sum(Payment.amount_cents))
-        .filter_by(status="pending")
-        .scalar()
-        or 0
-    )
-    failed_payments = (
-        db.session.query(func.sum(Payment.amount_cents))
-        .filter_by(status="failed")
-        .scalar()
-        or 0
-    )
+    pending_payments = db.session.query(func.sum(Payment.amount_cents)).filter_by(status="pending").scalar() or 0
+    failed_payments = db.session.query(func.sum(Payment.amount_cents)).filter_by(status="failed").scalar() or 0
 
     failed_payments_count = db.session.query(Payment).filter_by(status="failed").count()
 
     # Bloque C: Operaciones técnicas
     instances_active = db.session.query(Subscription).filter_by(status="active").count()
     instances_paused = db.session.query(Subscription).filter_by(status="paused").count()
-    instances_provisioning = (
-        db.session.query(Subscription).filter_by(status="provisioning").count()
-    )
-    instances_error = (
-        db.session.query(Subscription)
-        .filter(Subscription.status.in_(["failed", "error"]))
-        .count()
-    )
+    instances_provisioning = db.session.query(Subscription).filter_by(status="provisioning").count()
+    instances_error = db.session.query(Subscription).filter(Subscription.status.in_(["failed", "error"])).count()
 
     # Bloque D: Soporte
-    tickets_open = (
-        db.session.query(SupportIncident)
-        .filter(SupportIncident.status.in_(["open", "pending"]))
-        .count()
-    )
-    tickets_unassigned = (
-        db.session.query(SupportIncident)
-        .filter(SupportIncident.assigned_to.is_(None))
-        .count()
-    )
-    tickets_high_priority = (
-        db.session.query(SupportIncident).filter_by(priority="high").count()
-    )
+    tickets_open = db.session.query(SupportIncident).filter(SupportIncident.status.in_(["open", "pending"])).count()
+    tickets_unassigned = db.session.query(SupportIncident).filter(SupportIncident.assigned_to.is_(None)).count()
+    tickets_high_priority = db.session.query(SupportIncident).filter_by(priority="high").count()
 
     # Bloque E: Actividad reciente (últimos eventos)
-    recent_events = (
-        db.session.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(20).all()
-    )
+    recent_events = db.session.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(20).all()
 
     platform_status = _get_platform_status()
 
@@ -827,16 +741,9 @@ def subscriptions_list():
 @bp.route("/billing")
 @admin_required
 def billing():
-    subscriptions = (
-        db.session.query(Subscription).order_by(Subscription.created_at.desc()).all()
-    )
+    subscriptions = db.session.query(Subscription).order_by(Subscription.created_at.desc()).all()
     invoices = db.session.query(Invoice).order_by(Invoice.created_at.desc()).all()
-    events = (
-        db.session.query(BillingEvent)
-        .order_by(BillingEvent.created_at.desc())
-        .limit(50)
-        .all()
-    )
+    events = db.session.query(BillingEvent).order_by(BillingEvent.created_at.desc()).limit(50).all()
     return render_template(
         "admin_billing.html",
         subscriptions=subscriptions,
@@ -852,14 +759,8 @@ def invoice_detail(invoice_id):
     if invoice is None:
         flash("Invoice not found.", "error")
         return redirect(url_for("admin.billing"))
-    subscription = (
-        db.session.query(Subscription)
-        .filter_by(external_id=invoice.subscription_external_id)
-        .one_or_none()
-    )
-    return render_template(
-        "admin_invoice.html", invoice=invoice, subscription=subscription
-    )
+    subscription = db.session.query(Subscription).filter_by(external_id=invoice.subscription_external_id).one_or_none()
+    return render_template("admin_invoice.html", invoice=invoice, subscription=subscription)
 
 
 @bp.route("/metrics")
@@ -898,9 +799,7 @@ def metrics():
     active_subs = db.session.query(Subscription).filter_by(status="active").count()
     cancelled_month = (
         db.session.query(Subscription)
-        .filter(
-            Subscription.status == "cancelled", Subscription.created_at >= month_start
-        )
+        .filter(Subscription.status == "cancelled", Subscription.created_at >= month_start)
         .count()
     )
     churn_rate = (cancelled_month / active_subs * 100) if active_subs > 0 else 0
@@ -908,10 +807,7 @@ def metrics():
     # Payment metrics
     failed_payments = db.session.query(Payment).filter_by(status="failed").count()
     failed_payments_total_cents = (
-        db.session.query(func.sum(Payment.amount_cents))
-        .filter_by(status="failed")
-        .scalar()
-        or 0
+        db.session.query(func.sum(Payment.amount_cents)).filter_by(status="failed").scalar() or 0
     )
 
     # Recent activity
@@ -941,11 +837,7 @@ def status_overview():
     total_subs = db.session.query(Subscription).count()
     active_subs = db.session.query(Subscription).filter_by(status="active").count()
     failed_payments = db.session.query(Payment).filter_by(status="failed").count()
-    open_tickets = (
-        db.session.query(SupportIncident)
-        .filter(SupportIncident.status.in_(["open", "pending"]))
-        .count()
-    )
+    open_tickets = db.session.query(SupportIncident).filter(SupportIncident.status.in_(["open", "pending"])).count()
 
     return render_template(
         "admin_status.html",
@@ -1004,9 +896,7 @@ def apps_list():
     page = request.args.get("page", 1, type=int)
     per_page = 20
 
-    query = db.session.query(CatalogApp).order_by(
-        CatalogApp.sort_order.asc(), CatalogApp.name.asc()
-    )
+    query = db.session.query(CatalogApp).order_by(CatalogApp.sort_order.asc(), CatalogApp.name.asc())
     total = query.count()
     apps = query.offset((page - 1) * per_page).limit(per_page).all()
     pages = max(1, (total + per_page - 1) // per_page)
@@ -1016,9 +906,7 @@ def apps_list():
     tier_counts = {}
     if app_ids:
         rows = (
-            db.session.query(
-                CatalogAppTier.catalog_app_id, db.func.count(CatalogAppTier.id)
-            )
+            db.session.query(CatalogAppTier.catalog_app_id, db.func.count(CatalogAppTier.id))
             .filter(
                 CatalogAppTier.catalog_app_id.in_(app_ids),
                 CatalogAppTier.upstream_present,
@@ -1041,37 +929,25 @@ def apps_list():
 @bp.route("/apps/<upstream_app_id>", methods=["GET", "POST"])
 @admin_required
 def app_content(upstream_app_id):
-    app = (
-        db.session.query(CatalogApp)
-        .filter_by(upstream_app_id=upstream_app_id)
-        .one_or_none()
-    )
+    app = db.session.query(CatalogApp).filter_by(upstream_app_id=upstream_app_id).one_or_none()
     if app is None:
         flash("Catalog app not found.", "error")
         return redirect(url_for("admin.apps_list"))
     if request.method == "POST":
         app.name = request.form.get("name", "").strip() or app.name
         app.one_liner = request.form.get("one_liner", "").strip() or app.one_liner
-        app.description_md = (
-            request.form.get("description_md", "").strip() or app.description_md
-        )
+        app.description_md = request.form.get("description_md", "").strip() or app.description_md
         logo_file = request.files.get("logo_file")
         try:
             if logo_file and logo_file.filename:
                 stored_name = save_catalog_asset(logo_file, app.upstream_app_id)
-                app.logo_url = url_for(
-                    "main.catalog_asset", slug=app.upstream_app_id, filename=stored_name
-                )
+                app.logo_url = url_for("main.catalog_asset", slug=app.upstream_app_id, filename=stored_name)
         except ValueError as exc:
             flash(f"Logo not updated: {exc}", "error")
-            return redirect(
-                url_for("admin.app_content", upstream_app_id=upstream_app_id)
-            )
+            return redirect(url_for("admin.app_content", upstream_app_id=upstream_app_id))
         app.homepage_url = request.form.get("homepage_url", "").strip() or None
         app.repository_url = request.form.get("repository_url", "").strip() or None
-        app.documentation_url = (
-            request.form.get("documentation_url", "").strip() or None
-        )
+        app.documentation_url = request.form.get("documentation_url", "").strip() or None
         app.bug_tracker_url = request.form.get("bug_tracker_url", "").strip() or None
         app.support_url = request.form.get("support_url", "").strip() or None
         app.sort_order = request.form.get("sort_order", type=int, default=0)
@@ -1081,11 +957,7 @@ def app_content(upstream_app_id):
         tier_ids = request.form.getlist("tier_id")
         tier_descriptions = request.form.getlist("tier_commercial_description")
         for tid, desc in zip(tier_ids, tier_descriptions):
-            tier = (
-                db.session.query(CatalogAppTier)
-                .filter_by(id=int(tid), catalog_app_id=app.id)
-                .one_or_none()
-            )
+            tier = db.session.query(CatalogAppTier).filter_by(id=int(tid), catalog_app_id=app.id).one_or_none()
             if tier:
                 tier.commercial_description = desc.strip() or None
         db.session.add(
@@ -1102,18 +974,13 @@ def app_content(upstream_app_id):
         flash("Commercial app content updated.", "success")
         return redirect(url_for("admin.app_content", upstream_app_id=upstream_app_id))
     courses = (
-        db.session.query(AppCourse)
-        .filter_by(app_slug=upstream_app_id)
-        .order_by(AppCourse.course_code.asc())
-        .all()
+        db.session.query(AppCourse).filter_by(app_slug=upstream_app_id).order_by(AppCourse.course_code.asc()).all()
     )
     discounts = db.session.query(AppCourseTierDiscount).all()
     tiers = (
         db.session.query(CatalogAppTier)
         .filter_by(catalog_app_id=app.id)
-        .order_by(
-            CatalogAppTier.display_order.asc(), CatalogAppTier.upstream_tier_id.asc()
-        )
+        .order_by(CatalogAppTier.display_order.asc(), CatalogAppTier.upstream_tier_id.asc())
         .all()
     )
     return render_template(
@@ -1128,19 +995,11 @@ def app_content(upstream_app_id):
 @bp.route("/apps/<upstream_app_id>/tiers/<int:tier_id>/paypal-plan", methods=["POST"])
 @admin_required
 def update_tier_paypal_plan(upstream_app_id, tier_id):
-    app = (
-        db.session.query(CatalogApp)
-        .filter_by(upstream_app_id=upstream_app_id)
-        .one_or_none()
-    )
+    app = db.session.query(CatalogApp).filter_by(upstream_app_id=upstream_app_id).one_or_none()
     if app is None:
         flash("Catalog app not found.", "error")
         return redirect(url_for("admin.apps_list"))
-    tier = (
-        db.session.query(CatalogAppTier)
-        .filter_by(id=tier_id, catalog_app_id=app.id)
-        .one_or_none()
-    )
+    tier = db.session.query(CatalogAppTier).filter_by(id=tier_id, catalog_app_id=app.id).one_or_none()
     if tier is None:
         flash("Catalog tier not found.", "error")
         return redirect(url_for("admin.app_content", upstream_app_id=upstream_app_id))
@@ -1172,9 +1031,7 @@ def lms_settings():
         api_key = request.form.get("api_key", "").strip()
         if api_key:
             settings.encrypted_api_key = ext_secrets.encrypt(api_key)
-        settings.enabled = request.form.get("enabled") == "on" and bool(
-            settings.base_url
-        )
+        settings.enabled = request.form.get("enabled") == "on" and bool(settings.base_url)
         db.session.commit()
         flash("NOW-LMS settings updated.", "success")
         return redirect(url_for("admin.lms_settings"))
@@ -1188,13 +1045,8 @@ def portal_branding():
     tax_rates = get_tax_rates()
     tax_rates_json = json.dumps(tax_rates, indent=2, sort_keys=True)
     if request.method == "POST":
-        portal_name = (
-            request.form.get("portal_name", "").strip() or settings["portal_name"]
-        )
-        portal_description = (
-            request.form.get("portal_description", "").strip()
-            or settings["portal_description"]
-        )
+        portal_name = request.form.get("portal_name", "").strip() or settings["portal_name"]
+        portal_description = request.form.get("portal_description", "").strip() or settings["portal_description"]
         logo_file = request.files.get("portal_logo")
         favicon_file = request.files.get("portal_favicon")
         tax_rates_raw = request.form.get("tax_rates_json", "").strip()
@@ -1210,9 +1062,7 @@ def portal_branding():
                 portal_name,
                 portal_description,
                 logo_file=logo_file if logo_file and logo_file.filename else None,
-                favicon_file=(
-                    favicon_file if favicon_file and favicon_file.filename else None
-                ),
+                favicon_file=(favicon_file if favicon_file and favicon_file.filename else None),
             )
             set_portal_tos_url(tos_url)
             if portal_currency:
@@ -1257,9 +1107,7 @@ def add_course_discount(course_id):
     db.session.commit()
     flash("Tier discount created.", "success")
     course = db.session.get(AppCourse, course_id)
-    return redirect(
-        url_for("admin.app_content", upstream_app_id=course.app_slug if course else "")
-    )
+    return redirect(url_for("admin.app_content", upstream_app_id=course.app_slug if course else ""))
 
 
 @bp.route("/audit-log")
@@ -1283,10 +1131,7 @@ def audit_log():
 @admin_required
 def test_instances():
     test_subs = (
-        db.session.query(Subscription)
-        .filter_by(is_test_app=True)
-        .order_by(Subscription.created_at.desc())
-        .all()
+        db.session.query(Subscription).filter_by(is_test_app=True).order_by(Subscription.created_at.desc()).all()
     )
     return render_template("admin_test_instances.html", subscriptions=test_subs)
 
@@ -1404,9 +1249,7 @@ def catalog_sync_history():
     """View catalog sync audit records."""
     page = request.args.get("page", 1, type=int)
     per_page = 25
-    query = db.session.query(CatalogSyncAudit).order_by(
-        CatalogSyncAudit.started_at.desc()
-    )
+    query = db.session.query(CatalogSyncAudit).order_by(CatalogSyncAudit.started_at.desc())
     total = query.count()
     syncs = query.offset((page - 1) * per_page).limit(per_page).all()
     pages = max(1, (total + per_page - 1) // per_page)
@@ -1474,24 +1317,14 @@ def harbor_settings():
         set_smtp_from(request.form.get("smtp_from", "").strip())
         set_external_url(request.form.get("external_url", "").strip())
         try:
-            set_max_backup_upload_bytes(
-                int(request.form.get("max_backup_upload_bytes", "536870912"))
-            )
+            set_max_backup_upload_bytes(int(request.form.get("max_backup_upload_bytes", "536870912")))
         except (ValueError, TypeError):
             pass
-        set_overdue_policy_version(
-            request.form.get("overdue_policy_version", "overdue-policy-v1").strip()
-        )
+        set_overdue_policy_version(request.form.get("overdue_policy_version", "overdue-policy-v1").strip())
         try:
-            set_overdue_suspend_after_days(
-                int(request.form.get("overdue_suspend_after_days", "5"))
-            )
-            set_overdue_deprovision_after_days(
-                int(request.form.get("overdue_deprovision_after_days", "10"))
-            )
-            set_overdue_last_backup_retention_days(
-                int(request.form.get("overdue_last_backup_retention_days", "15"))
-            )
+            set_overdue_suspend_after_days(int(request.form.get("overdue_suspend_after_days", "5")))
+            set_overdue_deprovision_after_days(int(request.form.get("overdue_deprovision_after_days", "10")))
+            set_overdue_last_backup_retention_days(int(request.form.get("overdue_last_backup_retention_days", "15")))
         except (ValueError, TypeError):
             pass
 
@@ -1537,11 +1370,7 @@ def integration_status():
             pass
 
     sync_history = (
-        db.session.query(AuditLog)
-        .filter_by(action="sync_catalog")
-        .order_by(AuditLog.created_at.desc())
-        .limit(20)
-        .all()
+        db.session.query(AuditLog).filter_by(action="sync_catalog").order_by(AuditLog.created_at.desc()).limit(20).all()
     )
 
     return render_template(
@@ -1557,11 +1386,7 @@ def integration_status():
 @admin_required
 def list_users():
     """List all admin users."""
-    users = (
-        db.session.query(HarborAdminUser)
-        .order_by(HarborAdminUser.created_at.desc())
-        .all()
-    )
+    users = db.session.query(HarborAdminUser).order_by(HarborAdminUser.created_at.desc()).all()
     return render_template("admin_users_list.html", users=users)
 
 
@@ -1599,11 +1424,7 @@ def edit_user(user_id):
             return redirect(url_for("admin.edit_user", user_id=user.id))
 
         if username != user.username:
-            existing = (
-                db.session.query(HarborAdminUser)
-                .filter_by(username=username)
-                .one_or_none()
-            )
+            existing = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
             if existing:
                 flash("Username already exists.", "error")
                 return redirect(url_for("admin.edit_user", user_id=user.id))
@@ -1676,9 +1497,7 @@ def toggle_user_active(user_id):
 
     # Prevent deactivating last active admin
     if user.is_active:
-        active_count = (
-            db.session.query(HarborAdminUser).filter_by(is_active=True).count()
-        )
+        active_count = db.session.query(HarborAdminUser).filter_by(is_active=True).count()
         if active_count <= 1:
             flash("Cannot deactivate the last active admin user.", "error")
             return redirect(url_for("admin.list_users"))
@@ -1717,12 +1536,7 @@ def customers_list():
         )
 
     total = query.count()
-    customers = (
-        query.order_by(Customer.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
+    customers = query.order_by(Customer.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
     return render_template(
         "admin_customers_list.html",
@@ -1778,10 +1592,7 @@ def toggle_customer_active(customer_id):
 @admin_required
 def review_user():
     pending_customers = (
-        db.session.query(Customer)
-        .filter(Customer.signup_status == "pending")
-        .order_by(Customer.created_at.asc())
-        .all()
+        db.session.query(Customer).filter(Customer.signup_status == "pending").order_by(Customer.created_at.asc()).all()
     )
     return render_template("admin_review_user.html", customers=pending_customers)
 
@@ -1922,13 +1733,9 @@ def instances_list():
         for sub in subscriptions:
             try:
                 admirald_data = get_customer_app(sub.instance_id)
-                instances_data.append(
-                    {"subscription": sub, "admirald": admirald_data, "error": None}
-                )
+                instances_data.append({"subscription": sub, "admirald": admirald_data, "error": None})
             except AdmiralAPIError as e:
-                instances_data.append(
-                    {"subscription": sub, "admirald": None, "error": str(e)}
-                )
+                instances_data.append({"subscription": sub, "admirald": None, "error": str(e)})
 
         return render_template(
             "admin_instances.html",
@@ -1987,11 +1794,7 @@ def instance_detail(instance_id):
     """View details of a single instance."""
     try:
         # Get from database
-        customer_app = (
-            db.session.query(CustomerApp)
-            .filter_by(instance_id=instance_id)
-            .one_or_none()
-        )
+        customer_app = db.session.query(CustomerApp).filter_by(instance_id=instance_id).one_or_none()
         if not customer_app:
             flash("Instance not found.", "error")
             return redirect(url_for("admin.instances_list"))
@@ -2000,11 +1803,7 @@ def instance_detail(instance_id):
         admirald_data = get_customer_app(instance_id)
 
         # Get associated subscription
-        subscription = (
-            db.session.query(Subscription)
-            .filter_by(id=customer_app.subscription_id)
-            .one_or_none()
-        )
+        subscription = db.session.query(Subscription).filter_by(id=customer_app.subscription_id).one_or_none()
 
         # Get backups
         backups = []
@@ -2033,11 +1832,7 @@ def backups_list():
     """List all backups from admirald."""
     try:
         # Get all instances
-        subscriptions = (
-            db.session.query(Subscription)
-            .filter(Subscription.instance_id.isnot(None))
-            .all()
-        )
+        subscriptions = db.session.query(Subscription).filter(Subscription.instance_id.isnot(None)).all()
 
         # Collect backups from all instances
         all_backups = []
@@ -2067,9 +1862,7 @@ def backups_list():
         )
     except Exception as e:
         flash(f"Error loading backups: {str(e)}", "error")
-        return render_template(
-            "admin_backups.html", backups=[], status_filter=None, total=0
-        )
+        return render_template("admin_backups.html", backups=[], status_filter=None, total=0)
 
 
 @bp.route("/backups/<backup_id>")
@@ -2082,17 +1875,9 @@ def backup_detail(backup_id):
         # Find associated subscription
         subscription = None
         if "instance_id" in backup:
-            capp = (
-                db.session.query(CustomerApp)
-                .filter_by(instance_id=backup["instance_id"])
-                .one_or_none()
-            )
+            capp = db.session.query(CustomerApp).filter_by(instance_id=backup["instance_id"]).one_or_none()
             if capp:
-                subscription = (
-                    db.session.query(Subscription)
-                    .filter_by(id=capp.subscription_id)
-                    .one_or_none()
-                )
+                subscription = db.session.query(Subscription).filter_by(id=capp.subscription_id).one_or_none()
 
         return render_template(
             "admin_backup_detail.html",
@@ -2116,9 +1901,7 @@ def tickets_list():
     priority_filter = request.args.get("priority", None)
     assigned_filter = request.args.get("assigned", None)
 
-    query = db.session.query(SupportIncident).order_by(
-        SupportIncident.created_at.desc()
-    )
+    query = db.session.query(SupportIncident).order_by(SupportIncident.created_at.desc())
 
     if status_filter:
         query = query.filter_by(status=status_filter)
@@ -2149,9 +1932,7 @@ def tickets_list():
 @admin_required
 def ticket_detail(ticket_id):
     """View and edit a single ticket."""
-    ticket = (
-        db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
-    )
+    ticket = db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
     if not ticket:
         flash("Ticket not found.", "error")
         return redirect(url_for("admin.tickets_list"))
@@ -2172,9 +1953,7 @@ def ticket_detail(ticket_id):
 @admin_required
 def ticket_assign(ticket_id):
     """Assign a ticket to an admin."""
-    ticket = (
-        db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
-    )
+    ticket = db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
     if not ticket:
         flash("Ticket not found.", "error")
         return redirect(url_for("admin.tickets_list"))
@@ -2208,9 +1987,7 @@ def ticket_assign(ticket_id):
 @admin_required
 def ticket_update_status(ticket_id):
     """Update ticket status."""
-    ticket = (
-        db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
-    )
+    ticket = db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
     if not ticket:
         flash("Ticket not found.", "error")
         return redirect(url_for("admin.tickets_list"))
@@ -2223,10 +2000,7 @@ def ticket_update_status(ticket_id):
     if new_status in ["resolved", "closed"] and not ticket.resolved_at:
         ticket.resolved_at = datetime.now(UTC)
         # Check if SLA was violated
-        if (
-            ticket.resolution_deadline
-            and ticket.resolved_at > ticket.resolution_deadline
-        ):
+        if ticket.resolution_deadline and ticket.resolved_at > ticket.resolution_deadline:
             ticket.sla_violated = True
 
     db.session.add(
@@ -2249,9 +2023,7 @@ def ticket_update_status(ticket_id):
 @admin_required
 def ticket_add_note(ticket_id):
     """Add internal note to ticket."""
-    ticket = (
-        db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
-    )
+    ticket = db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
     if not ticket:
         flash("Ticket not found.", "error")
         return redirect(url_for("admin.tickets_list"))
@@ -2322,9 +2094,7 @@ def sla_dashboard():
     compliance_pct = (sla_compliant / total * 100) if total > 0 else 0
 
     # Get recent violations
-    violations_sorted = sorted(
-        violations, key=lambda x: x["ticket"].created_at, reverse=True
-    )[:10]
+    violations_sorted = sorted(violations, key=lambda x: x["ticket"].created_at, reverse=True)[:10]
 
     return render_template(
         "admin_sla.html",
@@ -2346,6 +2116,7 @@ def sla_dashboard():
 @admin_required
 def tax_rates():
     from app.branding import get_tax_rates, set_tax_rates
+
     rates = get_tax_rates()
     if request.method == "POST":
         action = request.form.get("action")
@@ -2403,7 +2174,10 @@ def fiscal_types():
             flash("Porcentaje inválido.", "error")
             return redirect(url_for("admin.fiscal_types"))
         if not code or not name or direction not in ("+", "-") or percent <= 0:
-            flash("Todos los campos son requeridos y el porcentaje debe ser mayor a 0.", "error")
+            flash(
+                "Todos los campos son requeridos y el porcentaje debe ser mayor a 0.",
+                "error",
+            )
             return redirect(url_for("admin.fiscal_types"))
         t = FiscalTreatmentType(
             country_code=code,
@@ -2416,21 +2190,23 @@ def fiscal_types():
             is_active=True,
         )
         db.session.add(t)
-        db.session.add(AuditLog(
-            actor=request.environ.get("HARBOR_ADMIN_USER", "admin"),
-            action="fiscal_type_created",
-            resource_type="FiscalTreatmentType",
-            resource_id="new",
-            detail=f"Created fiscal treatment {name} for {code} ({direction}{percent}%)",
-            ip_address=request.remote_addr or "",
-        ))
+        db.session.add(
+            AuditLog(
+                actor=request.environ.get("HARBOR_ADMIN_USER", "admin"),
+                action="fiscal_type_created",
+                resource_type="FiscalTreatmentType",
+                resource_id="new",
+                detail=f"Created fiscal treatment {name} for {code} ({direction}{percent}%)",
+                ip_address=request.remote_addr or "",
+            )
+        )
         db.session.commit()
         flash(f"Tratamiento '{name}' creado.", "success")
         return redirect(url_for("admin.fiscal_types"))
 
-    types_raw = db.session.query(FiscalTreatmentType).order_by(
-        FiscalTreatmentType.country_code, FiscalTreatmentType.name
-    ).all()
+    types_raw = (
+        db.session.query(FiscalTreatmentType).order_by(FiscalTreatmentType.country_code, FiscalTreatmentType.name).all()
+    )
     types = [
         {
             **t.__dict__,
@@ -2462,7 +2238,10 @@ def fiscal_type_toggle(type_id):
         return redirect(url_for("admin.fiscal_types"))
     t.is_active = not t.is_active
     db.session.commit()
-    flash(f"Tratamiento '{t.name}' {'activado' if t.is_active else 'desactivado'}.", "success")
+    flash(
+        f"Tratamiento '{t.name}' {'activado' if t.is_active else 'desactivado'}.",
+        "success",
+    )
     return redirect(url_for("admin.fiscal_types"))
 
 
@@ -2490,9 +2269,7 @@ def fiscal_requests_list():
     if status_filter:
         q = q.filter_by(status=status_filter)
     requests_list = q.order_by(CustomerFiscalRequest.created_at.desc()).all()
-    pending_count = (
-        db.session.query(CustomerFiscalRequest).filter_by(status="pending").count()
-    )
+    pending_count = db.session.query(CustomerFiscalRequest).filter_by(status="pending").count()
     return render_template(
         "admin_fiscal_requests.html",
         requests=requests_list,
@@ -2504,11 +2281,7 @@ def fiscal_requests_list():
 @bp.route("/fiscal-requests/<request_id>")
 @admin_required
 def fiscal_request_detail(request_id):
-    req = (
-        db.session.query(CustomerFiscalRequest)
-        .filter_by(request_id=request_id)
-        .one_or_none()
-    )
+    req = db.session.query(CustomerFiscalRequest).filter_by(request_id=request_id).one_or_none()
     if not req:
         flash("Solicitud no encontrada.", "error")
         return redirect(url_for("admin.fiscal_requests_list"))
@@ -2524,11 +2297,8 @@ def fiscal_request_detail(request_id):
 @admin_required
 def fiscal_request_evidence(request_id):
     from flask import send_file
-    req = (
-        db.session.query(CustomerFiscalRequest)
-        .filter_by(request_id=request_id)
-        .one_or_none()
-    )
+
+    req = db.session.query(CustomerFiscalRequest).filter_by(request_id=request_id).one_or_none()
     if not req or not req.evidence_path:
         flash("Evidencia no encontrada.", "error")
         return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))
@@ -2542,11 +2312,7 @@ def fiscal_request_evidence(request_id):
 @bp.route("/fiscal-requests/<request_id>/approve", methods=["POST"])
 @admin_required
 def fiscal_request_approve(request_id):
-    req = (
-        db.session.query(CustomerFiscalRequest)
-        .filter_by(request_id=request_id)
-        .one_or_none()
-    )
+    req = db.session.query(CustomerFiscalRequest).filter_by(request_id=request_id).one_or_none()
     if not req:
         flash("Solicitud no encontrada.", "error")
         return redirect(url_for("admin.fiscal_requests_list"))
@@ -2555,27 +2321,28 @@ def fiscal_request_approve(request_id):
     req.reviewer_notes = reviewer_notes
     req.reviewed_by = request.environ.get("HARBOR_ADMIN_USER", "admin")
     req.reviewed_at = datetime.now(UTC)
-    db.session.add(AuditLog(
-        actor=req.reviewed_by,
-        action="fiscal_request_approved",
-        resource_type="CustomerFiscalRequest",
-        resource_id=req.request_id,
-        detail=f"Fiscal request {request_id} approved for {req.customer_email}",
-        ip_address=request.remote_addr or "",
-    ))
+    db.session.add(
+        AuditLog(
+            actor=req.reviewed_by,
+            action="fiscal_request_approved",
+            resource_type="CustomerFiscalRequest",
+            resource_id=req.request_id,
+            detail=f"Fiscal request {request_id} approved for {req.customer_email}",
+            ip_address=request.remote_addr or "",
+        )
+    )
     db.session.commit()
-    flash("Solicitud aprobada. El ajuste fiscal se aplicará a las próximas órdenes del cliente.", "success")
+    flash(
+        "Solicitud aprobada. El ajuste fiscal se aplicará a las próximas órdenes del cliente.",
+        "success",
+    )
     return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))
 
 
 @bp.route("/fiscal-requests/<request_id>/revoke", methods=["POST"])
 @admin_required
 def fiscal_request_revoke(request_id):
-    req = (
-        db.session.query(CustomerFiscalRequest)
-        .filter_by(request_id=request_id)
-        .one_or_none()
-    )
+    req = db.session.query(CustomerFiscalRequest).filter_by(request_id=request_id).one_or_none()
     if not req:
         flash("Solicitud no encontrada.", "error")
         return redirect(url_for("admin.fiscal_requests_list"))
@@ -2587,14 +2354,16 @@ def fiscal_request_revoke(request_id):
     req.reviewer_notes = reviewer_notes
     req.reviewed_by = request.environ.get("HARBOR_ADMIN_USER", "admin")
     req.reviewed_at = datetime.now(UTC)
-    db.session.add(AuditLog(
-        actor=req.reviewed_by,
-        action="fiscal_request_revoked",
-        resource_type="CustomerFiscalRequest",
-        resource_id=req.request_id,
-        detail=f"Fiscal request {request_id} revoked for {req.customer_email}: {reviewer_notes}",
-        ip_address=request.remote_addr or "",
-    ))
+    db.session.add(
+        AuditLog(
+            actor=req.reviewed_by,
+            action="fiscal_request_revoked",
+            resource_type="CustomerFiscalRequest",
+            resource_id=req.request_id,
+            detail=f"Fiscal request {request_id} revoked for {req.customer_email}: {reviewer_notes}",
+            ip_address=request.remote_addr or "",
+        )
+    )
     db.session.commit()
     flash("Solicitud revocada.", "success")
     return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))

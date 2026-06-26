@@ -40,9 +40,7 @@ def test_render_markdown_strikethrough_and_table():
     assert "<del>deleted</del>" in res
 
     # Test plugins (table)
-    table_input = (
-        "| Header 1 | Header 2 |\n| -------- | -------- |\n| Cell 1   | Cell 2   |\n"
-    )
+    table_input = "| Header 1 | Header 2 |\n| -------- | -------- |\n| Cell 1   | Cell 2   |\n"
     res = render_markdown(table_input)
     assert "<table>" in res
     assert "<th>Header 1</th>" in res

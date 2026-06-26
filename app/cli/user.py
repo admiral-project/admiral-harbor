@@ -25,9 +25,7 @@ def resolve_password():
 
 
 def cmd_create_admin(username):
-    existing = (
-        db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
-    )
+    existing = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
     if existing:
         print(f"Error: admin user '{username}' already exists.")
         sys.exit(1)
@@ -86,9 +84,7 @@ def cmd_create_customer(email, display_name, country):
 
 
 def cmd_list(output):
-    admins = (
-        db.session.query(HarborAdminUser).order_by(HarborAdminUser.created_at).all()
-    )
+    admins = db.session.query(HarborAdminUser).order_by(HarborAdminUser.created_at).all()
     customers = db.session.query(Customer).order_by(Customer.created_at).all()
 
     if output == "json":
@@ -126,9 +122,7 @@ def cmd_list(output):
     print(f"{'Username':20} {'Display Name':25} {'Active':8} {'Created':20}")
     print(f"{'---':20} {'---':25} {'---':8} {'---':20}")
     for u in admins:
-        print(
-            f"{u.username:20} {(u.display_name or ''):25} {str(u.is_active):8} {str(u.created_at):20}"
-        )
+        print(f"{u.username:20} {(u.display_name or ''):25} {str(u.is_active):8} {str(u.created_at):20}")
 
     print()
     print("Customers:")
@@ -199,13 +193,9 @@ def handle_user():
             choices=["admin", "customer"],
             help="User type to create (default: admin)",
         )
-        parser.add_argument(
-            "--display-name", help="Display name (required for customer)"
-        )
+        parser.add_argument("--display-name", help="Display name (required for customer)")
         parser.add_argument("--country", default="", help="Country code for customer")
-        parser.add_argument(
-            "ident", nargs="?", help="Username (admin) or email (customer)"
-        )
+        parser.add_argument("ident", nargs="?", help="Username (admin) or email (customer)")
         args = parser.parse_args(sys.argv[3:])
 
         if not args.ident:

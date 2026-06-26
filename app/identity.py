@@ -47,11 +47,7 @@ def login_required(view):
             if request.path.startswith("/api/"):
                 abort(401)
             pending = session.get("customer_email")
-            if (
-                pending
-                and db.session.query(Customer).filter_by(email=pending).one_or_none()
-                is not None
-            ):
+            if pending and db.session.query(Customer).filter_by(email=pending).one_or_none() is not None:
                 session.pop("customer_token", None)
                 session.pop("customer_email", None)
                 session.pop("customer_public_id", None)
@@ -112,18 +108,14 @@ def check_session_idle_timeout():
     session_id = session.get("_session_id")
     if not session_id:
         return None
-    record = (
-        db.session.query(UserSession).filter_by(session_id=session_id).one_or_none()
-    )
+    record = db.session.query(UserSession).filter_by(session_id=session_id).one_or_none()
     if record is None:
         session.pop("_session_id", None)
         return None
     now = _now()
     idle_seconds = (now - record.last_activity_at).total_seconds()
     timeout_seconds = (
-        SESSION_TIMEOUT_ADMIN_MINUTES * 60
-        if record.user_type == "admin"
-        else SESSION_TIMEOUT_CUSTOMER_MINUTES * 60
+        SESSION_TIMEOUT_ADMIN_MINUTES * 60 if record.user_type == "admin" else SESSION_TIMEOUT_CUSTOMER_MINUTES * 60
     )
     if idle_seconds > timeout_seconds:
         session.clear()

@@ -49,13 +49,8 @@ def handle_ping():
         except requests.exceptions.Timeout:
             continue
         except requests.HTTPError as e:
-            print(
-                f"\u2717 admirald at {url} returned HTTP {e.response.status_code}: {e.response.text.strip()}"
-            )
+            print(f"\u2717 admirald at {url} returned HTTP {e.response.status_code}: {e.response.text.strip()}")
             sys.exit(1)
 
-    print(
-        f"\u2717 admirald unreachable at {addrs} port {port} "
-        f"(tried 127.0.0.1 and 10.99.0.1)"
-    )
+    print(f"\u2717 admirald unreachable at {addrs} port {port} " f"(tried 127.0.0.1 and 10.99.0.1)")
     sys.exit(1)

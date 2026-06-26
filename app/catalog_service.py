@@ -217,11 +217,7 @@ def sync_catalog(origin="manual", actor=None):
 
 def get_last_sync():
     """Get the last successful sync audit record"""
-    return (
-        CatalogSyncAudit.query.filter_by(status="success")
-        .order_by(CatalogSyncAudit.completed_at.desc())
-        .first()
-    )
+    return CatalogSyncAudit.query.filter_by(status="success").order_by(CatalogSyncAudit.completed_at.desc()).first()
 
 
 def is_app_publishable(app):

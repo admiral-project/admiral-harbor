@@ -19,6 +19,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     pass
 
+
 config = getattr(context, "config", None) or AlembicConfig()
 
 if config.config_file_name is not None:

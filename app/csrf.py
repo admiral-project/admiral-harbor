@@ -55,9 +55,7 @@ def validate_csrf_request():
     if request.endpoint in EXEMPT_ENDPOINTS:
         return None
 
-    if current_app.config.get("TESTING") and not current_app.config.get(
-        "HARBOR_CSRF_CHECK_IN_TESTS", False
-    ):
+    if current_app.config.get("TESTING") and not current_app.config.get("HARBOR_CSRF_CHECK_IN_TESTS", False):
         return None
 
     data = session.get("csrf_data")

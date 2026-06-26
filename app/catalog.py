@@ -24,11 +24,7 @@ def list_apps():
 
 @bp.route("/apps/<slug>")
 def app_detail(slug):
-    app = (
-        db.session.query(CatalogApp)
-        .filter_by(upstream_app_id=slug, catalog_enabled=True)
-        .one_or_none()
-    )
+    app = db.session.query(CatalogApp).filter_by(upstream_app_id=slug, catalog_enabled=True).one_or_none()
     if app is None:
         return jsonify({"error": "app not found"}), 404
     return jsonify(app.as_dict())

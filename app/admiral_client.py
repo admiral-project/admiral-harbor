@@ -70,9 +70,7 @@ def list_apps():
 def get_app(slug):
     app = _request("GET", f"/api/v1/apps/{slug}", timeout=30)
     app["tiers"] = normalize_tiers(parse_tiers_from_yaml(app.get("raw_yaml", "")))
-    app["requires_billing"] = any(
-        not t.get("free") and t["price_monthly_cents"] > 0 for t in app["tiers"]
-    )
+    app["requires_billing"] = any(not t.get("free") and t["price_monthly_cents"] > 0 for t in app["tiers"])
     return app
 
 
@@ -114,11 +112,7 @@ def parse_tiers_from_yaml(raw_yaml):
         if not in_tiers:
             continue
         stripped = line.strip()
-        if (
-            line.startswith("  ")
-            and not line.startswith("    ")
-            and stripped.endswith(":")
-        ):
+        if line.startswith("  ") and not line.startswith("    ") and stripped.endswith(":"):
             current_tier = stripped[:-1]
             tiers[current_tier] = {}
             continue
@@ -144,9 +138,7 @@ def parse_tiers_from_yaml(raw_yaml):
 
 
 def list_customer_apps(customer_id):
-    result = _request(
-        "GET", "/api/v1/customer-apps", params={"customer_id": customer_id}, timeout=30
-    )
+    result = _request("GET", "/api/v1/customer-apps", params={"customer_id": customer_id}, timeout=30)
     if result is None:
         return []
     return result
@@ -161,9 +153,7 @@ def get_instance_inspect(instance_id):
 
 
 def get_instance_credentials(instance_id):
-    result = _request(
-        "GET", f"/api/v1/customer-apps/{instance_id}/credentials", timeout=30
-    )
+    result = _request("GET", f"/api/v1/customer-apps/{instance_id}/credentials", timeout=30)
     if result is None:
         return []
     return result
@@ -191,9 +181,7 @@ def action(instance_id, action_name, tier=None, service=None):
 
 
 def list_backups(instance_id):
-    response = _request(
-        "GET", "/api/v1/backups", params={"instance_id": instance_id}, timeout=30
-    )
+    response = _request("GET", "/api/v1/backups", params={"instance_id": instance_id}, timeout=30)
     if isinstance(response, dict) and "items" in response:
         return response["items"] or []
     return response or []
@@ -204,9 +192,7 @@ def get_backup(backup_id):
 
 
 def get_operation(operation_id):
-    return _request(
-        "GET", "/api/v1/operations", params={"id": operation_id}, timeout=30
-    )
+    return _request("GET", "/api/v1/operations", params={"id": operation_id}, timeout=30)
 
 
 def restore_backup(backup_id, instance_id, service, source=None, verify_checksum=True):

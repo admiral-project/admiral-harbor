@@ -54,9 +54,10 @@ def _make_app_setup_failed(client):
 
 def test_reconcile_setup_failed_cancels_subscription(client):
     sub_id = _make_app_setup_failed(client)
-    with patch("app.paypal.cancel_subscription") as mock_cancel, patch(
-        "app.paypal.refund_last_sale"
-    ) as mock_refund:
+    with (
+        patch("app.paypal.cancel_subscription") as mock_cancel,
+        patch("app.paypal.refund_last_sale") as mock_refund,
+    ):
         mock_refund.return_value = "refund-001"
         from worker import _reconcile_setup_failed
 
@@ -76,9 +77,10 @@ def test_reconcile_setup_failed_cancels_subscription(client):
 
 def test_reconcile_setup_failed_noop_when_already_cancelled(client):
     sub_id = _make_app_setup_failed(client)
-    with patch("app.paypal.cancel_subscription") as mock_cancel, patch(
-        "app.paypal.refund_last_sale"
-    ) as mock_refund:
+    with (
+        patch("app.paypal.cancel_subscription") as mock_cancel,
+        patch("app.paypal.refund_last_sale") as mock_refund,
+    ):
         with client.application.app_context():
             sub = db.session.get(Subscription, sub_id)
             sub.status = "cancelled"
@@ -127,9 +129,10 @@ def test_reconcile_setup_failed_noop_when_no_paypal_id(client):
         )
         db.session.commit()
 
-    with patch("app.paypal.cancel_subscription") as mock_cancel, patch(
-        "app.paypal.refund_last_sale"
-    ) as mock_refund:
+    with (
+        patch("app.paypal.cancel_subscription") as mock_cancel,
+        patch("app.paypal.refund_last_sale") as mock_refund,
+    ):
         from worker import _reconcile_setup_failed
 
         with client.application.app_context():
@@ -184,7 +187,7 @@ def test_dashboard_shows_initializing_message(client):
 
 
 def test_dashboard_shows_setup_failed_message(client):
-    sub_id = _make_app_setup_failed(client)
+    _make_app_setup_failed(client)
 
     client.post(
         "/auth/login",

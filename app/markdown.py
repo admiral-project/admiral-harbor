@@ -8,9 +8,7 @@ from markupsafe import Markup
 try:
     import mistune
 except ImportError as exc:  # pragma: no cover - packaging ensures this dependency
-    raise RuntimeError(
-        "mistune is required to render Harbor markdown descriptions"
-    ) from exc
+    raise RuntimeError("mistune is required to render Harbor markdown descriptions") from exc
 
 
 @lru_cache(maxsize=1)

@@ -314,8 +314,7 @@ BACKUPS = [
         "status": "succeeded",
         "size_bytes": 46137344,
         "created_at": (NOW - timedelta(days=1)).isoformat() + "Z",
-        "completed_at": (NOW - timedelta(days=1, hours=0, minutes=-5)).isoformat()
-        + "Z",
+        "completed_at": (NOW - timedelta(days=1, hours=0, minutes=-5)).isoformat() + "Z",
     },
     {
         "id": "bkp_e5f6g7h8",
@@ -333,8 +332,7 @@ BACKUPS = [
         "status": "succeeded",
         "size_bytes": 933232640,
         "created_at": (NOW - timedelta(days=14)).isoformat() + "Z",
-        "completed_at": (NOW - timedelta(days=14, hours=0, minutes=-3)).isoformat()
-        + "Z",
+        "completed_at": (NOW - timedelta(days=14, hours=0, minutes=-3)).isoformat() + "Z",
     },
     {
         "id": "bkp_u1v2w3x4",
@@ -609,9 +607,7 @@ def v1_customer_apps_provision():
 
     if not app_slug or not tier_name or not customer_id:
         return (
-            jsonify(
-                {"error": "app_definition_name, tier_name and customer_id are required"}
-            ),
+            jsonify({"error": "app_definition_name, tier_name and customer_id are required"}),
             400,
         )
 
@@ -642,9 +638,7 @@ def v1_customer_apps_provision():
     _operations_store.append(new_op)
 
     return (
-        jsonify(
-            {"operation_id": inst_id, "instance_id": instance_id, "status": "queued"}
-        ),
+        jsonify({"operation_id": inst_id, "instance_id": instance_id, "status": "queued"}),
         202,
     )
 
@@ -685,9 +679,7 @@ def v1_backups_list():
     result = _backups_store
     if instance_id:
         result = [b for b in _backups_store if b["instance_id"] == instance_id]
-    return jsonify(
-        {"items": result, "page": 1, "page_size": len(result), "total": len(result)}
-    )
+    return jsonify({"items": result, "page": 1, "page_size": len(result), "total": len(result)})
 
 
 @mock_app.route("/api/v1/backups/<backup_id>")
@@ -832,9 +824,7 @@ def _fleet_simulation():
                 continue
             op["status"] = "succeeded"
             op["updated_at"] = now.isoformat() + "Z"
-            inst = next(
-                (i for i in _instances_store if i["id"] == op["instance_id"]), None
-            )
+            inst = next((i for i in _instances_store if i["id"] == op["instance_id"]), None)
             if inst is None:
                 continue
             if op["action"] == "provision_app":
@@ -877,9 +867,7 @@ def main():
     os.environ["ADMIRAL_INSECURE_SKIP_VERIFY"] = "1"
 
     mock_daemon = threading.Thread(
-        target=lambda: mock_app.run(
-            host=HOST, port=MOCK_PORT, debug=False, use_reloader=False
-        ),
+        target=lambda: mock_app.run(host=HOST, port=MOCK_PORT, debug=False, use_reloader=False),
         daemon=True,
     )
     mock_daemon.start()

@@ -1,8 +1,8 @@
-import pytest
 from unittest.mock import patch
 from app.catalog_service import sync_catalog
 from app.models import CatalogApp, CatalogSyncAudit
 from app.extensions import db
+
 
 def test_sync_catalog_success(app):
     """Test successful catalog synchronization."""
@@ -13,7 +13,7 @@ def test_sync_catalog_success(app):
             "availability": "available",
             "revision": 1,
             "checksum": "abc",
-            "raw_yaml": "tiers:\n  starter:\n    cpu: 1"
+            "raw_yaml": "tiers:\n  starter:\n    cpu: 1",
         }
     ]
 
@@ -33,6 +33,7 @@ def test_sync_catalog_success(app):
             assert app_record.name == "Test App"
             assert app_record.upstream_revision == 1
 
+
 def test_sync_catalog_missing_upstream(app):
     """Test that apps missing upstream are marked accordingly."""
     with app.app_context():
@@ -41,11 +42,7 @@ def test_sync_catalog_missing_upstream(app):
         db.session.query(CatalogSyncAudit).delete()
 
         # Pre-populate an app
-        existing_app = CatalogApp(
-            upstream_app_id="missing-app",
-            name="Missing App",
-            upstream_present=True
-        )
+        existing_app = CatalogApp(upstream_app_id="missing-app", name="Missing App", upstream_present=True)
         db.session.add(existing_app)
         db.session.commit()
 
@@ -57,6 +54,7 @@ def test_sync_catalog_missing_upstream(app):
 
             app_record = CatalogApp.query.filter_by(upstream_app_id="missing-app").first()
             assert app_record.upstream_present is False
+
 
 def test_sync_catalog_already_in_progress(app):
     """Test that concurrent syncs are prevented."""

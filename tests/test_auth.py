@@ -3,9 +3,7 @@
 
 
 def test_login_logout_me(client):
-    response = client.post(
-        "/auth/login", json={"email": "user@example.com", "password": "secret"}
-    )
+    response = client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     assert response.status_code == 200
     assert response.json["email"] == "user@example.com"
 

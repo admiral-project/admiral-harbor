@@ -169,9 +169,7 @@ def gate(customer):
         )
         .all()
     }
-    available_optional = [
-        treatment for treatment in optional_types if treatment.id not in requested_type_ids
-    ]
+    available_optional = [treatment for treatment in optional_types if treatment.id not in requested_type_ids]
     mandatory_types = active_treatments(code, is_optional=False) if configured else []
     mandatory_accepted = has_accepted_current_mandatory_terms(customer)
     requires_review = configured and (not mandatory_accepted or bool(pending))

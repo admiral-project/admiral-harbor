@@ -77,9 +77,7 @@ def _send_confirmation_email(customer, token):
         return False
 
     message = EmailMessage()
-    message["Subject"] = (
-        f"Confirm your Harbor account for {current_app.config['HARBOR_PORTAL_NAME']}"
-    )
+    message["Subject"] = f"Confirm your Harbor account for {current_app.config['HARBOR_PORTAL_NAME']}"
     message["From"] = current_app.config.get("HARBOR_SMTP_FROM", "noreply@example.com")
     message["To"] = customer.email
     message.set_content(
@@ -122,6 +120,7 @@ def login_page():
 @bp.route("/register", methods=["GET"])
 def register_page():
     from app.branding import get_tos_url
+
     return render_template(
         "auth_register.html",
         countries=_COUNTRIES,
@@ -136,11 +135,7 @@ def login():
     if not allowed:
         if request.is_json:
             return (
-                jsonify(
-                    {
-                        "error": f"Too many login attempts. Try again in {remaining} second(s)."
-                    }
-                ),
+                jsonify({"error": f"Too many login attempts. Try again in {remaining} second(s)."}),
                 429,
             )
         flash(
@@ -216,9 +211,7 @@ def login():
     _login_customer(customer)
     login_limiter.reset(ip)
     if request.is_json:
-        return jsonify(
-            {"status": "ok", "email": email, "public_id": customer.public_id}
-        )
+        return jsonify({"status": "ok", "email": email, "public_id": customer.public_id})
     return redirect(url_for("client.dashboard"))
 
 
@@ -282,13 +275,9 @@ def register():
     email_error = None
     try:
         email_sent = _send_confirmation_email(customer, confirmation_token)
-    except (
-        Exception
-    ) as exc:  # pragma: no cover - email transport failures are runtime dependent
+    except Exception as exc:  # pragma: no cover - email transport failures are runtime dependent
         email_error = str(exc)
-        current_app.logger.warning(
-            "Could not send Harbor confirmation email for %s: %s", email, exc
-        )
+        current_app.logger.warning("Could not send Harbor confirmation email for %s: %s", email, exc)
 
     if email_sent:
         db.session.add(
@@ -342,11 +331,7 @@ def confirm_email(token):
         return redirect(url_for("auth.login_page"))
 
     token_hash = _token_hash(token)
-    customer = (
-        db.session.query(Customer)
-        .filter_by(email_confirmation_token_hash=token_hash)
-        .one_or_none()
-    )
+    customer = db.session.query(Customer).filter_by(email_confirmation_token_hash=token_hash).one_or_none()
     if customer is None:
         flash("Confirmation link is invalid or expired.", "error")
         return redirect(url_for("auth.login_page"))
@@ -409,15 +394,9 @@ def terms():
     return jsonify(
         {
             "policy_version": current_app.config["HARBOR_OVERDUE_POLICY_VERSION"],
-            "grace_before_suspend_days": current_app.config[
-                "HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"
-            ],
-            "additional_grace_before_deprovision_days": current_app.config[
-                "HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"
-            ],
-            "last_backup_retention_days": current_app.config[
-                "HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS"
-            ],
+            "grace_before_suspend_days": current_app.config["HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"],
+            "additional_grace_before_deprovision_days": current_app.config["HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"],
+            "last_backup_retention_days": current_app.config["HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS"],
             "requires_acceptance_at_signup": True,
         }
     )

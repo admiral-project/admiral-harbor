@@ -29,17 +29,20 @@ def upgrade() -> None:
     op.add_column("customer", sa.Column("fiscal_accepted_at", sa.DateTime(), nullable=True))
 
     op.add_column(
-        "subscription", sa.Column("tax_cents", sa.Integer(), nullable=False, server_default="0")
+        "subscription",
+        sa.Column("tax_cents", sa.Integer(), nullable=False, server_default="0"),
     )
     op.add_column(
         "subscription",
         sa.Column("fiscal_adjustment_cents", sa.Integer(), nullable=False, server_default="0"),
     )
     op.add_column(
-        "subscription", sa.Column("total_cents", sa.Integer(), nullable=False, server_default="0")
+        "subscription",
+        sa.Column("total_cents", sa.Integer(), nullable=False, server_default="0"),
     )
     op.add_column(
-        "subscription", sa.Column("fiscal_country_code", sa.String(length=2), nullable=True)
+        "subscription",
+        sa.Column("fiscal_country_code", sa.String(length=2), nullable=True),
     )
     op.add_column("subscription", sa.Column("fiscal_snapshot_json", sa.Text(), nullable=True))
 

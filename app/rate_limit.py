@@ -18,12 +18,7 @@ class RateLimiter:
         now = time.time()
         cutoff = now - self.window_seconds
 
-        entry = (
-            db.session.query(RateLimit)
-            .filter(RateLimit.identifier == identifier)
-            .with_for_update()
-            .first()
-        )
+        entry = db.session.query(RateLimit).filter(RateLimit.identifier == identifier).with_for_update().first()
 
         if entry is None:
             db.session.add(

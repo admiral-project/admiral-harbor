@@ -64,9 +64,7 @@ def create_app(config_object="app.config.Config"):
     def load_admin(username):
         from app.models import HarborAdminUser
 
-        return (
-            db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
-        )
+        return db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -143,9 +141,7 @@ def create_app(config_object="app.config.Config"):
 
             ensure_default_portal_settings()
             bootstrap_admin_user = app.config.get("HARBOR_BOOTSTRAP_ADMIN_USER", "")
-            bootstrap_admin_password = app.config.get(
-                "HARBOR_BOOTSTRAP_ADMIN_PASSWORD", ""
-            )
+            bootstrap_admin_password = app.config.get("HARBOR_BOOTSTRAP_ADMIN_PASSWORD", "")
             bootstrap_admin_display_name = app.config.get(
                 "HARBOR_BOOTSTRAP_ADMIN_DISPLAY_NAME",
                 "Harbor Bootstrap Admin",

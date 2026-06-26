@@ -19,11 +19,7 @@ def test_context_processor_injects_admin_on_admin_routes(client):
     )
     response = client.get("/admin/")
     assert response.status_code == 200
-    assert (
-        b"testadmin" in response.data
-        or b"Admin" in response.data
-        or b"dashboard" in response.data.lower()
-    )
+    assert b"testadmin" in response.data or b"Admin" in response.data or b"dashboard" in response.data.lower()
 
 
 def test_context_processor_renders_public_pages_without_auth(client):

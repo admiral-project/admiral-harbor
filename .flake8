@@ -1,8 +1,6 @@
 [flake8]
 max-line-length = 120
 extend-ignore = E203, W503
+exclude = migrations/
 per-file-ignores =
-    app/migrate.py: E501
-    tests/conftest.py: E501
-    tests/test_context_processor.py: E501
-    tests/test_identity.py: E501
+    tests/conftest.py: E402

@@ -87,9 +87,7 @@ def _generate_invoices(app):
                     continue
                 paypal_active = remote_status in ("ACTIVE", "APPROVED")
             except PayPalError as exc:
-                log.warning(
-                    "Subscription %s: PayPal check failed: %s", sub.external_id, exc
-                )
+                log.warning("Subscription %s: PayPal check failed: %s", sub.external_id, exc)
                 errors += 1
                 continue
 
@@ -110,9 +108,7 @@ def _generate_invoices(app):
             period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         )
         db.session.add(invoice)
-        sub.next_billing_at = (
-            (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
-        )
+        sub.next_billing_at = (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
         actions += 1
         log.info(
             "Invoice %s generated for subscription %s",
@@ -147,9 +143,7 @@ def _enforce_payment_policy(app):
         try:
             next_billing = datetime.fromisoformat(sub.next_billing_at)
             if not isinstance(next_billing, datetime):
-                next_billing = datetime(
-                    next_billing.year, next_billing.month, next_billing.day
-                )
+                next_billing = datetime(next_billing.year, next_billing.month, next_billing.day)
             overdue_days = (now - next_billing).days
         except (ValueError, TypeError):
             continue
@@ -207,9 +201,7 @@ def _reconcile_paypal_subscriptions(app):
         try:
             remote = paypal_get_sub(sub.paypal_subscription_id)
         except PayPalError as exc:
-            log.warning(
-                "PayPal fetch failed for %s: %s", sub.paypal_subscription_id, exc
-            )
+            log.warning("PayPal fetch failed for %s: %s", sub.paypal_subscription_id, exc)
             errors += 1
             continue
 
@@ -273,9 +265,7 @@ def _send_storage_alert(app, customer_email, instance_id, new_status, customer_n
     use_ssl = app.config.get("HARBOR_SMTP_USE_SSL", False)
 
     if not host or not smtp_from:
-        log.warning(
-            "SMTP not configured: cannot send storage alert for %s", customer_email
-        )
+        log.warning("SMTP not configured: cannot send storage alert for %s", customer_email)
         return False
 
     status_labels = {
@@ -342,25 +332,17 @@ def _sync_remote_instances(app):
             continue
 
         for item in items:
-            local = (
-                db.session.query(CustomerApp)
-                .filter_by(instance_id=item["id"])
-                .one_or_none()
-            )
+            local = db.session.query(CustomerApp).filter_by(instance_id=item["id"]).one_or_none()
             if local is None:
                 continue
             old_storage = local.storage_status
             new_storage = item.get("storage_state", old_storage)
             local.status = item.get("technical_status", local.status)
-            local.commercial_status = item.get(
-                "commercial_status", local.commercial_status
-            )
+            local.commercial_status = item.get("commercial_status", local.commercial_status)
             local.storage_status = new_storage
             actions += 1
 
-            if new_storage != old_storage and _needs_storage_alert(
-                customer.email, item["id"], new_storage
-            ):
+            if new_storage != old_storage and _needs_storage_alert(customer.email, item["id"], new_storage):
                 _send_storage_alert(
                     app,
                     customer.email,
@@ -397,22 +379,14 @@ def _reconcile_operations(app):
         op_status = op.get("status", "")
         if op_status == "succeeded":
             req.status = "completed"
-            local = (
-                db.session.query(CustomerApp)
-                .filter_by(instance_id=req.instance_id)
-                .one_or_none()
-            )
+            local = db.session.query(CustomerApp).filter_by(instance_id=req.instance_id).one_or_none()
             if local:
                 local.backup_status = "ok"
             actions += 1
             log.info("Restore %s completed (op %s)", req.request_id, req.operation_id)
         elif op_status == "failed":
             req.status = "failed"
-            local = (
-                db.session.query(CustomerApp)
-                .filter_by(instance_id=req.instance_id)
-                .one_or_none()
-            )
+            local = db.session.query(CustomerApp).filter_by(instance_id=req.instance_id).one_or_none()
             if local:
                 local.backup_status = "failed"
             actions += 1
@@ -445,17 +419,17 @@ def _reconcile_setup_failed(app):
     actions = 0
     errors = 0
 
-    apps = db.session.query(CustomerApp).filter(
-        CustomerApp.commercial_status == "cancelled",
-        CustomerApp.status == "setup_failed",
-    ).all()
+    apps = (
+        db.session.query(CustomerApp)
+        .filter(
+            CustomerApp.commercial_status == "cancelled",
+            CustomerApp.status == "setup_failed",
+        )
+        .all()
+    )
 
     for local_app in apps:
-        subscription = (
-            db.session.query(Subscription)
-            .filter_by(instance_id=local_app.instance_id)
-            .one_or_none()
-        )
+        subscription = db.session.query(Subscription).filter_by(instance_id=local_app.instance_id).one_or_none()
         if subscription is None:
             continue
         if subscription.status in ("cancelled", "suspended"):
@@ -464,8 +438,7 @@ def _reconcile_setup_failed(app):
             continue
 
         log.info(
-            "setup_failed for instance %s: cancelling PayPal subscription %s "
-            "and refunding last payment",
+            "setup_failed for instance %s: cancelling PayPal subscription %s " "and refunding last payment",
             local_app.instance_id,
             subscription.paypal_subscription_id,
         )
@@ -503,10 +476,7 @@ def _reconcile_setup_failed(app):
                 completed_at=datetime.now(UTC),
                 actions_taken=1,
                 errors=errors,
-                summary=(
-                    f"setup_failed refund+cancel for instance "
-                    f"{local_app.instance_id} (refund={refund_id})"
-                ),
+                summary=(f"setup_failed refund+cancel for instance " f"{local_app.instance_id} (refund={refund_id})"),
             )
         )
 

@@ -18,9 +18,7 @@ from app.catalog_service import sync_catalog, get_last_sync, get_app_status_labe
 from app.extensions import db
 from app.models import CatalogApp
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("admiral-harbor-cli")
 
 
@@ -77,9 +75,7 @@ def cmd_list():
         apps = db.session.query(CatalogApp).all()
         for app_record in apps:
             label = get_app_status_label(app_record)
-            print(
-                f"{app_record.upstream_app_id:30} {label:30} rev={app_record.upstream_revision}"
-            )
+            print(f"{app_record.upstream_app_id:30} {label:30} rev={app_record.upstream_revision}")
         return 0
 
 

@@ -107,20 +107,12 @@ def _is_allowed_ip(remote_addr):
 def _same_origin(url_a, url_b):
     parsed_a = urlparse(url_a)
     parsed_b = urlparse(url_b)
-    return (
-        parsed_a.scheme == parsed_b.scheme
-        and parsed_a.netloc == parsed_b.netloc
-        and parsed_a.netloc != ""
-    )
+    return parsed_a.scheme == parsed_b.scheme and parsed_a.netloc == parsed_b.netloc and parsed_a.netloc != ""
 
 
 def _provision_subscription(subscription):
-    customer = (
-        db.session.query(Customer).filter_by(email=subscription.customer_email).one()
-    )
-    response = admiral_client.provision_app(
-        subscription.app_slug, subscription.tier_name, customer.public_id
-    )
+    customer = db.session.query(Customer).filter_by(email=subscription.customer_email).one()
+    response = admiral_client.provision_app(subscription.app_slug, subscription.tier_name, customer.public_id)
     credentials = response.get("credentials", [])
     hostname = response.get("hostname", "")
     operation_id = response.get("operation_id", "")
@@ -200,7 +192,12 @@ def ready():
         return jsonify({"status": "forbidden"}), 403
 
     timestamp = datetime.now(UTC).isoformat()
-    result = {"status": "ok", "database": "ok", "admirald": "ok", "timestamp": timestamp}
+    result = {
+        "status": "ok",
+        "database": "ok",
+        "admirald": "ok",
+        "timestamp": timestamp,
+    }
     status_code = 200
     errors = []
 
@@ -272,10 +269,7 @@ def app_detail(slug):
     customer = current_customer()
     gate = fiscal_gate(customer) if customer is not None else None
     courses = (
-        db.session.query(AppCourse)
-        .filter_by(app_slug=slug, active=True)
-        .order_by(AppCourse.course_code.asc())
-        .all()
+        db.session.query(AppCourse).filter_by(app_slug=slug, active=True).order_by(AppCourse.course_code.asc()).all()
     )
     tier_quotes = {}
     if customer is not None:
@@ -305,35 +299,21 @@ def paypal_webhook():
     event_id = event.get("id", "")
     event_type = event.get("event_type", "unknown")
     resource = event.get("resource") or {}
-    subscription_id = (
-        resource.get("billing_agreement_id")
-        or resource.get("subscription_id")
-        or resource.get("id")
-    )
+    subscription_id = resource.get("billing_agreement_id") or resource.get("subscription_id") or resource.get("id")
     if not event_id or not subscription_id:
         return jsonify({"error": "invalid webhook payload"}), 400
-    if (
-        db.session.query(BillingEvent).filter_by(event_id=event_id).one_or_none()
-        is not None
-    ):
+    if db.session.query(BillingEvent).filter_by(event_id=event_id).one_or_none() is not None:
         return jsonify({"status": "duplicate"}), 200
 
     # Use SELECT FOR UPDATE to serialise concurrent webhooks for the same
     # subscription and prevent double-provisioning when two events (e.g.
     # BILLING.SUBSCRIPTION.ACTIVATED + PAYMENT.SALE.COMPLETED) arrive together.
     subscription = (
-        db.session.query(Subscription)
-        .filter_by(paypal_subscription_id=subscription_id)
-        .with_for_update()
-        .one_or_none()
+        db.session.query(Subscription).filter_by(paypal_subscription_id=subscription_id).with_for_update().one_or_none()
     )
     if subscription is None:
         return jsonify({"error": "subscription not found"}), 404
-    order = (
-        db.session.query(Order)
-        .filter_by(paypal_subscription_id=subscription_id)
-        .one_or_none()
-    )
+    order = db.session.query(Order).filter_by(paypal_subscription_id=subscription_id).one_or_none()
     status = subscription.status
     if event_type in {"BILLING.SUBSCRIPTION.ACTIVATED", "PAYMENT.SALE.COMPLETED"}:
         status = "active"
@@ -362,9 +342,7 @@ def paypal_webhook():
                     subscription_external_id=subscription.external_id,
                     event_type=event_type,
                     status="failed_provision",
-                    payload_json=admiral_client.dump_json(
-                        {"event": event, "error": str(exc)}
-                    ),
+                    payload_json=admiral_client.dump_json({"event": event, "error": str(exc)}),
                 )
             )
             db.session.commit()
@@ -375,9 +353,7 @@ def paypal_webhook():
                 order.status = "approved"
 
     if event_type == "PAYMENT.SALE.COMPLETED":
-        existing = (
-            db.session.query(Invoice).filter_by(paypal_event_id=event_id).one_or_none()
-        )
+        existing = db.session.query(Invoice).filter_by(paypal_event_id=event_id).one_or_none()
         if existing is None:
             invoice = Invoice(
                 subscription_external_id=subscription.external_id,
@@ -394,19 +370,13 @@ def paypal_webhook():
                 status="paid",
                 paypal_transaction_id=resource.get("id", ""),
                 paypal_event_id=event_id,
-                period_start=(datetime.now(UTC) - timedelta(days=30))
-                .date()
-                .isoformat(),
+                period_start=(datetime.now(UTC) - timedelta(days=30)).date().isoformat(),
                 period_end=datetime.now(UTC).date().isoformat(),
             )
             db.session.add(invoice)
             db.session.add(
                 Payment(
-                    order_id=(
-                        order.order_id
-                        if order is not None
-                        else subscription.external_id
-                    ),
+                    order_id=(order.order_id if order is not None else subscription.external_id),
                     subscription_external_id=subscription.external_id,
                     customer_email=subscription.customer_email,
                     provider="paypal",
@@ -415,9 +385,7 @@ def paypal_webhook():
                     status="completed",
                 )
             )
-        subscription.next_billing_at = (
-            (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
-        )
+        subscription.next_billing_at = (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
         if order is not None:
             order.status = "paid"
             if not order.subscription_external_id:
@@ -510,11 +478,7 @@ def api_download_uploaded_backup(backup_id):
         )
         return jsonify({"error": "unauthorized"}), 401
     api_token_limiter.reset(limiter_key)
-    backup = (
-        db.session.query(UploadedBackup).filter_by(backup_id=backup_id).one_or_none()
-    )
+    backup = db.session.query(UploadedBackup).filter_by(backup_id=backup_id).one_or_none()
     if backup is None:
         return jsonify({"error": "backup not found"}), 404
-    return send_file(
-        backup.stored_path, as_attachment=True, download_name=backup.original_filename
-    )
+    return send_file(backup.stored_path, as_attachment=True, download_name=backup.original_filename)

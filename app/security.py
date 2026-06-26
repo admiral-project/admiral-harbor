@@ -17,9 +17,7 @@ def _warn_default(name, value):
         or value == "dev-token"
         or value == "dev-encryption-key"
     ):
-        logger.warning(
-            "%s is using a development default; set it explicitly for production", name
-        )
+        logger.warning("%s is using a development default; set it explicitly for production", name)
 
 
 def validate_production_config(config):
@@ -60,31 +58,20 @@ def validate_production_config(config):
     ):
         errors.append("ADMIRAL_ADMIN_TOKEN must be replaced before production")
 
-    if (
-        not encryption_key
-        or encryption_key.startswith("dev-")
-        or encryption_key == "dev-encryption-key"
-    ):
+    if not encryption_key or encryption_key.startswith("dev-") or encryption_key == "dev-encryption-key":
         errors.append("HARBOR_ENCRYPTION_KEY must be replaced before production")
 
     if database_url.startswith("sqlite:///"):
-        errors.append(
-            "SQLALCHEMY_DATABASE_URI must not use the SQLite development default in production"
-        )
+        errors.append("SQLALCHEMY_DATABASE_URI must not use the SQLite development default in production")
 
     if config.get("ADMIRAL_INSECURE_SKIP_VERIFY"):
         errors.append("ADMIRAL_INSECURE_SKIP_VERIFY must be false in production")
 
     if paypal_mode == "mock":
-        errors.append(
-            "HARBOR_PAYPAL_MODE must not be 'mock' in production; "
-            "use 'sandbox' or 'live'"
-        )
+        errors.append("HARBOR_PAYPAL_MODE must not be 'mock' in production; " "use 'sandbox' or 'live'")
 
     if errors:
-        raise ValueError(
-            "Production security validation failed:\n- " + "\n- ".join(errors)
-        )
+        raise ValueError("Production security validation failed:\n- " + "\n- ".join(errors))
 
 
 def init_security_headers(app: Flask) -> None:
@@ -93,9 +80,7 @@ def init_security_headers(app: Flask) -> None:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = (
-            "max-age=31536000; includeSubDomains; preload"
-        )
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; "
@@ -108,9 +93,7 @@ def init_security_headers(app: Flask) -> None:
             "form-action 'self'"
         )
         response.headers["Referrer-Policy"] = "same-origin"
-        response.headers["Permissions-Policy"] = (
-            "geolocation=(), microphone=(), camera=(), usb=(), payment=()"
-        )
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), usb=(), payment=()"
         return response
 
     logger.info("Security headers initialized")
