@@ -439,7 +439,7 @@ def _reconcile_setup_failed(app):
             continue
 
         log.info(
-            "setup_failed for instance %s: cancelling PayPal subscription %s " "and refunding last payment",
+            "setup_failed for instance %s: cancelling PayPal subscription %s and refunding last payment",
             local_app.instance_id,
             subscription.paypal_subscription_id,
         )
@@ -477,7 +477,7 @@ def _reconcile_setup_failed(app):
                 completed_at=datetime.now(UTC),
                 actions_taken=1,
                 errors=errors,
-                summary=(f"setup_failed refund+cancel for instance " f"{local_app.instance_id} (refund={refund_id})"),
+                summary=(f"setup_failed refund+cancel for instance {local_app.instance_id} (refund={refund_id})"),
             )
         )
 

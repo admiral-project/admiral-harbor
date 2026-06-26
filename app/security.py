@@ -68,7 +68,7 @@ def validate_production_config(config):
         errors.append("ADMIRAL_INSECURE_SKIP_VERIFY must be false in production")
 
     if paypal_mode == "mock":
-        errors.append("HARBOR_PAYPAL_MODE must not be 'mock' in production; " "use 'sandbox' or 'live'")
+        errors.append("HARBOR_PAYPAL_MODE must not be 'mock' in production; use 'sandbox' or 'live'")
 
     if errors:
         raise ValueError("Production security validation failed:\n- " + "\n- ".join(errors))

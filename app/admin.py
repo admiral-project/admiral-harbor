@@ -2192,7 +2192,7 @@ def fiscal_types():
         db.session.add(t)
         db.session.add(
             AuditLog(
-                actor=request.environ.get("HARBOR_ADMIN_USER", "admin"),
+                actor=session.get("admin_username", "admin"),
                 action="fiscal_type_created",
                 resource_type="FiscalTreatmentType",
                 resource_id="new",
@@ -2319,7 +2319,7 @@ def fiscal_request_approve(request_id):
     reviewer_notes = request.form.get("reviewer_notes", "").strip() or None
     req.status = "approved"
     req.reviewer_notes = reviewer_notes
-    req.reviewed_by = request.environ.get("HARBOR_ADMIN_USER", "admin")
+    req.reviewed_by = session.get("admin_username", "admin")
     req.reviewed_at = datetime.now(UTC)
     db.session.add(
         AuditLog(
@@ -2352,7 +2352,7 @@ def fiscal_request_revoke(request_id):
         return redirect(url_for("admin.fiscal_request_detail", request_id=request_id))
     req.status = "revoked"
     req.reviewer_notes = reviewer_notes
-    req.reviewed_by = request.environ.get("HARBOR_ADMIN_USER", "admin")
+    req.reviewed_by = session.get("admin_username", "admin")
     req.reviewed_at = datetime.now(UTC)
     db.session.add(
         AuditLog(

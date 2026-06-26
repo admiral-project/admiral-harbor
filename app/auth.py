@@ -38,6 +38,7 @@ from app.countries import COUNTRIES as _COUNTRIES
 ph = PasswordHasher()
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
+register_limiter = RateLimiter(max_attempts=3, window_seconds=3600)
 
 
 def _generic_auth_failure(status=401):
@@ -217,6 +218,17 @@ def login():
 
 @bp.route("/register", methods=["POST"])
 def register():
+    ip = request.remote_addr or "unknown"
+    allowed, remaining = register_limiter.is_allowed(ip)
+    if not allowed:
+        if request.is_json:
+            return (
+                jsonify({"error": f"Too many registration attempts. Try again in {remaining} second(s)."}),
+                429,
+            )
+        flash("Too many registration attempts. Try again later.", "error")
+        return redirect(url_for("auth.register_page"))
+
     if request.content_type and "application/json" not in request.content_type:
         payload = request.form
     else:
@@ -301,14 +313,16 @@ def register():
         db.session.commit()
 
     if request.is_json:
-        response = {
-            "status": "pending",
-            "customer": customer.as_dict(),
-            "email_sent": email_sent,
-        }
-        if email_error:
-            response["email_error"] = email_error
-        return jsonify(response), 202
+        return (
+            jsonify(
+                {
+                    "status": "pending",
+                    "customer": customer.as_dict(),
+                    "email_sent": email_sent,
+                }
+            ),
+            202,
+        )
 
     if email_sent:
         flash(

@@ -205,13 +205,15 @@ def ready():
         db.session.execute(text("SELECT 1"))
     except Exception as exc:
         result["database"] = "error"
-        errors.append(f"database: {exc}")
+        current_app.logger.warning("readiness check: database error", extra={"error": str(exc)})
+        errors.append("database: unavailable")
 
     try:
         admiral_client._request("GET", "/api/v1/status", timeout=10)
     except Exception as exc:
         result["admirald"] = "error"
-        errors.append(f"admirald: {exc}")
+        current_app.logger.warning("readiness check: admirald error", extra={"error": str(exc)})
+        errors.append("admirald: unavailable")
 
     if errors:
         result["status"] = "degraded"
