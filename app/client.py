@@ -166,6 +166,7 @@ def _sync_remote_instances(customer):
         app.storage_status = item.get("storage_state", app.storage_status)
         app.tier_name = item.get("tier_name", app.tier_name)
         app.domain = item.get("hostname", app.domain)
+        app.setup_timeout_seconds = item.get("setup_timeout_seconds", app.setup_timeout_seconds)
         subscription.instance_id = item["id"]
         synced.append(item)
     db.session.commit()

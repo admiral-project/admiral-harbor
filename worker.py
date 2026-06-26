@@ -340,6 +340,7 @@ def _sync_remote_instances(app):
             local.status = item.get("technical_status", local.status)
             local.commercial_status = item.get("commercial_status", local.commercial_status)
             local.storage_status = new_storage
+            local.setup_timeout_seconds = item.get("setup_timeout_seconds", local.setup_timeout_seconds)
             actions += 1
 
             if new_storage != old_storage and _needs_storage_alert(customer.email, item["id"], new_storage):

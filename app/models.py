@@ -391,6 +391,7 @@ class CustomerApp(db.Model):
     storage_status = db.Column(db.String(50), nullable=False, default="ok")
     tier_name = db.Column(db.String(120), nullable=False, default="starter")
     next_billing_at = db.Column(db.String(32), nullable=True)
+    setup_timeout_seconds = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
     def as_dict(self):
@@ -407,6 +408,7 @@ class CustomerApp(db.Model):
             "storage_status": self.storage_status,
             "tier_name": self.tier_name,
             "next_billing_at": self.next_billing_at,
+            "setup_timeout_seconds": self.setup_timeout_seconds,
         }
 
 
