@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import requests
-import sys
 from app.cli.ping import handle_ping
+
 
 def test_handle_ping_success(app):
     with patch("requests.get") as mock_get:
@@ -14,6 +14,7 @@ def test_handle_ping_success(app):
         with app.app_context():
             # Should not raise SystemExit
             handle_ping()
+
 
 def test_handle_ping_failure(app):
     with patch("requests.get") as mock_get:
@@ -34,6 +35,7 @@ def test_handle_ping_failure(app):
             with pytest.raises(SystemExit) as excinfo:
                 handle_ping()
             assert excinfo.value.code == 1
+
 
 def test_handle_ping_unreachable(app):
     with patch("requests.get", side_effect=requests.exceptions.ConnectionError()):

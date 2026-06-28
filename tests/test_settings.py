@@ -1,4 +1,3 @@
-import pytest
 from app.settings import (
     get_setting,
     set_setting,

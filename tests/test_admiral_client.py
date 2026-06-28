@@ -11,12 +11,14 @@ from app.admiral_client import (
 )
 from flask import current_app
 
+
 def test_headers(app):
     with app.app_context():
         current_app.config["ADMIRAL_ADMIN_TOKEN"] = "test-token"
         headers = _headers()
         assert headers["X-Admiral-Token"] == "test-token"
         assert headers["Content-Type"] == "application/json"
+
 
 def test_request_success(app):
     with patch("requests.request") as mock_req:
@@ -29,6 +31,7 @@ def test_request_success(app):
         with app.app_context():
             result = _request("GET", "/test")
             assert result == {"status": "ok"}
+
 
 def test_request_http_error(app):
     with patch("requests.request") as mock_req:
@@ -43,12 +46,14 @@ def test_request_http_error(app):
                 _request("GET", "/error")
             assert "Error message" in str(excinfo.value)
 
+
 def test_request_exception(app):
     with patch("requests.request", side_effect=requests.RequestException("Conn error")):
         with app.app_context():
             with pytest.raises(AdmiralAPIError) as excinfo:
                 _request("GET", "/fail")
             assert "Conn error" in str(excinfo.value)
+
 
 def test_parse_tiers_from_yaml():
     yaml = """
@@ -74,6 +79,7 @@ tiers:
     assert tiers["free_tier"]["cpu"] == 0.5
     assert tiers["free_tier"]["free"] is True
 
+
 def test_normalize_tiers():
     raw_tiers = {
         "b": {"price_monthly": 10, "cpu": 2},
@@ -85,11 +91,9 @@ def test_normalize_tiers():
     assert normalized[1]["name"] == "b"
     assert normalized[0]["price_monthly_cents"] == 500
 
+
 def test_get_app(app):
-    mock_app_data = {
-        "name": "test-app",
-        "raw_yaml": "tiers:\n  t1:\n    price_monthly: 0\n    free: true"
-    }
+    mock_app_data = {"name": "test-app", "raw_yaml": "tiers:\n  t1:\n    price_monthly: 0\n    free: true"}
     with patch("app.admiral_client._request", return_value=mock_app_data):
         with app.app_context():
             app_info = get_app("test-app")
