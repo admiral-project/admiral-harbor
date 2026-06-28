@@ -68,6 +68,8 @@ def _confirmation_is_expired(customer):
     sent_at = customer.email_confirmation_sent_at
     if sent_at is None:
         return True
+    if sent_at.tzinfo is None:
+        sent_at = sent_at.replace(tzinfo=UTC)
     ttl_hours = current_app.config.get("HARBOR_EMAIL_CONFIRMATION_TTL_HOURS", 72)
     return datetime.now(UTC) > sent_at + timedelta(hours=ttl_hours)
 
