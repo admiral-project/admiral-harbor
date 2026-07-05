@@ -9,7 +9,7 @@ from app.extensions import db
 from app.models import Customer, UserSession
 
 SESSION_TIMEOUT_ADMIN_MINUTES = 30
-SESSION_TIMEOUT_CUSTOMER_MINUTES = 240
+SESSION_TIMEOUT_CUSTOMER_MINUTES = 120
 
 
 def _now():

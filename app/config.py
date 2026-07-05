@@ -52,7 +52,7 @@ class Config:
     HARBOR_DEFAULT_CURRENCY = os.environ.get("HARBOR_DEFAULT_CURRENCY", "USD")
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "1") == "1"
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SAMESITE = "Strict"
 
 
 def overdue_policy(config):
