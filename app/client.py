@@ -888,7 +888,7 @@ def instance_detail(instance_id):
     )
     remote_state = None
     try:
-        remote_state = admiral_client.get_customer_app(instance.instance_id)
+        remote_state = admiral_client.get_customer_app(instance.instance_id, customer_id=customer.public_id)
         instance.status = remote_state.get("technical_status", instance.status)
         instance.commercial_status = remote_state.get("commercial_status", instance.commercial_status)
         instance.storage_status = remote_state.get("storage_state", instance.storage_status)
@@ -929,7 +929,7 @@ def provision_success(instance_id):
     sess_id = session.pop("provision_instance_id", None)
     if sess_id != instance_id:
         try:
-            credentials = admiral_client.get_instance_credentials(instance_id)
+            credentials = admiral_client.get_instance_credentials(instance_id, customer_id=customer.public_id)
         except AdmiralAPIError:
             credentials = []
     return render_template(
@@ -950,7 +950,7 @@ def instance_credentials(instance_id):
     if instance is None:
         return jsonify({"error": "instance not found"}), 404
     try:
-        credentials = admiral_client.get_instance_credentials(instance_id)
+        credentials = admiral_client.get_instance_credentials(instance_id, customer_id=customer.public_id)
         return jsonify(credentials)
     except AdmiralAPIError:
         return jsonify({"error": "failed to fetch credentials"}), 502
@@ -973,8 +973,8 @@ def instance_action(instance_id):
     confirm_text = request.form.get("confirm_text", "").strip()
     try:
         if requested == "restart":
-            admiral_client.action(instance.instance_id, "stop")
-            response = admiral_client.action(instance.instance_id, "start")
+            admiral_client.action(instance.instance_id, "stop", customer_id=customer.public_id)
+            response = admiral_client.action(instance.instance_id, "start", customer_id=customer.public_id)
             _event(
                 instance.instance_id,
                 customer.email,
@@ -986,7 +986,7 @@ def instance_action(instance_id):
             if instance.status not in {"paused", "stopped"}:
                 flash("Tier changes require the app to be paused first.", "error")
                 return redirect(url_for("client.instance_detail", instance_id=instance_id))
-            response = admiral_client.action(instance.instance_id, "resize", tier=tier_name)
+            response = admiral_client.action(instance.instance_id, "resize", tier=tier_name, customer_id=customer.public_id)
             instance.tier_name = tier_name
             subscription = db.session.get(Subscription, instance.subscription_id)
             if subscription is not None:
@@ -1024,7 +1024,7 @@ def instance_action(instance_id):
                             "error",
                         )
                         return redirect(url_for("client.instance_detail", instance_id=instance_id))
-            response = admiral_client.action(instance.instance_id, "deprovision")
+            response = admiral_client.action(instance.instance_id, "deprovision", customer_id=customer.public_id)
             if subscription:
                 subscription.status = "cancelled"
             _event(
@@ -1039,7 +1039,7 @@ def instance_action(instance_id):
             )
         else:
             mapped = {"pause": "pause", "resume": "resume", "backup": "backup"}
-            response = admiral_client.action(instance.instance_id, mapped[requested], service=service)
+            response = admiral_client.action(instance.instance_id, mapped[requested], service=service, customer_id=customer.public_id)
             _event(
                 instance.instance_id,
                 customer.email,

@@ -23,22 +23,25 @@ def _verify():
     return True  # system CA bundle by default
 
 
-def _headers():
+def _headers(customer_id=None):
     token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_ADMIN_TOKEN"]
-    return {
+    headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
         "X-Admiral-Operator": "admiral-harbor",
     }
+    if customer_id:
+        headers["X-Admiral-Customer-ID"] = customer_id
+    return headers
 
 
-def _request(method, path, payload=None, params=None, timeout=60):
+def _request(method, path, payload=None, params=None, timeout=60, customer_id=None):
     url = current_app.config["ADMIRAL_API_URL"] + path
     try:
         response = requests.request(
             method,
             url,
-            headers=_headers(),
+            headers=_headers(customer_id),
             json=payload,
             params=params,
             timeout=timeout,
@@ -145,16 +148,16 @@ def list_customer_apps(customer_id):
     return result
 
 
-def get_customer_app(instance_id):
-    return _request("GET", f"/api/v1/customer-apps/{instance_id}", timeout=30)
+def get_customer_app(instance_id, customer_id=None):
+    return _request("GET", f"/api/v1/customer-apps/{instance_id}", timeout=30, customer_id=customer_id)
 
 
 def get_instance_inspect(instance_id):
     return _request("GET", f"/api/admin/instances/{instance_id}/inspect", timeout=30)
 
 
-def get_instance_credentials(instance_id):
-    result = _request("GET", f"/api/v1/customer-apps/{instance_id}/credentials", timeout=30)
+def get_instance_credentials(instance_id, customer_id=None):
+    result = _request("GET", f"/api/v1/customer-apps/{instance_id}/credentials", timeout=30, customer_id=customer_id)
     if result is None:
         return []
     return result
@@ -172,13 +175,13 @@ def provision_app(app_slug, tier_name, customer_id):
     )
 
 
-def action(instance_id, action_name, tier=None, service=None):
+def action(instance_id, action_name, tier=None, service=None, customer_id=None):
     payload = {"instance_id": instance_id, "action": action_name}
     if tier:
         payload["tier"] = tier
     if service:
         payload["service"] = service
-    return _request("POST", "/api/v1/customer-apps/action", payload=payload)
+    return _request("POST", "/api/v1/customer-apps/action", payload=payload, customer_id=customer_id)
 
 
 def list_backups(instance_id):

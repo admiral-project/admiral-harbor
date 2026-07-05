@@ -149,12 +149,12 @@ def client(app):
             "created_at": "2026-06-04T00:00:00Z",
         }
     ]
-    admiral_client.get_customer_app = lambda instance_id: {
+    admiral_client.get_customer_app = lambda instance_id, customer_id=None: {
         "id": instance_id,
         "technical_status": "running",
         "storage_state": "ok",
     }
-    admiral_client.action = lambda instance_id, action_name, tier=None, service=None: {
+    admiral_client.action = lambda instance_id, action_name, tier=None, service=None, customer_id=None: {
         "operation_id": f"op_{action_name}",
         "status": "queued",
     }

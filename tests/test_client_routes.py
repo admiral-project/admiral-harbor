@@ -232,7 +232,7 @@ def test_instance_cancel_blocks_deprovision_when_paypal_cancel_fails(client, mon
     def fail_cancel(subscription_id, reason):
         raise PayPalError("paypal unavailable")
 
-    def record_action(instance_id, action_name, tier=None, service=None):
+    def record_action(instance_id, action_name, tier=None, service=None, customer_id=None):
         deprovision_calls.append((instance_id, action_name))
         return {"operation_id": f"op_{action_name}", "status": "queued"}
 
@@ -262,7 +262,7 @@ def test_instance_cancel_deprovisions_after_paypal_success(client, monkeypatch):
     def ok_cancel(subscription_id, reason):
         return None
 
-    def record_action(instance_id, action_name, tier=None, service=None):
+    def record_action(instance_id, action_name, tier=None, service=None, customer_id=None):
         deprovision_calls.append((instance_id, action_name))
         return {"operation_id": f"op_{action_name}", "status": "queued"}
 
