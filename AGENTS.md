@@ -26,9 +26,10 @@ Reglas:
 Ejecutar estos comandos antes de cada commit:
 
 ```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
-black --check --diff .
-ruff check .
-flake8 .
+black --check --diff app/ tests/ dev_run.py run.py worker.py cli.py
+ruff check app/ tests/ dev_run.py run.py worker.py cli.py
+flake8 app/ tests/ dev_run.py run.py worker.py cli.py
 pytest tests/ -v
 ```
