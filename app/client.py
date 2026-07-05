@@ -986,7 +986,9 @@ def instance_action(instance_id):
             if instance.status not in {"paused", "stopped"}:
                 flash("Tier changes require the app to be paused first.", "error")
                 return redirect(url_for("client.instance_detail", instance_id=instance_id))
-            response = admiral_client.action(instance.instance_id, "resize", tier=tier_name, customer_id=customer.public_id)
+            response = admiral_client.action(
+                instance.instance_id, "resize", tier=tier_name, customer_id=customer.public_id
+            )
             instance.tier_name = tier_name
             subscription = db.session.get(Subscription, instance.subscription_id)
             if subscription is not None:
@@ -1039,7 +1041,9 @@ def instance_action(instance_id):
             )
         else:
             mapped = {"pause": "pause", "resume": "resume", "backup": "backup"}
-            response = admiral_client.action(instance.instance_id, mapped[requested], service=service, customer_id=customer.public_id)
+            response = admiral_client.action(
+                instance.instance_id, mapped[requested], service=service, customer_id=customer.public_id
+            )
             _event(
                 instance.instance_id,
                 customer.email,
