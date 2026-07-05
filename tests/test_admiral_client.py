@@ -16,7 +16,7 @@ def test_headers(app):
     with app.app_context():
         current_app.config["ADMIRAL_ADMIN_TOKEN"] = "test-token"
         headers = _headers()
-        assert headers["X-Admiral-Token"] == "test-token"
+        assert headers["Authorization"] == "Bearer test-token"
         assert headers["Content-Type"] == "application/json"
 
 
