@@ -24,9 +24,10 @@ def _verify():
 
 
 def _headers():
+    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_ADMIN_TOKEN"]
     return {
         "Content-Type": "application/json",
-        "X-Admiral-Token": current_app.config["ADMIRAL_ADMIN_TOKEN"],
+        "Authorization": f"Bearer {token}",
         "X-Admiral-Operator": "admiral-harbor",
     }
 
