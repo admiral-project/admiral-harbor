@@ -7,6 +7,7 @@ import json
 from flask import (
     Blueprint,
     abort,
+    current_app,
     flash,
     jsonify,
     redirect,
@@ -107,6 +108,10 @@ def login():
     ip = request.remote_addr or "unknown"
     allowed, remaining = admin_login_limiter.is_allowed(f"admin-login:{ip}")
     if not allowed:
+        current_app.logger.warning(
+            "admin login rate limited",
+            extra={"ip": ip, "remaining_seconds": remaining},
+        )
         flash(
             f"Too many admin login attempts. Try again in {remaining} second(s).",
             "error",
@@ -114,11 +119,19 @@ def login():
         return redirect(url_for("admin.login_page")), 429
     admin = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
     if admin is None:
+        current_app.logger.warning(
+            "admin login failed",
+            extra={"username": username, "reason": "user_not_found", "ip": ip},
+        )
         flash("Invalid admin credentials.", "error")
         return redirect(url_for("admin.login_page"))
     try:
         ph.verify(admin.password_hash, password)
     except VerifyMismatchError:
+        current_app.logger.warning(
+            "admin login failed",
+            extra={"username": username, "reason": "invalid_password", "ip": ip},
+        )
         flash("Invalid admin credentials.", "error")
         return redirect(url_for("admin.login_page"))
     session.pop("customer_token", None)
