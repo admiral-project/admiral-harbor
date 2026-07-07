@@ -14,7 +14,6 @@ def _warn_default(name, value):
     if (
         not value
         or value.startswith("dev-")
-        or value == "dev-secret-change-me"
         or value == "dev-token"
         or value == "dev-encryption-key"
     ):
@@ -72,7 +71,6 @@ def validate_production_config(config):
     if (
         not secret_key
         or secret_key.startswith("dev-")
-        or secret_key == "dev-secret-change-me"  # nosec B105 - checking for dev value
     ):
         errors.append("SECRET_KEY must be replaced before production")
     if len(secret_key) < 32:

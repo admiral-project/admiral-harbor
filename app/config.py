@@ -8,7 +8,7 @@ from app.security import get_required_env_var
 class Config:
     SECRET_KEY = get_required_env_var(
         "HARBOR_SECRET_KEY",
-        default="dev-secret-change-me",
+        default="dev-secret-change-me-in-production-64-chars-minimum-required",
         prod_mode=True,
     )
     ALEMBIC = {
