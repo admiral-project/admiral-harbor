@@ -134,5 +134,6 @@ def test_paypal_webhook_idempotent(client):
             "event_type": "BILLING.SUBSCRIPTION.ACTIVATED",
             "resource": {"id": "paypal_sub_1"},
         },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
     )
     assert response.status_code in {200, 404}

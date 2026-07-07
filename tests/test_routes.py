@@ -331,6 +331,7 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
                 "billing_agreement_id": "sub_123",
             },
         },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
     )
     assert response.status_code == 200
     assert response.json["status"] == "active"

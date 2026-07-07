@@ -62,6 +62,7 @@ def test_validate_csrf_skips_exempt_endpoint_via_real_request(client):
             "event_type": "BILLING.SUBSCRIPTION.ACTIVATED",
             "resource": {"id": "paypal_sub_1"},
         },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
     )
     assert response.status_code in {200, 404}
 

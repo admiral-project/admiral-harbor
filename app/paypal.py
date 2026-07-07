@@ -3,6 +3,7 @@
 
 import json
 import logging
+import os
 import uuid
 from base64 import b64encode
 from datetime import UTC, datetime, timedelta
