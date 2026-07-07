@@ -1431,6 +1431,7 @@ def edit_user(user_id):
         username = request.form.get("username", "").strip()
         display_name = request.form.get("display_name", "").strip()
         password = request.form.get("password", "").strip()
+        current_password = request.form.get("current_password", "").strip()
 
         if not username:
             flash("Username is required.", "error")
@@ -1446,6 +1447,14 @@ def edit_user(user_id):
         if display_name:
             user.display_name = display_name
         if password:
+            if not current_password:
+                flash("Current password is required to set a new password.", "error")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
+            try:
+                ph.verify(user.password_hash, current_password)
+            except Exception:
+                flash("Current password is incorrect.", "error")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
             user.password_hash = ph.hash(password)
 
         db.session.add(

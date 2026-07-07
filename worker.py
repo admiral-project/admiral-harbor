@@ -148,34 +148,46 @@ def _enforce_payment_policy(app):
         except (ValueError, TypeError):
             continue
 
+        instance_id = (sub.instance_id or "").strip()
+        if not instance_id:
+            log.warning("Subscription %s has no instance_id, skipping", sub.external_id)
+            continue
+        if not instance_id.startswith("inst_"):
+            log.warning(
+                "Subscription %s has invalid instance_id format: %s, skipping",
+                sub.external_id,
+                instance_id,
+            )
+            continue
+
         if overdue_days >= overdue_deprovision_days:
             log.info(
                 "Deprovisioning instance %s (subscription %s)",
-                sub.instance_id,
+                instance_id,
                 sub.external_id,
             )
             try:
-                admiral_action(sub.instance_id, "deprovision")
+                admiral_action(instance_id, "deprovision")
                 # Mark as suspended, not cancelled: the customer did not request
                 # cancellation — the app was removed due to non-payment and can
                 # be reactivated once payment is restored.
                 sub.status = "suspended"
                 actions += 1
             except AdmiralAPIError as exc:
-                log.error("Deprovision failed for %s: %s", sub.instance_id, exc)
+                log.error("Deprovision failed for %s: %s", instance_id, exc)
                 errors += 1
 
         elif overdue_days >= overdue_suspend_days:
             log.info(
                 "Pausing instance %s (subscription %s)",
-                sub.instance_id,
+                instance_id,
                 sub.external_id,
             )
             try:
-                admiral_action(sub.instance_id, "pause")
+                admiral_action(instance_id, "pause")
                 actions += 1
             except AdmiralAPIError as exc:
-                log.error("Pause failed for %s: %s", sub.instance_id, exc)
+                log.error("Pause failed for %s: %s", instance_id, exc)
                 errors += 1
 
     db.session.commit()

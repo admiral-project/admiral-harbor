@@ -304,17 +304,21 @@ def paypal_webhook():
     subscription_id = resource.get("billing_agreement_id") or resource.get("subscription_id") or resource.get("id")
     if not event_id or not subscription_id:
         return jsonify({"error": "invalid webhook payload"}), 400
-    if db.session.query(BillingEvent).filter_by(event_id=event_id).one_or_none() is not None:
-        return jsonify({"status": "duplicate"}), 200
 
     # Use SELECT FOR UPDATE to serialise concurrent webhooks for the same
-    # subscription and prevent double-provisioning when two events (e.g.
-    # BILLING.SUBSCRIPTION.ACTIVATED + PAYMENT.SALE.COMPLETED) arrive together.
+    # subscription. The BillingEvent duplicate check must happen inside
+    # this locked section to prevent race conditions between concurrent
+    # webhooks with the same event_id.
     subscription = (
         db.session.query(Subscription).filter_by(paypal_subscription_id=subscription_id).with_for_update().one_or_none()
     )
     if subscription is None:
         return jsonify({"error": "subscription not found"}), 404
+
+    if db.session.query(BillingEvent).filter_by(event_id=event_id).one_or_none() is not None:
+        db.session.commit()
+        return jsonify({"status": "duplicate"}), 200
+
     order = db.session.query(Order).filter_by(paypal_subscription_id=subscription_id).one_or_none()
     status = subscription.status
     if event_type in {"BILLING.SUBSCRIPTION.ACTIVATED", "PAYMENT.SALE.COMPLETED"}:

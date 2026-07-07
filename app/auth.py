@@ -46,6 +46,7 @@ def _generic_auth_failure(status=401):
 
 
 def _login_customer(customer):
+    session.clear()
     session["customer_token"] = f"customer:{customer.public_id}"
     session["customer_email"] = customer.email
     session["customer_public_id"] = customer.public_id
