@@ -2,10 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from app.security import get_required_env_var
 
 
 class Config:
-    SECRET_KEY = os.environ.get("HARBOR_SECRET_KEY", "dev-secret-change-me")
+    SECRET_KEY = get_required_env_var(
+        "HARBOR_SECRET_KEY",
+        default="dev-secret-change-me",
+        prod_mode=True,
+    )
     ALEMBIC = {
         "version_locations": ["migrations/versions"],
     }

@@ -3,6 +3,7 @@
 
 import logging
 import os
+from typing import Optional
 
 from flask import Flask
 
@@ -18,6 +19,29 @@ def _warn_default(name, value):
         or value == "dev-encryption-key"
     ):
         logger.warning("%s is using a development default; set it explicitly for production", name)
+
+
+def get_required_env_var(name: str, default: Optional[str] = None, prod_mode: bool = False) -> str:
+    value = os.environ.get(name)
+    if not value:
+        is_production = os.environ.get("ENV", "").lower() == "production"
+        if is_production and prod_mode:
+            raise ValueError(
+                f"SECURITY: Required environment variable {name} not set in production. "
+                f"Set {name} before starting the application."
+            )
+        if default:
+            logger.warning(
+                "Environment variable %s not set; using development default. "
+                "This value is required for production and must be set explicitly.",
+                name,
+            )
+            return default
+        if is_production:
+            raise ValueError(f"SECURITY: Environment variable {name} is required but not set")
+        logger.warning("Environment variable %s not set", name)
+        return ""
+    return value
 
 
 def validate_production_config(config):
