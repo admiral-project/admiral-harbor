@@ -861,6 +861,7 @@ def _worker_loop():
 def main():
     os.environ["ADMIRAL_API_URL"] = f"http://{HOST}:{MOCK_PORT}"
     os.environ.setdefault("ADMIRAL_ADMIN_TOKEN", SHARED_TOKEN)
+    os.environ.setdefault("ADMIRAL_HARBOR_API_TOKEN", SHARED_TOKEN)
     os.environ.setdefault("HARBOR_SECRET_KEY", "dev-secret-key-change-in-production")
     os.environ.setdefault("HARBOR_DATABASE_URL", "sqlite:///harbor.db")
     os.environ["HARBOR_PAYPAL_MODE"] = "mock"

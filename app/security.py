@@ -47,11 +47,14 @@ def get_required_env_var(name: str, default: Optional[str] = None, prod_mode: bo
 def validate_production_config(config):
     secret_key = config.get("SECRET_KEY", "")
     admiral_token = config.get("ADMIRAL_ADMIN_TOKEN", "")
+    harbor_token = config.get("ADMIRAL_HARBOR_API_TOKEN", "")
     encryption_key = config.get("HARBOR_ENCRYPTION_KEY", "")
     database_url = config.get("SQLALCHEMY_DATABASE_URI", "")
 
     _warn_default("SECRET_KEY", secret_key)
     _warn_default("ADMIRAL_ADMIN_TOKEN", admiral_token)
+    if harbor_token:
+        _warn_default("ADMIRAL_HARBOR_API_TOKEN", harbor_token)
     _warn_default("HARBOR_ENCRYPTION_KEY", encryption_key)
 
     paypal_mode = config.get("HARBOR_PAYPAL_MODE", "mock")
@@ -80,7 +83,11 @@ def validate_production_config(config):
         or admiral_token.startswith("dev-")
         or admiral_token == "dev-token"  # nosec B105 - checking for dev value
     ):
-        errors.append("ADMIRAL_ADMIN_TOKEN must be replaced before production")
+        if (
+            not harbor_token
+            or harbor_token.startswith("dev-")
+        ):
+            errors.append("ADMIRAL_HARBOR_API_TOKEN (or ADMIRAL_ADMIN_TOKEN) must be replaced before production")
 
     if not encryption_key or encryption_key.startswith("dev-") or encryption_key == "dev-encryption-key":
         errors.append("HARBOR_ENCRYPTION_KEY must be replaced before production")
