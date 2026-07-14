@@ -23,7 +23,7 @@ def _candidates():
 
 def handle_ping():
     scheme, port, verify = _candidates()
-    token = current_app.config["ADMIRAL_ADMIN_TOKEN"]
+    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_ADMIN_TOKEN"]
 
     addrs = ["127.0.0.1", "10.99.0.1"]
     headers = {
