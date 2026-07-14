@@ -66,7 +66,6 @@ def validate_production_config(config):
     if len(secret_key) < 32:
         errors.append("SECRET_KEY must be at least 32 characters in production")
 
-    if (
     if not harbor_token or harbor_token.startswith("dev-"):
         errors.append("ADMIRAL_HARBOR_API_TOKEN must be replaced before production")
 
