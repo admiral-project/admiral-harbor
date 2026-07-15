@@ -8,6 +8,7 @@ from app.admiral_client import (
     AdmiralAPIError,
     _request,
     _headers,
+    provision_app,
 )
 from flask import current_app
 
@@ -31,6 +32,20 @@ def test_request_success(app):
         with app.app_context():
             result = _request("GET", "/test")
             assert result == {"status": "ok"}
+
+
+def test_provision_app_sends_customer_identity(app):
+    with patch("requests.request") as mock_req:
+        mock_resp = MagicMock()
+        mock_resp.ok = True
+        mock_resp.content = b'{"status": "queued"}'
+        mock_resp.json.return_value = {"status": "queued"}
+        mock_req.return_value = mock_resp
+
+        with app.app_context():
+            provision_app("test-app", "starter", "customer_001")
+
+    assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "customer_001"
 
 
 def test_request_http_error(app):

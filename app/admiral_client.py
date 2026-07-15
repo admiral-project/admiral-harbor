@@ -172,6 +172,7 @@ def provision_app(app_slug, tier_name, customer_id):
             "tier_name": tier_name,
             "customer_id": customer_id,
         },
+        customer_id=customer_id,
     )
 
 
