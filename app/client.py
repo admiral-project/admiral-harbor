@@ -1243,15 +1243,12 @@ def create_incident(instance_id):
     if instance is None:
         flash("Instance not found.", "error")
         return redirect(url_for("client.dashboard"))
-    attachment = request.files.get("attachment")
-    attachment_name = secure_filename(attachment.filename) if attachment and attachment.filename else None
     incident = SupportIncident(
         instance_id=instance.instance_id,
         customer_email=customer.email,
         subject=request.form.get("subject", "").strip(),
         description=request.form.get("description", "").strip(),
         priority=request.form.get("priority", "medium").strip(),
-        attachment_name=attachment_name,
     )
     db.session.add(incident)
     db.session.commit()

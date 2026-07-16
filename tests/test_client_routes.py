@@ -47,6 +47,7 @@ def test_client_instance_detail(client):
     response = client.get("/client/instances/inst_123")
     assert response.status_code == 200
     assert b"wordpress.example.com" in response.data
+    assert b'name="attachment"' not in response.data
 
 
 def test_client_support(client):

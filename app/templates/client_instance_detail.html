@@ -222,7 +222,7 @@
 
     <section class="panel">
       <h2>Support incident</h2>
-      <form method="post" enctype="multipart/form-data" action="{{ url_for('client.create_incident', instance_id=instance.instance_id) }}" class="stack">
+      <form method="post" action="{{ url_for('client.create_incident', instance_id=instance.instance_id) }}" class="stack">
         <label>Subject <input name="subject"></label>
         <label>Description <textarea name="description"></textarea></label>
         <label>Priority
@@ -231,9 +231,6 @@
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </select>
-        </label>
-        <label class="upload-field">Attachment
-          <span class="upload-shell"><input type="file" name="attachment"></span>
         </label>
         <button class="btn" type="submit">Report incident</button>
       </form>
