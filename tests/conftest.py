@@ -6,6 +6,7 @@ import os
 os.environ["HARBOR_ENCRYPTION_KEY"] = "test-encryption-key-for-testing"
 os.environ["HARBOR_MOCK_WEBHOOK_TOKEN"] = "test-mock-token"
 os.environ["ENV"] = "development"
+os.environ["HARBOR_DATABASE_URL"] = "sqlite://"
 
 import tempfile
 
@@ -25,7 +26,6 @@ def app():
     app.config.update(
         TESTING=True,
         SECRET_KEY="test-secret",
-        SQLALCHEMY_DATABASE_URI="sqlite://",
         ADMIRAL_API_URL="https://admirald.test:8443",
         ADMIRAL_ADMIN_TOKEN="test-token",
         ADMIRAL_CA_FILE="",
@@ -34,6 +34,9 @@ def app():
         HARBOR_BOOTSTRAP_ADMIN_PASSWORD="secret",
         HARBOR_ENCRYPTION_KEY="test-encryption-key-for-testing",
     )
+    with app.app_context():
+        db.create_all()
+        HarborAdminUser.ensure_default_admin(username="testadmin", password="secret")
     return app
 
 
