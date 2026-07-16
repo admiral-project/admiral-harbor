@@ -71,6 +71,11 @@ from app.models import (
 from app.countries import COUNTRIES, COUNTRY_NAMES
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+
+def escape_like_pattern(value):
+    """Escape SQL LIKE metacharacters while retaining substring matching."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 ph = PasswordHasher()
 admin_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
@@ -1546,11 +1551,12 @@ def customers_list():
 
     query = db.session.query(Customer)
     if q:
+        search = escape_like_pattern(q)
         query = query.filter(
             db.or_(
-                Customer.email.ilike(f"%{q}%"),
-                Customer.display_name.ilike(f"%{q}%"),
-                Customer.public_id.ilike(f"%{q}%"),
+                Customer.email.ilike(f"%{search}%", escape="\\"),
+                Customer.display_name.ilike(f"%{search}%", escape="\\"),
+                Customer.public_id.ilike(f"%{search}%", escape="\\"),
             )
         )
 

@@ -8,6 +8,16 @@ from app.admiral_client import AdmiralAPIError
 from app.models import Subscription
 
 
+from app.admin import escape_like_pattern
+
+
+def test_customer_search_escapes_like_wildcards():
+    escaped = escape_like_pattern(r"100%_ready\\")
+    assert "\\%" in escaped
+    assert "\\_" in escaped
+    assert escaped.endswith("\\\\")
+
+
 def test_admin_login_and_dashboard(client):
     response = client.post(
         "/admin/login",
