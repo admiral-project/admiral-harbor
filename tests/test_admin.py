@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import app.admin as admin_module
 from app.admiral_client import AdmiralAPIError
+from app.models import Subscription
 
 
 def test_admin_login_and_dashboard(client):
@@ -44,6 +45,18 @@ def test_admin_layout_includes_csrf_helper(client):
     response = client.get("/admin/")
     assert response.status_code == 200
     assert b"js/csrf.js" in response.data
+
+
+def test_subscription_csv_export_uses_subscription_fields(client, app):
+    with app.app_context():
+        subscription = Subscription.query.filter_by(paypal_subscription_id="paypal_sub_1").one()
+        csv_data = admin_module._export_subscriptions_csv()
+
+    assert "ID,Customer Email,Status,Tier,Created,Billing Email" in csv_data
+    assert subscription.external_id in csv_data
+    assert subscription.customer_email in csv_data
+    assert subscription.tier_name in csv_data
+    assert "subscription_id" not in csv_data
 
 
 def test_instance_pod_status_requires_auth(client):

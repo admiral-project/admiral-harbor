@@ -435,18 +435,17 @@ def _export_subscriptions_csv():
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow(["ID", "Customer", "Status", "Tier", "Created", "Updated", "Billing Email"])
+    writer.writerow(["ID", "Customer Email", "Status", "Tier", "Created", "Billing Email"])
 
     subs = db.session.query(Subscription).order_by(Subscription.created_at.desc()).all()
     for sub in subs:
         writer.writerow(
             [
-                sub.subscription_id or "",
-                sub.customer_name or "",
+                sub.external_id or "",
+                sub.customer_email,
                 sub.status,
-                sub.tier or "",
+                sub.tier_name or "",
                 sub.created_at.strftime("%Y-%m-%d %H:%M") if sub.created_at else "",
-                sub.updated_at.strftime("%Y-%m-%d %H:%M") if sub.updated_at else "",
                 sub.billing_email or "",
             ]
         )
