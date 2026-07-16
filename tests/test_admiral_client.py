@@ -96,9 +96,7 @@ tiers:
 
 
 def test_parse_tiers_from_yaml_handles_quoted_values_and_invalid_documents():
-    tiers = parse_tiers_from_yaml(
-        "tiers:\n  starter:\n    price_monthly: \"12.50\"\n    free: false\n"
-    )
+    tiers = parse_tiers_from_yaml('tiers:\n  starter:\n    price_monthly: "12.50"\n    free: false\n')
     assert tiers["starter"]["price_monthly"] == "12.50"
     assert tiers["starter"]["free"] is False
     assert parse_tiers_from_yaml("tiers: [not-a-tier-map]") == {}

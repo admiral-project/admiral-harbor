@@ -477,7 +477,10 @@ def api_download_uploaded_backup(backup_id):
     allowed, _remaining = api_token_limiter.is_allowed(limiter_key)
     if not allowed:
         return jsonify({"error": "too many authentication failures"}), 429
-    if token not in (current_app.config.get("ADMIRAL_HARBOR_API_TOKEN", ""), current_app.config.get("ADMIRAL_ADMIN_TOKEN", "")):
+    if token not in (
+        current_app.config.get("ADMIRAL_HARBOR_API_TOKEN", ""),
+        current_app.config.get("ADMIRAL_ADMIN_TOKEN", ""),
+    ):
         current_app.logger.warning(
             "uploaded backup download authentication failed",
             extra={"status": 401, "ip": ip, "backup_id": backup_id},
