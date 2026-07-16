@@ -107,11 +107,7 @@ def parse_tiers_from_yaml(raw_yaml):
         return {}
     if not isinstance(document, dict) or not isinstance(document.get("tiers"), dict):
         return {}
-    return {
-        str(name): values
-        for name, values in document["tiers"].items()
-        if isinstance(values, dict)
-    }
+    return {str(name): values for name, values in document["tiers"].items() if isinstance(values, dict)}
 
 
 def list_customer_apps(customer_id):

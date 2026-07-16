@@ -76,6 +76,8 @@ bp = Blueprint("admin", __name__, url_prefix="/admin")
 def escape_like_pattern(value):
     """Escape SQL LIKE metacharacters while retaining substring matching."""
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 ph = PasswordHasher()
 admin_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
