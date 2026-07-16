@@ -23,7 +23,10 @@ def _candidates():
 
 def handle_ping():
     scheme, port, verify = _candidates()
-    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_ADMIN_TOKEN"]
+    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN")
+    if not token:
+        print("\u2717 ADMIRAL_HARBOR_API_TOKEN not configured in harbor.env")
+        sys.exit(1)
 
     addrs = ["127.0.0.1", "10.99.0.1"]
     headers = {
@@ -32,7 +35,7 @@ def handle_ping():
     }
 
     for addr in addrs:
-        url = f"{scheme}://{addr}:{port}/api/v1/status"
+        url = f"{scheme}://{addr}:{port}/api/v1/harbor_ping"
         try:
             resp = requests.get(
                 url,
