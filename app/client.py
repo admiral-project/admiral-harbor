@@ -54,6 +54,7 @@ from app.models import (
     UploadedBackup,
     compute_sha256,
 )
+from app.validation import is_valid_email
 from app.paypal import (
     PayPalError,
     cancel_subscription as paypal_cancel_subscription,
@@ -1499,6 +1500,9 @@ def enroll_course(course_id):
     student_email = request.form.get("student_email", "").strip().lower()
     if not student_email:
         flash("Student email is required.", "error")
+        return redirect(url_for("client.help_center"))
+    if not is_valid_email(student_email):
+        flash("Invalid student email format.", "error")
         return redirect(url_for("client.help_center"))
     if price > 0 and request.form.get("payment_confirmed") != "yes":
         flash("Payment confirmation required for paid course enrollment.", "error")

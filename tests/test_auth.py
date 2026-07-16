@@ -84,6 +84,20 @@ def test_register_missing_fields(client):
     assert response.status_code == 400
 
 
+def test_register_rejects_invalid_email(client):
+    response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Invalid Email",
+            "email": "invalid-email",
+            "password": "secret",
+            "accept_terms": True,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json["error"] == "invalid email format"
+
+
 def test_register_duplicate_email(client, app):
     response = client.post(
         "/auth/register",

@@ -32,6 +32,7 @@ from app.identity import (
 )
 from app.models import AuditLog, Customer
 from app.rate_limit import RateLimiter
+from app.validation import is_valid_email
 
 from app.countries import COUNTRIES as _COUNTRIES
 
@@ -248,6 +249,11 @@ def register():
                 400,
             )
         flash("Display name, email and password are required.", "error")
+        return redirect(url_for("auth.register_page"))
+    if not is_valid_email(email):
+        if request.is_json:
+            return jsonify({"error": "invalid email format"}), 400
+        flash("Invalid email format.", "error")
         return redirect(url_for("auth.register_page"))
     if not accept_terms:
         if request.is_json:
