@@ -5,6 +5,7 @@ import json
 import logging
 
 import requests
+import yaml
 from flask import current_app
 
 logger = logging.getLogger("admiral-harbor")
@@ -100,45 +101,17 @@ def normalize_tiers(raw_tiers):
 
 
 def parse_tiers_from_yaml(raw_yaml):
-    tiers = {}
-    lines = raw_yaml.splitlines()
-    in_tiers = False
-    current_tier = None
-    for line in lines:
-        if not line.strip():
-            continue
-        if line.startswith("tiers:"):
-            in_tiers = True
-            current_tier = None
-            continue
-        if in_tiers and not line.startswith("  "):
-            break
-        if not in_tiers:
-            continue
-        stripped = line.strip()
-        if line.startswith("  ") and not line.startswith("    ") and stripped.endswith(":"):
-            current_tier = stripped[:-1]
-            tiers[current_tier] = {}
-            continue
-        if current_tier is None or ":" not in stripped:
-            continue
-        key, value = stripped.split(":", 1)
-        value = value.strip().strip('"')
-        if key == "cpu":
-            try:
-                tiers[current_tier][key] = float(value)
-            except ValueError:
-                tiers[current_tier][key] = value
-        elif key == "price_monthly":
-            try:
-                tiers[current_tier][key] = float(value)
-            except ValueError:
-                tiers[current_tier][key] = 0
-        elif key == "free":
-            tiers[current_tier][key] = value.lower() in ("true", "yes", "1")
-        elif key in {"memory", "storage"}:
-            tiers[current_tier][key] = value
-    return tiers
+    try:
+        document = yaml.safe_load(raw_yaml) or {}
+    except yaml.YAMLError:
+        return {}
+    if not isinstance(document, dict) or not isinstance(document.get("tiers"), dict):
+        return {}
+    return {
+        str(name): values
+        for name, values in document["tiers"].items()
+        if isinstance(values, dict)
+    }
 
 
 def list_customer_apps(customer_id):
