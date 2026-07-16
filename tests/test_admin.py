@@ -59,6 +59,14 @@ def test_subscription_csv_export_uses_subscription_fields(client, app):
     assert "subscription_id" not in csv_data
 
 
+def test_calculate_mrr_uses_subscription_monthly_price(client, app):
+    with app.app_context():
+        mrr = admin_module._calculate_mrr()
+
+    assert mrr["current_mrr_cents"] == 2500
+    assert mrr["current_mrr_dollars"] == 25
+
+
 def test_instance_pod_status_requires_auth(client):
     """Pod-status endpoint returns 302 without admin login."""
     response = client.get("/admin/instances/inst_123/pod-status")

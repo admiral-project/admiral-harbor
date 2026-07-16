@@ -351,9 +351,7 @@ def _calculate_mrr():
 
     current_mrr_cents = 0
     for sub in active_subs:
-        # Assume subscription has a tier amount in cents (monthly)
-        if hasattr(sub, "tier_amount_cents") and sub.tier_amount_cents:
-            current_mrr_cents += sub.tier_amount_cents
+        current_mrr_cents += sub.monthly_price_cents
 
     # Compare with last month's MRR (subscriptions active on last day of prev month)
     last_month_start = month_start - timedelta(days=1)
