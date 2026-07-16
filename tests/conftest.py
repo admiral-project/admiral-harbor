@@ -36,8 +36,16 @@ def app():
     )
     with app.app_context():
         db.create_all()
-        HarborAdminUser.ensure_default_admin(username="testadmin", password="secret")
-    return app
+        if not db.session.query(HarborAdminUser).filter_by(username="testadmin").one_or_none():
+            db.session.add(
+                HarborAdminUser(
+                    username="testadmin",
+                    display_name="Test Admin",
+                    password_hash=PasswordHasher().hash("secret"),
+                )
+            )
+            db.session.commit()
+        yield app
 
 
 @pytest.fixture
