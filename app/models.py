@@ -495,7 +495,6 @@ class UploadedBackup(db.Model):
             "customer_email": self.customer_email,
             "app_slug": self.app_slug,
             "original_filename": self.original_filename,
-            "stored_path": self.stored_path,
             "size_bytes": self.size_bytes,
             "checksum_sha256": self.checksum_sha256,
             "status": self.status,

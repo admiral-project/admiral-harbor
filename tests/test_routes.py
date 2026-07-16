@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 from app import create_app
@@ -349,3 +350,15 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
         assert invoice.total_cents == 2825
         assert payment.provider_reference == "sale_123"
         assert payment.amount_cents == 2825
+
+
+def test_paypal_webhook_rejects_stale_transmission(client):
+    client.application.config["HARBOR_PAYPAL_MODE"] = "live"
+    stale = (datetime.now(UTC) - timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={"id": "evt-stale", "resource": {"billing_agreement_id": "sub-stale"}},
+        headers={"PAYPAL-TRANSMISSION-TIME": stale},
+    )
+    assert response.status_code == 400
+    assert "stale" in response.json["error"]

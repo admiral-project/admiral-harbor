@@ -49,6 +49,24 @@ bp = Blueprint("main", __name__)
 api_token_limiter = RateLimiter(max_attempts=10, window_seconds=300)
 
 
+def _webhook_transmission_is_fresh(headers):
+    """Reject stale PayPal deliveries while retaining event-id idempotence."""
+    from app.paypal import _is_mock
+
+    if _is_mock():
+        return True
+    value = headers.get("PAYPAL-TRANSMISSION-TIME", "").strip()
+    if not value:
+        return False
+    try:
+        transmitted_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    max_age = int(current_app.config.get("HARBOR_PAYPAL_WEBHOOK_MAX_AGE_SECONDS", 300))
+    age = (datetime.now(UTC) - transmitted_at).total_seconds()
+    return -max_age <= age <= max_age
+
+
 def _local_catalog():
     return (
         db.session.query(CatalogApp)
@@ -294,6 +312,8 @@ def app_detail(slug):
 
 @bp.route("/billing/webhooks/paypal", methods=["POST"])
 def paypal_webhook():
+    if not _webhook_transmission_is_fresh(request.headers):
+        return jsonify({"error": "stale or invalid webhook transmission time"}), 400
     if not verify_webhook_signature(request.headers, request.get_data(as_text=True)):
         return jsonify({"error": "webhook signature verification failed"}), 403
 
