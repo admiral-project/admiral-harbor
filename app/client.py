@@ -1608,14 +1608,31 @@ def fiscal_request_new():
                     available_types=available_types,
                     customer=customer,
                 )
+            safe_filename = secure_filename(ev_file.filename)
+            ext = os.path.splitext(safe_filename)[-1].lower()
+            if ext not in {".pdf", ".png", ".jpg", ".jpeg"}:
+                flash("El formato de evidencia no está permitido. Usa PDF, PNG o JPEG.", "error")
+                return render_template(
+                    "client_fiscal_request_new.html",
+                    available_types=available_types,
+                    customer=customer,
+                )
+            max_bytes = int(current_app.config.get("HARBOR_MAX_FISCAL_EVIDENCE_BYTES", 10 * 1024 * 1024))
+            evidence_data = ev_file.read(max_bytes + 1)
+            if len(evidence_data) > max_bytes:
+                flash("La evidencia excede el tamaño máximo permitido.", "error")
+                return render_template(
+                    "client_fiscal_request_new.html",
+                    available_types=available_types,
+                    customer=customer,
+                )
+            ev_file.stream.seek(0)
             upload_dir = os.path.join(
                 current_app.config.get("HARBOR_UPLOAD_DIR", "/tmp/harbor-uploads"),
                 "fiscal",
             )
             os.makedirs(upload_dir, exist_ok=True)
-            safe_name = compute_sha256(ev_file.read())
-            ev_file.stream.seek(0)
-            ext = os.path.splitext(ev_file.filename)[-1].lower()
+            safe_name = compute_sha256(evidence_data)
             evidence_name = ev_file.filename
             evidence_path = os.path.join(upload_dir, f"{safe_name}{ext}")
             ev_file.save(evidence_path)

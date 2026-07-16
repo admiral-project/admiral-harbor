@@ -3,6 +3,8 @@
 
 """Tests for customer-protected routes under /client/ blueprint."""
 
+from io import BytesIO
+
 from app import admiral_client
 from app.extensions import db
 from app.models import (
@@ -178,6 +180,71 @@ def test_client_deploy_uses_contractual_fiscal_snapshot(client):
         assert order.fiscal_country_code == "NI"
         assert '"tax_percent":15' in order.fiscal_snapshot_json
         assert '"name":"Retencion IR"' in order.fiscal_snapshot_json
+
+
+def test_fiscal_evidence_rejects_disallowed_extension(client):
+    with client.application.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        customer.country = "NI"
+        db.session.add(
+            FiscalTreatmentType(
+                country_code="NI",
+                name="RUC",
+                direction="-",
+                percent=1,
+                is_optional=True,
+                requires_evidence=True,
+                is_active=True,
+            )
+        )
+        db.session.commit()
+        treatment_id = db.session.query(FiscalTreatmentType).filter_by(name="RUC").one().id
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/fiscal-requests/new",
+        data={
+            "treatment_type_id": str(treatment_id),
+            "evidence": (BytesIO(b"<script>alert(1)</script>"), "evidence.svg"),
+        },
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+    with client.application.app_context():
+        assert db.session.query(CustomerFiscalRequest).count() == 0
+
+
+def test_fiscal_evidence_rejects_oversized_upload(client):
+    with client.application.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        customer.country = "NI"
+        db.session.add(
+            FiscalTreatmentType(
+                country_code="NI",
+                name="Large evidence",
+                direction="-",
+                percent=1,
+                is_optional=True,
+                requires_evidence=True,
+                is_active=True,
+            )
+        )
+        db.session.commit()
+        treatment_id = db.session.query(FiscalTreatmentType).filter_by(name="Large evidence").one().id
+
+    client.application.config["HARBOR_MAX_FISCAL_EVIDENCE_BYTES"] = 4
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/fiscal-requests/new",
+        data={
+            "treatment_type_id": str(treatment_id),
+            "evidence": (BytesIO(b"12345"), "evidence.pdf"),
+        },
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 200
+    with client.application.app_context():
+        assert db.session.query(CustomerFiscalRequest).count() == 0
 
 
 def test_subscription_cancel_blocks_local_cancellation_when_paypal_cancel_fails(client, monkeypatch):
