@@ -19,6 +19,8 @@ import ssl
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 
+from sqlalchemy import delete
+
 from app import create_app
 from app.admiral_client import (
     AdmiralAPIError,
@@ -33,6 +35,7 @@ from app.models import (
     HarborMeta,
     Invoice,
     RestoreRequest,
+    RateLimit,
     Subscription,
     WorkerLog,
 )
@@ -79,7 +82,6 @@ def _generate_invoices(app):
             continue
 
         # For PayPal subscriptions, verify still active remotely
-        paypal_active = True
         if sub.paypal_subscription_id:
             try:
                 remote = paypal_get_sub(sub.paypal_subscription_id)
@@ -94,11 +96,20 @@ def _generate_invoices(app):
                     )
                     actions += 1
                     continue
-                paypal_active = remote_status in ("ACTIVE", "APPROVED")
             except PayPalError as exc:
                 log.warning("Subscription %s: PayPal check failed: %s", sub.external_id, exc)
                 errors += 1
                 continue
+
+        period_start = sub.next_billing_at
+        existing = (
+            db.session.query(Invoice)
+            .filter_by(subscription_external_id=sub.external_id, period_start=period_start)
+            .one_or_none()
+        )
+        if existing is not None:
+            sub.next_billing_at = existing.period_end
+            continue
 
         invoice = Invoice(
             subscription_external_id=sub.external_id,
@@ -112,8 +123,10 @@ def _generate_invoices(app):
             total_cents=sub.total_cents,
             fiscal_country_code=sub.fiscal_country_code,
             fiscal_snapshot_json=sub.fiscal_snapshot_json,
-            status="paid" if paypal_active else "pending",
-            period_start=sub.next_billing_at,
+            # A subscription status is not proof that this billing period was
+            # paid. The PayPal webhook/reconciliation path is authoritative.
+            status="pending",
+            period_start=period_start,
             period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
         )
         db.session.add(invoice)
@@ -127,6 +140,14 @@ def _generate_invoices(app):
 
     db.session.commit()
     return actions, errors
+
+
+def _cleanup_rate_limits(app):
+    """Bound rate-limit state without removing active windows."""
+    cutoff = datetime.now(UTC).timestamp() - 3600
+    removed = db.session.execute(delete(RateLimit).where(RateLimit.window_start < cutoff)).rowcount or 0
+    db.session.commit()
+    return removed, 0
 
 
 def _enforce_payment_policy(app):
@@ -524,6 +545,10 @@ def main():
 
         total_actions = 0
         total_errors = 0
+
+        ca, ce = _run_worker_step("cleanup_rate_limits", lambda: _cleanup_rate_limits(app))
+        total_actions += ca
+        total_errors += ce
 
         gi, ge = _run_worker_step("generate_invoices", lambda: _generate_invoices(app))
         total_actions += gi

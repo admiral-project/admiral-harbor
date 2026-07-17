@@ -5,6 +5,22 @@ import time
 
 from app.extensions import db
 from app.models import RateLimit
+from sqlalchemy import delete
+
+
+def _insert_counter(identifier, now):
+    """Create a counter atomically on PostgreSQL and SQLite."""
+    dialect = db.session.bind.dialect.name
+    if dialect == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert
+    elif dialect == "sqlite":
+        from sqlalchemy.dialects.sqlite import insert
+    else:  # pragma: no cover - production uses PostgreSQL
+        return False
+    statement = insert(RateLimit).values(identifier=identifier, window_start=now, attempts=1)
+    statement = statement.on_conflict_do_nothing(index_elements=["identifier"])
+    result = db.session.execute(statement)
+    return bool(result.rowcount)
 
 
 class RateLimiter:
@@ -21,15 +37,17 @@ class RateLimiter:
         entry = db.session.query(RateLimit).filter(RateLimit.identifier == identifier).with_for_update().first()
 
         if entry is None:
-            db.session.add(
-                RateLimit(
-                    identifier=identifier,
-                    window_start=now,
-                    attempts=1,
-                )
-            )
-            db.session.commit()
-            return True, 0
+            created = _insert_counter(identifier, now)
+            if not created:
+                entry = db.session.query(RateLimit).filter(RateLimit.identifier == identifier).with_for_update().first()
+            else:
+                db.session.commit()
+                return True, 0
+        if entry is None:
+            # A non-PostgreSQL backend without upsert support is not a valid
+            # production deployment; fail closed rather than admit a request.
+            db.session.rollback()
+            return False, self.window_seconds
 
         if entry.window_start < cutoff:
             entry.window_start = now
@@ -49,3 +67,11 @@ class RateLimiter:
     def reset(self, identifier):
         db.session.query(RateLimit).filter(RateLimit.identifier == identifier).delete()
         db.session.commit()
+
+    def cleanup_expired(self, now=None):
+        """Remove counters that can no longer affect a request."""
+        now = time.time() if now is None else now
+        cutoff = now - self.window_seconds
+        removed = db.session.execute(delete(RateLimit).where(RateLimit.window_start < cutoff)).rowcount
+        db.session.commit()
+        return removed or 0

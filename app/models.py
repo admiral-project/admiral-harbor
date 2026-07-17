@@ -349,6 +349,13 @@ class Invoice(db.Model):
     period_start = db.Column(db.String(16), nullable=True)
     period_end = db.Column(db.String(16), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    __table_args__ = (
+        db.UniqueConstraint(
+            "subscription_external_id",
+            "period_start",
+            name="uq_invoice_subscription_period",
+        ),
+    )
 
     def as_dict(self):
         return {
@@ -790,7 +797,7 @@ class RateLimit(db.Model):
     """Rate limiting state backed by PostgreSQL for multi-worker support."""
 
     id = db.Column(db.Integer, primary_key=True)
-    identifier = db.Column(db.String(255), nullable=False, index=True)
+    identifier = db.Column(db.String(255), nullable=False, unique=True, index=True)
     window_start = db.Column(db.Float, nullable=False)
     attempts = db.Column(db.Integer, default=0, nullable=False)
 
