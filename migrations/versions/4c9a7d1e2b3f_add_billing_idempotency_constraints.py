@@ -2,7 +2,6 @@
 
 from alembic import op
 
-
 revision = "4c9a7d1e2b3f"
 down_revision = "9f2d1f4c8a11"
 branch_labels = None
