@@ -33,7 +33,6 @@ class Config:
     HARBOR_PAYPAL_CLIENT_ID = os.environ.get("HARBOR_PAYPAL_CLIENT_ID", "")
     HARBOR_PAYPAL_CLIENT_SECRET = os.environ.get("HARBOR_PAYPAL_CLIENT_SECRET", "")
     HARBOR_PAYPAL_WEBHOOK_ID = os.environ.get("HARBOR_PAYPAL_WEBHOOK_ID", "")
-    HARBOR_PAYPAL_BASE_URL = os.environ.get("HARBOR_PAYPAL_BASE_URL", "https://api-m.sandbox.paypal.com")
     HARBOR_PAYPAL_MODE = os.environ.get("HARBOR_PAYPAL_MODE", "mock")
     HARBOR_PAYPAL_WEBHOOK_MAX_AGE_SECONDS = int(os.environ.get("HARBOR_PAYPAL_WEBHOOK_MAX_AGE_SECONDS", "300"))
     HARBOR_PAYPAL_RETURN_URL = os.environ.get("HARBOR_PAYPAL_RETURN_URL", "https://localhost:5000/billing/return")

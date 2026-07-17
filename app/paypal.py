@@ -63,15 +63,12 @@ _PAYPAL_BASE_URLS = {
 
 
 def _base_url():
-    """Resolve PayPal REST API base URL from mode.
-
-    Priority: HARBOR_PAYPAL_BASE_URL env var > mode-derived default.
-    In live mode defaults to api-m.paypal.com without requiring the env var,
-    so switching mode in the admin panel is enough — no env var change needed.
-    """
-    pp = _db_paypal_config()
-    derived = _PAYPAL_BASE_URLS.get(pp["mode"], _PAYPAL_BASE_URLS["sandbox"])
-    return current_app.config.get("HARBOR_PAYPAL_BASE_URL", derived)
+    """Resolve the fixed PayPal REST API endpoint for the configured mode."""
+    mode = _db_paypal_config()["mode"]
+    try:
+        return _PAYPAL_BASE_URLS[mode]
+    except KeyError as exc:
+        raise PayPalError(f"Invalid PayPal mode: {mode!r}") from exc
 
 
 def _api_url():
@@ -97,7 +94,7 @@ def _get_access_token():
     client_id = pp["client_id"]
     client_secret = pp["client_secret"]
     if not client_id or not client_secret:
-        return "mock-token"
+        raise PayPalError("PayPal Client ID and Client Secret are required")
     base_url = _base_url()
     auth = b64encode(f"{client_id}:{client_secret}".encode()).decode()
     try:

@@ -73,7 +73,6 @@ para desarrollo local con modo mock.
 | `HARBOR_PAYPAL_CLIENT_ID` | Sandbox/Live | `""` | Client ID de la app PayPal |
 | `HARBOR_PAYPAL_CLIENT_SECRET` | Sandbox/Live | `""` | Client Secret de la app PayPal |
 | `HARBOR_PAYPAL_WEBHOOK_ID` | Sandbox/Live | `""` | ID del webhook registrado en PayPal |
-| `HARBOR_PAYPAL_BASE_URL` | No | `https://api-m.sandbox.paypal.com` | URL base de la API PayPal (sandbox o live) |
 | `HARBOR_PAYPAL_RETURN_URL` | No | `https://localhost:5000/billing/return` | Variable declarada en config; el checkout actual genera la URL de retorno dinámicamente con `url_for(..., _external=True)` |
 | `HARBOR_PAYPAL_CANCEL_URL` | No | `https://localhost:5000/billing/cancel` | Variable declarada en config; el checkout actual genera la URL de cancelación dinámicamente con `url_for(..., _external=True)` |
 
@@ -84,7 +83,6 @@ HARBOR_PAYPAL_MODE=live
 HARBOR_PAYPAL_CLIENT_ID=AaBb...
 HARBOR_PAYPAL_CLIENT_SECRET=EeFf...
 HARBOR_PAYPAL_WEBHOOK_ID=1A2B3C...
-HARBOR_PAYPAL_BASE_URL=https://api-m.paypal.com
 # Actualmente Harbor genera estas URLs dinámicamente en cada checkout.
 # Puedes mantener estas variables documentadas, pero no controlan el flujo actual.
 HARBOR_PAYPAL_RETURN_URL=https://portal.miagencia.com/billing/return
@@ -109,8 +107,9 @@ usa los valores almacenados en BD (con el `client_secret` almacenado cifrado usa
 **Implicación:** si configuras via panel admin (sandbox → live), no necesitas reiniciar
 Harbor. El cambio toma efecto de inmediato en la siguiente solicitud.
 
-**Nota:** `HARBOR_PAYPAL_BASE_URL` se lee solo desde variables de entorno. El panel admin
-no permite cambiarlo.
+El endpoint REST se selecciona automáticamente a partir del modo: sandbox usa
+`https://api-m.sandbox.paypal.com` y live usa `https://api-m.paypal.com`. No se admite
+sobrescribir estos hosts, para evitar que credenciales PayPal se envíen a otro destino.
 
 ---
 
@@ -139,7 +138,6 @@ no permite cambiarlo.
 - Usa `https://api-m.paypal.com`.
 - Requiere cuenta PayPal Business verificada.
 - Los planes de suscripción son distintos a los de sandbox — deben recrearse.
-- Cambiar `HARBOR_PAYPAL_BASE_URL` a `https://api-m.paypal.com`.
 
 ---
 
@@ -455,8 +453,8 @@ log de auditoría de todos los webhooks recibidos, incluyendo los fallidos.
 2. Registrar un webhook nuevo apuntando al dominio de producción (paso 7).
 3. Actualizar el panel admin con las credenciales live y el nuevo Webhook ID (paso 8).
 4. Actualizar los `paypal_plan_id` en cada tier con los Plan IDs live (paso 9).
-5. Cambiar `HARBOR_PAYPAL_BASE_URL` a `https://api-m.paypal.com` en las variables
-   de entorno. Ese campo solo se lee desde env, no desde la BD ni desde el panel admin.
+5. Confirmar que el modo mostrado en el panel sea `live`; Harbor selecciona el endpoint
+   de producción automáticamente.
 
 > Los Plan IDs de sandbox y live son distintos. Las suscripciones existentes en sandbox
 > no migran a live — solo aplica a suscripciones nuevas.

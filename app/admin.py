@@ -1692,6 +1692,10 @@ def paypal_config():
         client_secret = request.form.get("client_secret", "").strip()
         webhook_id = request.form.get("webhook_id", "").strip()
 
+        if mode not in {"sandbox", "live"}:
+            flash("PayPal mode must be sandbox or live.", "error")
+            return redirect(url_for("admin.paypal_config"))
+
         if not client_id or not client_secret:
             flash("Client ID and Client Secret are required.", "error")
             return redirect(url_for("admin.paypal_config"))
