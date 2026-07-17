@@ -6,7 +6,7 @@ import os
 from flask import Flask, request
 from flask_login import current_user
 from pathlib import Path
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect
 import logging
 
 from app.admin import bp as admin_bp
