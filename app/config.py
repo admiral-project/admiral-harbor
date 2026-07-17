@@ -11,7 +11,12 @@ class Config:
         default="dev-secret-change-me-in-production-64-chars-minimum-required",
         prod_mode=True,
     )
-    ALEMBIC = {}
+    # Flask-Alembic treats script_location as the directory containing revision
+    # files (unlike Alembic's conventional migrations/ directory). Paths are
+    # resolved relative to app.root_path, which is the app/ package.
+    ALEMBIC = {
+        "script_location": "../migrations/versions",
+    }
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "HARBOR_DATABASE_URL",
         "sqlite:///harbor.db",
