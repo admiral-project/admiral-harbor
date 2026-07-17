@@ -10,7 +10,7 @@ from sqlalchemy import delete
 
 def _insert_counter(identifier, now):
     """Create a counter atomically on PostgreSQL and SQLite."""
-    dialect = db.session.bind.dialect.name
+    dialect = db.engine.dialect.name
     if dialect == "postgresql":
         from sqlalchemy.dialects.postgresql import insert
     elif dialect == "sqlite":
