@@ -32,6 +32,7 @@ from app.identity import (
 )
 from app.models import AuditLog, Customer
 from app.rate_limit import RateLimiter
+from app.security import validate_password_strength
 from app.validation import is_valid_email
 
 from app.countries import COUNTRIES as _COUNTRIES
@@ -265,6 +266,12 @@ def register():
             return jsonify({"error": "customer already exists"}), 409
         flash("Customer already exists.", "error")
         return redirect(url_for("auth.register_page"))
+    password_error = validate_password_strength(password, 12)
+    if password_error:
+        if request.is_json:
+            return jsonify({"error": password_error}), 400
+        flash(password_error, "error")
+        return redirect(url_for("auth.register_page"))
 
     customer = Customer(
         email=email,
@@ -440,6 +447,10 @@ def profile():
         if country:
             customer.country = country
         if new_password and current_password:
+            password_error = validate_password_strength(new_password, 12)
+            if password_error:
+                flash(password_error, "error")
+                return redirect(url_for("auth.profile"))
             try:
                 ph.verify(customer.password_hash, current_password)
                 customer.password_hash = ph.hash(new_password)

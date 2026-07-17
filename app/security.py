@@ -10,6 +10,13 @@ from flask import Flask
 logger = logging.getLogger("admiral-harbor")
 
 
+def validate_password_strength(password: str, minimum_length: int = 12) -> str | None:
+    """Return an operator-facing error when a password is too weak."""
+    if len(password) < minimum_length:
+        return f"Password must be at least {minimum_length} characters long."
+    return None
+
+
 def _warn_default(name, value):
     if not value or value.startswith("dev-") or value == "dev-token" or value == "dev-encryption-key":
         logger.warning("%s is using a development default; set it explicitly for production", name)

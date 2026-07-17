@@ -37,6 +37,7 @@ from app.branding import (
 )
 from app.identity import admin_required, create_user_session, clear_user_session
 from app.rate_limit import RateLimiter
+from app.security import validate_password_strength
 from app.admiral_client import (
     AdmiralAPIError,
     get_operation,
@@ -1451,6 +1452,10 @@ def edit_user(user_id):
         if display_name:
             user.display_name = display_name
         if password:
+            password_error = validate_password_strength(password, 16)
+            if password_error:
+                flash(password_error, "error")
+                return redirect(url_for("admin.edit_user", user_id=user.id))
             if not current_password:
                 flash("Current password is required to set a new password.", "error")
                 return redirect(url_for("admin.edit_user", user_id=user.id))

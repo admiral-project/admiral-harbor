@@ -45,7 +45,7 @@ def test_register_accepts_terms(client, app):
                 json={
                     "display_name": "New Customer",
                     "email": "new2@example.com",
-                    "password": "secret",
+                    "password": "valid-customer-password",
                     "accept_terms": True,
                 },
             )
@@ -67,6 +67,20 @@ def test_login_failure_returns_generic_unauthorized(client):
         )
     assert response.status_code == 401
     assert response.json["error"] == "unauthorized"
+
+
+def test_register_rejects_weak_password(client):
+    response = client.post(
+        "/auth/register",
+        json={
+            "display_name": "Weak Password",
+            "email": "weak@example.com",
+            "password": "short",
+            "accept_terms": True,
+        },
+    )
+    assert response.status_code == 400
+    assert "at least 12" in response.json["error"]
 
 
 def test_login_missing_fields(client):
