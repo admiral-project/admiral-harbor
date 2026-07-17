@@ -6,7 +6,7 @@ import os
 from flask import Flask, request
 from flask_login import current_user
 from pathlib import Path
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 import logging
 
 from app.admin import bp as admin_bp
@@ -35,6 +35,15 @@ def _database_has_tables() -> bool:
     try:
         tables = inspect(db.engine).get_table_names()
         required = {"harbor_admin_user", "customer", "catalog_app"}
+        return required.issubset(tables)
+    except Exception:
+        return False
+
+
+def _database_is_ready() -> bool:
+    try:
+        tables = inspect(db.engine).get_table_names()
+        required = {"harbor_admin_user", "customer", "catalog_app", "alembic_version"}
         return required.issubset(tables)
     except Exception:
         return False
@@ -133,11 +142,21 @@ def create_app(config_object="app.config.Config"):
 
     with app.app_context():
         try:
-            if _database_has_tables():
-                alembic.upgrade()
-            else:
-                db.create_all()
-                alembic.stamp()
+            env = os.environ.get("ENV", "").lower()
+            if os.environ.get("HARBOR_MIGRATE") == "1":
+                # The dedicated harbor-migrate command owns schema changes.
+                pass
+            elif env in ("dev", "development", "test"):
+                if _database_has_tables():
+                    alembic.upgrade()
+                else:
+                    db.create_all()
+                    alembic.stamp()
+            elif not _database_is_ready():
+                raise RuntimeError("Harbor schema is not ready; run harbor-migrate before starting the service")
+
+            if os.environ.get("HARBOR_MIGRATE") == "1":
+                return app
 
             ensure_default_portal_settings()
             bootstrap_admin_user = app.config.get("HARBOR_BOOTSTRAP_ADMIN_USER", "")
