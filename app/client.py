@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import os
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from flask import (
@@ -79,6 +80,18 @@ OPERATIONAL_STATUSES = {
     "setup_failed": "Error de inicialización",
     "failed": "Error",
 }
+
+
+def _local_redirect_target(value, fallback):
+    """Return an application-local redirect target or the safe fallback."""
+    target = (value or "").strip()
+    if not target.startswith("/") or target.startswith("//") or "\\" in target:
+        return fallback
+    parsed = urlsplit(target)
+    if parsed.scheme or parsed.netloc:
+        return fallback
+    return target
+
 
 STORAGE_STATUSES = {
     "ok": "Storage OK",
@@ -902,11 +915,14 @@ def deploy_app(slug):
 def accept_fiscal_terms():
     customer = current_customer()
     gate = fiscal_gate(customer)
+    next_url = _local_redirect_target(
+        request.form.get("next"), url_for("client.dashboard")
+    )
     if not gate["configured"]:
-        return redirect(request.form.get("next") or url_for("client.dashboard"))
+        return redirect(next_url)
     if request.form.get("accept_mandatory") != "on":
         flash("You must accept the mandatory fiscal configuration to continue.", "error")
-        return redirect(request.form.get("next") or url_for("client.dashboard"))
+        return redirect(next_url)
     customer.fiscal_acceptance_country_code = gate["country_code"]
     customer.fiscal_acceptance_snapshot_json = acceptance_snapshot(customer.country)
     customer.fiscal_accepted_at = datetime.now(UTC)
@@ -919,7 +935,7 @@ def accept_fiscal_terms():
         f"Accepted fiscal configuration for {gate['country_code']}",
     )
     flash("Mandatory fiscal configuration accepted.", "success")
-    return redirect(request.form.get("next") or url_for("client.dashboard"))
+    return redirect(next_url)
 
 
 # ── Instances ────────────────────────────────────────────────────────────────

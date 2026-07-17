@@ -133,6 +133,35 @@ def test_client_accepts_mandatory_fiscal_terms_and_persists_snapshot(client):
         assert customer.fiscal_accepted_at is not None
 
 
+def test_fiscal_accept_rejects_external_next_url(client):
+    with client.application.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        customer.country = "NI"
+        db.session.commit()
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/fiscal/accept",
+        data={"accept_mandatory": "on", "next": "https://attacker.example/phish"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+    assert response.headers["Location"].endswith("/client/")
+
+
+def test_fiscal_accept_rejects_scheme_relative_next_url(client):
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/fiscal/accept",
+        data={"next": "//attacker.example/phish"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code in (302, 303)
+    assert response.headers["Location"].endswith("/client/")
+
+
 def test_client_deploy_uses_contractual_fiscal_snapshot(client):
     with client.application.app_context():
         customer = db.session.query(Customer).filter_by(email="user@example.com").one()
