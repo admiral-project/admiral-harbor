@@ -1,0 +1,43 @@
+.TH HARBORCTL 8 "July 2026" "Admiral" "Admiral Administration"
+.SH NAME
+harborctl \- administer the Admiral customer portal
+.SH SYNOPSIS
+.B harborctl
+.I COMMAND
+\fR[\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B harborctl
+provides local administrative commands for the Admiral Harbor customer portal.
+It uses the Harbor application configuration and database; it does not bypass
+Harbor's application models.
+.SH COMMANDS
+.TP
+.B ping
+Check connectivity from Harbor to the Admiral control plane.
+.TP
+.B user create [--type admin|customer] [--display-name NAME] [--country CODE] IDENT
+Create an administrator or customer account. The password is read from
+.B ADMIRAL_HARBOR_SET_PASSWORD
+when set, otherwise it is requested interactively.
+.TP
+.B user list [--output table|json]
+List administrator and customer accounts.
+.TP
+.B user set-password USERNAME
+Set an administrator password.
+.TP
+.B user toggle-active USERNAME
+Toggle an administrator account between active and inactive.
+.SH ENVIRONMENT
+.TP
+.B ADMIRAL_HARBOR_SET_PASSWORD
+Password used by account creation and password changes. Avoid exposing this
+variable in persistent process or shell configuration.
+.SH FILES
+.TP
+.I /etc/admiral/harbor.env
+Packaged Harbor environment configuration.
+.SH SEE ALSO
+.BR admiral-harbor.service (8)
+.SH AUTHORS
+Admiral Project
