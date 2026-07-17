@@ -11,9 +11,7 @@ class Config:
         default="dev-secret-change-me-in-production-64-chars-minimum-required",
         prod_mode=True,
     )
-    ALEMBIC = {
-        "version_locations": ["migrations/versions"],
-    }
+    ALEMBIC = {}
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "HARBOR_DATABASE_URL",
         "sqlite:///harbor.db",
