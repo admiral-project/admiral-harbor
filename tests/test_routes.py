@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from app import create_app
 from app.extensions import db
 from app.models import CustomerApp, Invoice, Order, Payment, Subscription
-from app.paypal import create_subscription
+from app.paypal import create_subscription, verify_webhook_signature
 
 
 def test_health(client):
@@ -144,6 +144,40 @@ def test_paypal_create_subscription_live_payload(monkeypatch, app):
         "cancel_url": "https://cancel",
     }
     assert "tax" not in captured["json"]
+
+
+def test_paypal_webhook_verification_preserves_raw_event(monkeypatch, app):
+    app.config.update(
+        HARBOR_PAYPAL_MODE="live",
+        HARBOR_PAYPAL_BASE_URL="https://api-m.paypal.com",
+    )
+    captured = {}
+    raw_body = '{"id": "evt_1",  "resource": {"b": 2, "a": 1}}\n'
+
+    def fake_post(url, headers=None, data=None, json=None, timeout=None):
+        captured["url"] = url
+        captured["json"] = json
+        return SimpleNamespace(
+            raise_for_status=lambda: None,
+            json=lambda: {"verification_status": "SUCCESS"},
+        )
+
+    monkeypatch.setattr("app.paypal._db_paypal_config", lambda: {"mode": "live", "webhook_id": "wh_1"})
+    monkeypatch.setattr("app.paypal._get_access_token", lambda: "token")
+    monkeypatch.setattr("app.paypal.requests.post", fake_post)
+
+    headers = {
+        "PAYPAL-AUTH-ALGO": "SHA256withRSA",
+        "PAYPAL-CERT-URL": "https://api-m.paypal.com/cert",
+        "PAYPAL-TRANSMISSION-ID": "transmission-1",
+        "PAYPAL-TRANSMISSION-SIG": "signature-1",
+        "PAYPAL-TRANSMISSION-TIME": "2026-07-17T19:00:00Z",
+    }
+    with app.app_context():
+        assert verify_webhook_signature(headers, raw_body) is True
+
+    assert captured["url"].endswith("/v1/notifications/verify-webhook-signature")
+    assert captured["json"]["webhook_event"] == raw_body
 
 
 def test_paypal_create_subscription_live_payload_supports_amount_override(monkeypatch, app):

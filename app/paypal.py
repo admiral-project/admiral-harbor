@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 import logging
 import os
 import uuid
@@ -355,10 +354,10 @@ def verify_webhook_signature(headers, body):
         "transmission_sig": headers.get("PAYPAL-TRANSMISSION-SIG", ""),
         "transmission_time": headers.get("PAYPAL-TRANSMISSION-TIME", ""),
         "webhook_id": webhook_id,
-        # PayPal's postback API expects the decoded event object. The raw body
-        # remains the source for local signature verification if that path is
-        # enabled; do not re-encode it before sending the verification request.
-        "webhook_event": json.loads(body) if isinstance(body, (str, bytes)) else body,
+        # PayPal verifies the event using the exact raw JSON payload. Do not
+        # decode and re-encode it, because that can change whitespace or key
+        # ordering and invalidate an otherwise legitimate webhook signature.
+        "webhook_event": body,
     }
     try:
         resp = requests.post(
