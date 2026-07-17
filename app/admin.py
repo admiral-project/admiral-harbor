@@ -1684,7 +1684,9 @@ def paypal_config():
     """Configure PayPal credentials."""
     from app.extensions import secrets as ext_secrets
 
-    config = HarborPayPalConfig.get_config()
+    config = HarborPayPalConfig.get_config(
+        default_mode=current_app.config.get("HARBOR_PAYPAL_MODE", "mock")
+    )
 
     if request.method == "POST":
         mode = request.form.get("mode", "sandbox").strip()

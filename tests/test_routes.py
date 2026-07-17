@@ -6,7 +6,14 @@ from types import SimpleNamespace
 
 from app import create_app
 from app.extensions import db
-from app.models import CustomerApp, Invoice, Order, Payment, Subscription
+from app.models import (
+    CustomerApp,
+    HarborPayPalConfig,
+    Invoice,
+    Order,
+    Payment,
+    Subscription,
+)
 from app.paypal import create_subscription, verify_webhook_signature
 
 
@@ -222,10 +229,17 @@ def test_paypal_create_subscription_live_payload_supports_amount_override(monkey
     }
 
 
-def test_paypal_return_live_marks_order_approved_without_provision(client, monkeypatch, app):
-    app.config.update(HARBOR_PAYPAL_MODE="live")
+def test_paypal_return_uses_live_database_mode_without_provision(client, monkeypatch, app):
+    app.config.update(HARBOR_PAYPAL_MODE="mock")
 
     with app.app_context():
+        db.session.add(
+            HarborPayPalConfig(
+                mode="live",
+                client_id="live-client",
+                client_secret="encrypted-live-secret",
+            )
+        )
         order = Order(
             customer_email="user@example.com",
             app_slug="wordpress",

@@ -3,7 +3,9 @@
 
 import pytest
 
-from app.paypal import PayPalError, _base_url, _get_access_token
+from app.extensions import db
+from app.models import HarborPayPalConfig
+from app.paypal import PayPalError, _base_url, _get_access_token, paypal_mode
 
 
 def test_base_url_uses_live_endpoint_even_with_stale_sandbox_config(app, monkeypatch):
@@ -35,3 +37,13 @@ def test_access_token_requires_credentials_outside_mock(app, monkeypatch):
 
     with app.app_context(), pytest.raises(PayPalError, match="Client ID"):
         _get_access_token()
+
+
+def test_database_mode_overrides_process_default(app):
+    app.config["HARBOR_PAYPAL_MODE"] = "mock"
+
+    with app.app_context():
+        db.session.add(HarborPayPalConfig(mode="live"))
+        db.session.commit()
+
+        assert paypal_mode() == "live"

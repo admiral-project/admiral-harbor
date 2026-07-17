@@ -85,8 +85,18 @@ def _external_url():
     return get_external_url()
 
 
+def paypal_mode():
+    """Return the effective mode shared by checkout, callbacks and API calls."""
+    return _db_paypal_config()["mode"]
+
+
+def is_mock_mode():
+    return paypal_mode() == "mock"
+
+
 def _is_mock():
-    return _db_paypal_config()["mode"] == "mock"
+    """Backward-compatible internal alias."""
+    return is_mock_mode()
 
 
 def _get_access_token():

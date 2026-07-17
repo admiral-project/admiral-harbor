@@ -43,7 +43,7 @@ from app.models import (
     Subscription,
     UploadedBackup,
 )
-from app.paypal import verify_webhook_signature
+from app.paypal import is_mock_mode, verify_webhook_signature
 from app.rate_limit import RateLimiter
 
 bp = Blueprint("main", __name__)
@@ -52,9 +52,7 @@ api_token_limiter = RateLimiter(max_attempts=10, window_seconds=300)
 
 def _webhook_transmission_is_fresh(headers):
     """Reject stale PayPal deliveries while retaining event-id idempotence."""
-    from app.paypal import _is_mock
-
-    if _is_mock():
+    if is_mock_mode():
         return True
     value = headers.get("PAYPAL-TRANSMISSION-TIME", "").strip()
     if not value:
@@ -525,7 +523,7 @@ def paypal_webhook():
 
 @bp.route("/mock-paypal/approve", methods=["GET", "POST"])
 def mock_paypal_approve():
-    if current_app.config.get("HARBOR_PAYPAL_MODE", "mock") != "mock":
+    if not is_mock_mode():
         return jsonify({"error": "not found"}), 404
 
     values = request.args if request.method == "GET" else request.form

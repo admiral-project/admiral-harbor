@@ -748,11 +748,11 @@ class HarborPayPalConfig(db.Model):
     )
 
     @staticmethod
-    def get_config():
+    def get_config(default_mode="sandbox"):
         """Get or create the singleton config."""
         config = db.session.query(HarborPayPalConfig).first()
         if not config:
-            config = HarborPayPalConfig()
+            config = HarborPayPalConfig(mode=default_mode)
             db.session.add(config)
             db.session.commit()
         return config
