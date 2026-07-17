@@ -146,7 +146,7 @@ def test_paypal_create_subscription_live_payload(monkeypatch, app):
     assert "tax" not in captured["json"]
 
 
-def test_paypal_webhook_verification_preserves_raw_event(monkeypatch, app):
+def test_paypal_webhook_verification_sends_event_object(monkeypatch, app):
     app.config.update(
         HARBOR_PAYPAL_MODE="live",
         HARBOR_PAYPAL_BASE_URL="https://api-m.paypal.com",
@@ -177,7 +177,10 @@ def test_paypal_webhook_verification_preserves_raw_event(monkeypatch, app):
         assert verify_webhook_signature(headers, raw_body) is True
 
     assert captured["url"].endswith("/v1/notifications/verify-webhook-signature")
-    assert captured["json"]["webhook_event"] == raw_body
+    assert captured["json"]["webhook_event"] == {
+        "id": "evt_1",
+        "resource": {"b": 2, "a": 1},
+    }
 
 
 def test_paypal_create_subscription_live_payload_supports_amount_override(monkeypatch, app):

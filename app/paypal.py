@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
 import os
 import uuid
@@ -345,6 +346,14 @@ def verify_webhook_signature(headers, body):
     if not webhook_id:
         logger.warning("PayPal webhook ID not configured")
         return False
+    try:
+        webhook_event = json.loads(body)
+    except (TypeError, json.JSONDecodeError):
+        logger.warning("PayPal webhook rejected: body is not valid JSON")
+        return False
+    if not isinstance(webhook_event, dict):
+        logger.warning("PayPal webhook rejected: event must be a JSON object")
+        return False
     token = _get_access_token()
     base_url = _base_url()
     verification = {
@@ -354,10 +363,10 @@ def verify_webhook_signature(headers, body):
         "transmission_sig": headers.get("PAYPAL-TRANSMISSION-SIG", ""),
         "transmission_time": headers.get("PAYPAL-TRANSMISSION-TIME", ""),
         "webhook_id": webhook_id,
-        # PayPal verifies the event using the exact raw JSON payload. Do not
-        # decode and re-encode it, because that can change whitespace or key
-        # ordering and invalidate an otherwise legitimate webhook signature.
-        "webhook_event": body,
+        # The PayPal postback API schema requires webhook_event to be a JSON
+        # object. Raw-body CRC32 preservation applies to local cryptographic
+        # verification, not to this postback request.
+        "webhook_event": webhook_event,
     }
     try:
         resp = requests.post(
