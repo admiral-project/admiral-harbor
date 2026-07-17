@@ -415,6 +415,7 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
             "resource": {
                 "id": "sale_123",
                 "billing_agreement_id": "sub_123",
+                "amount": {"total": "28.25", "currency": "USD"},
             },
         },
         headers={"X-Admiral-Webhook-Test": "test-mock-token"},
@@ -435,6 +436,117 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
         assert invoice.total_cents == 2825
         assert payment.provider_reference == "sale_123"
         assert payment.amount_cents == 2825
+
+
+def test_paypal_webhook_materializes_subscription_from_order(client):
+    with client.application.app_context():
+        order = Order(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            tier_name="starter",
+            monthly_price_cents=2500,
+            total_cents=2500,
+            requires_billing=True,
+            status="pending_payment",
+            paypal_subscription_id="sub_order_only",
+            paypal_plan_id="P-WORDPRESS-STARTER",
+        )
+        db.session.add(order)
+        db.session.commit()
+        order_id = order.order_id
+
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={
+            "id": "evt_order_only",
+            "event_type": "PAYMENT.SALE.COMPLETED",
+            "resource": {
+                "id": "sale_order_only",
+                "billing_agreement_id": "sub_order_only",
+                "amount": {"total": "25.00", "currency": "USD"},
+            },
+        },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json["status"] == "active"
+    with client.application.app_context():
+        stored_order = db.session.query(Order).filter_by(order_id=order_id).one()
+        subscription = db.session.query(Subscription).filter_by(paypal_subscription_id="sub_order_only").one()
+        assert stored_order.subscription_external_id == subscription.external_id
+        assert stored_order.status == "paid"
+        assert subscription.instance_id is not None
+        assert subscription.paypal_plan_id == "P-WORDPRESS-STARTER"
+
+
+def test_paypal_activation_does_not_provision_before_completed_sale(client):
+    with client.application.app_context():
+        order = Order(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            tier_name="starter",
+            monthly_price_cents=2500,
+            total_cents=2500,
+            requires_billing=True,
+            status="pending_payment",
+            paypal_subscription_id="sub_activated_only",
+            paypal_plan_id="P-WORDPRESS-STARTER",
+        )
+        db.session.add(order)
+        db.session.commit()
+
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={
+            "id": "evt_activated_only",
+            "event_type": "BILLING.SUBSCRIPTION.ACTIVATED",
+            "resource": {"id": "sub_activated_only"},
+        },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+
+    assert response.status_code == 200
+    with client.application.app_context():
+        subscription = db.session.query(Subscription).filter_by(paypal_subscription_id="sub_activated_only").one()
+        assert subscription.status == "active"
+        assert subscription.instance_id is None
+
+
+def test_paypal_sale_rejects_wrong_amount(client):
+    with client.application.app_context():
+        order = Order(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            tier_name="starter",
+            monthly_price_cents=2500,
+            total_cents=2500,
+            requires_billing=True,
+            status="pending_payment",
+            paypal_subscription_id="sub_wrong_amount",
+        )
+        db.session.add(order)
+        db.session.commit()
+
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={
+            "id": "evt_wrong_amount",
+            "event_type": "PAYMENT.SALE.COMPLETED",
+            "resource": {
+                "id": "sale_wrong_amount",
+                "billing_agreement_id": "sub_wrong_amount",
+                "amount": {"total": "1.00", "currency": "USD"},
+            },
+        },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+
+    assert response.status_code == 409
+    with client.application.app_context():
+        order = db.session.query(Order).filter_by(paypal_subscription_id="sub_wrong_amount").one()
+        assert order.status == "pending_payment"
+        assert db.session.query(Subscription).filter_by(paypal_subscription_id="sub_wrong_amount").count() == 0
 
 
 def test_paypal_webhook_rejects_stale_transmission(client):

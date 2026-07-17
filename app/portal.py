@@ -3,6 +3,7 @@
 
 import ipaddress
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 from uuid import uuid4
@@ -170,6 +171,55 @@ def _provision_subscription(subscription):
     return instance_id, credentials
 
 
+def _create_subscription_from_order(order):
+    """Materialize the local subscription for a PayPal-created order.
+
+    Live checkout persists the PayPal subscription ID on the order before the
+    buyer leaves Harbor. The first webhook may arrive before the browser return
+    and must be able to complete that order idempotently.
+    """
+    subscription = Subscription(
+        customer_email=order.customer_email,
+        app_slug=order.app_slug,
+        status="pending",
+        monthly_price_cents=order.monthly_price_cents,
+        tier_name=order.tier_name,
+        requires_billing=order.requires_billing,
+        next_billing_at=order.next_billing_at,
+        billing_email=order.billing_email or order.customer_email,
+        tax_percent=order.tax_percent,
+        tax_cents=order.tax_cents,
+        fiscal_adjustment_cents=order.fiscal_adjustment_cents,
+        total_cents=order.total_cents,
+        fiscal_country_code=order.fiscal_country_code,
+        fiscal_snapshot_json=order.fiscal_snapshot_json,
+        paypal_subscription_id=order.paypal_subscription_id,
+        paypal_plan_id=order.paypal_plan_id,
+    )
+    db.session.add(subscription)
+    db.session.flush()
+    order.subscription_external_id = subscription.external_id
+    if order.status == "pending_payment":
+        order.status = "approved"
+    return subscription
+
+
+def _sale_matches_billing_contract(resource, order, subscription):
+    amount = resource.get("amount") if isinstance(resource, dict) else None
+    if not isinstance(amount, dict):
+        return False
+    value = amount.get("total", amount.get("value"))
+    currency = str(amount.get("currency", amount.get("currency_code", ""))).upper()
+    expected_cents = order.total_cents if order is not None else subscription.total_cents
+    expected_currency = (order.currency if order is not None else "USD").upper()
+    try:
+        paid_amount = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return False
+    expected_amount = Decimal(expected_cents) / Decimal(100)
+    return paid_amount == expected_amount and currency == expected_currency
+
+
 @bp.route("/")
 def index():
     apps = [app.as_dict() for app in _local_catalog()]
@@ -333,7 +383,13 @@ def paypal_webhook():
         db.session.query(Subscription).filter_by(paypal_subscription_id=subscription_id).with_for_update().one_or_none()
     )
     if subscription is None:
-        return jsonify({"error": "subscription not found"}), 404
+        if order is None:
+            return jsonify({"error": "subscription not found"}), 404
+        subscription = _create_subscription_from_order(order)
+
+    if event_type == "PAYMENT.SALE.COMPLETED" and not _sale_matches_billing_contract(resource, order, subscription):
+        db.session.rollback()
+        return jsonify({"error": "payment amount or currency does not match billing contract"}), 409
 
     if db.session.query(BillingEvent).filter_by(event_id=event_id).one_or_none() is not None:
         db.session.commit()
@@ -356,7 +412,7 @@ def paypal_webhook():
     }:
         status = "cancelled"
     subscription.status = status
-    if status == "active" and not subscription.instance_id:
+    if event_type == "PAYMENT.SALE.COMPLETED" and not subscription.instance_id:
         try:
             _provision_subscription(subscription)
         except AdmiralAPIError as exc:
