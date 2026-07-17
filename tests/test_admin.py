@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 import app.admin as admin_module
 from app.admiral_client import AdmiralAPIError
-from app.models import Subscription
+from app.extensions import db
+from app.models import HarborPayPalConfig, Subscription
 
 
 from app.admin import escape_like_pattern
@@ -55,6 +56,64 @@ def test_admin_layout_includes_csrf_helper(client):
     response = client.get("/admin/")
     assert response.status_code == 200
     assert b"js/csrf.js" in response.data
+
+
+def test_paypal_config_preserves_secret_when_mode_is_unchanged(client, app):
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        config = HarborPayPalConfig.get_config()
+        config.mode = "sandbox"
+        config.client_id = "existing-client"
+        config.client_secret = "encrypted-existing-secret"
+        db.session.commit()
+
+    response = client.post(
+        "/admin/paypal/config",
+        data={
+            "mode": "sandbox",
+            "client_id": "existing-client",
+            "client_secret": "",
+            "webhook_id": "webhook-1",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        config = HarborPayPalConfig.get_config()
+        assert config.client_id == "existing-client"
+        assert config.client_secret == "encrypted-existing-secret"
+        assert config.webhook_id == "webhook-1"
+
+
+def test_paypal_config_requires_new_secret_when_mode_changes(client, app):
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=True,
+    )
+    with app.app_context():
+        config = HarborPayPalConfig.get_config()
+        config.mode = "sandbox"
+        config.client_id = "sandbox-client"
+        config.client_secret = "encrypted-sandbox-secret"
+        db.session.commit()
+
+    response = client.post(
+        "/admin/paypal/config",
+        data={"mode": "live", "client_id": "live-client", "client_secret": ""},
+        follow_redirects=True,
+    )
+
+    assert b"required for new credentials or a mode change" in response.data
+    with app.app_context():
+        config = HarborPayPalConfig.get_config()
+        assert config.mode == "sandbox"
+        assert config.client_id == "sandbox-client"
 
 
 def test_subscription_csv_export_uses_subscription_fields(client, app):

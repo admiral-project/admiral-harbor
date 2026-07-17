@@ -1696,13 +1696,22 @@ def paypal_config():
             flash("PayPal mode must be sandbox or live.", "error")
             return redirect(url_for("admin.paypal_config"))
 
-        if not client_id or not client_secret:
-            flash("Client ID and Client Secret are required.", "error")
+        secret_required = (
+            not config.client_secret
+            or mode != config.mode
+            or client_id != config.client_id
+        )
+        if not client_id or (secret_required and not client_secret):
+            flash(
+                "Client ID and Client Secret are required for new credentials or a mode change.",
+                "error",
+            )
             return redirect(url_for("admin.paypal_config"))
 
         config.mode = mode
         config.client_id = client_id
-        config.client_secret = ext_secrets.encrypt(client_secret)
+        if client_secret:
+            config.client_secret = ext_secrets.encrypt(client_secret)
         config.webhook_id = webhook_id or None
 
         db.session.add(
