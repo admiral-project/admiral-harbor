@@ -1684,9 +1684,7 @@ def paypal_config():
     """Configure PayPal credentials."""
     from app.extensions import secrets as ext_secrets
 
-    config = HarborPayPalConfig.get_config(
-        default_mode=current_app.config.get("HARBOR_PAYPAL_MODE", "mock")
-    )
+    config = HarborPayPalConfig.get_config(default_mode=current_app.config.get("HARBOR_PAYPAL_MODE", "mock"))
 
     if request.method == "POST":
         mode = request.form.get("mode", "sandbox").strip()
@@ -1698,11 +1696,7 @@ def paypal_config():
             flash("PayPal mode must be sandbox or live.", "error")
             return redirect(url_for("admin.paypal_config"))
 
-        secret_required = (
-            not config.client_secret
-            or mode != config.mode
-            or client_id != config.client_id
-        )
+        secret_required = not config.client_secret or mode != config.mode or client_id != config.client_id
         if not client_id or (secret_required and not client_secret):
             flash(
                 "Client ID and Client Secret are required for new credentials or a mode change.",

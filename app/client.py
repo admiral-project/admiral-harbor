@@ -810,11 +810,7 @@ def deploy_app(slug):
         .one_or_none()
     )
     paypal_plan_id = local_tier.paypal_plan_id if local_tier else ""
-    if (
-        requires_billing
-        and not is_mock_mode()
-        and not paypal_plan_id
-    ):
+    if requires_billing and not is_mock_mode() and not paypal_plan_id:
         flash("PayPal plan is not configured for this tier.", "error")
         return redirect(url_for("main.app_detail", slug=slug))
 
@@ -915,9 +911,7 @@ def deploy_app(slug):
 def accept_fiscal_terms():
     customer = current_customer()
     gate = fiscal_gate(customer)
-    next_url = _local_redirect_target(
-        request.form.get("next"), url_for("client.dashboard")
-    )
+    next_url = _local_redirect_target(request.form.get("next"), url_for("client.dashboard"))
     if not gate["configured"]:
         return redirect(next_url)
     if request.form.get("accept_mandatory") != "on":
