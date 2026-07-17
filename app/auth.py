@@ -353,7 +353,7 @@ def register():
     return redirect(url_for("auth.login_page"))
 
 
-@bp.route("/confirm/<token>", methods=["GET"])
+@bp.route("/confirm/<token>", methods=["GET", "POST"])
 def confirm_email(token):
     token = (token or "").strip()
     if not token:
@@ -374,6 +374,9 @@ def confirm_email(token):
             "error",
         )
         return redirect(url_for("auth.login_page"))
+
+    if request.method == "GET":
+        return render_template("confirm_email.html", customer=customer, token=token)
 
     customer.email_confirmed_at = datetime.now(UTC)
     customer.email_confirmation_token_hash = None

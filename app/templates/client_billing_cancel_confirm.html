@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}Cancel checkout - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="form-page">
+ <section class="panel form-panel">
+  <h1>Cancel PayPal checkout</h1>
+  <p class="meta">Confirm that you want to cancel this checkout.</p>
+  <form method="post" action="{{ url_for('client.billing_cancel') }}" class="stack">
+   <input type="hidden" name="order_id" value="{{ order.order_id }}">
+   <button class="primary" type="submit">Cancel checkout</button>
+  </form>
+  <a class="secondary" href="{{ url_for('client.billing') }}">Return to billing</a>
+ </section>
+</section>
+{% endblock %}

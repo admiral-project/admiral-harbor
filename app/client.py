@@ -228,26 +228,46 @@ def _event(instance_id, customer_email, event_type, message):
 
 def _provision_from_order(order):
     customer = db.session.query(Customer).filter_by(email=order.customer_email).one()
-    subscription = Subscription(
-        customer_email=order.customer_email,
-        app_slug=order.app_slug,
-        status="paid",
-        monthly_price_cents=order.monthly_price_cents,
-        tier_name=order.tier_name,
-        requires_billing=order.requires_billing,
-        next_billing_at=order.next_billing_at or (datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
-        billing_email=order.billing_email or order.customer_email,
-        tax_percent=order.tax_percent,
-        tax_cents=order.tax_cents,
-        fiscal_adjustment_cents=order.fiscal_adjustment_cents,
-        total_cents=order.total_cents,
-        fiscal_country_code=order.fiscal_country_code,
-        fiscal_snapshot_json=order.fiscal_snapshot_json,
-        paypal_subscription_id=order.paypal_subscription_id,
-        paypal_plan_id=order.paypal_plan_id,
-    )
-    db.session.add(subscription)
-    db.session.flush()
+    subscription = None
+    if order.subscription_external_id:
+        subscription = (
+            db.session.query(Subscription)
+            .filter_by(external_id=order.subscription_external_id)
+            .with_for_update()
+            .one_or_none()
+        )
+    if subscription is None and order.paypal_subscription_id:
+        subscription = (
+            db.session.query(Subscription)
+            .filter_by(paypal_subscription_id=order.paypal_subscription_id)
+            .with_for_update()
+            .one_or_none()
+        )
+
+    if subscription is not None and subscription.instance_id:
+        return subscription.instance_id, subscription, []
+
+    if subscription is None:
+        subscription = Subscription(
+            customer_email=order.customer_email,
+            app_slug=order.app_slug,
+            status="paid",
+            monthly_price_cents=order.monthly_price_cents,
+            tier_name=order.tier_name,
+            requires_billing=order.requires_billing,
+            next_billing_at=order.next_billing_at or (datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
+            billing_email=order.billing_email or order.customer_email,
+            tax_percent=order.tax_percent,
+            tax_cents=order.tax_cents,
+            fiscal_adjustment_cents=order.fiscal_adjustment_cents,
+            total_cents=order.total_cents,
+            fiscal_country_code=order.fiscal_country_code,
+            fiscal_snapshot_json=order.fiscal_snapshot_json,
+            paypal_subscription_id=order.paypal_subscription_id,
+            paypal_plan_id=order.paypal_plan_id,
+        )
+        db.session.add(subscription)
+        db.session.flush()
 
     response = admiral_client.provision_app(order.app_slug, order.tier_name, customer.public_id)
     credentials = response.get("credentials", [])
@@ -551,14 +571,19 @@ def billing():
     )
 
 
-@bp.route("/billing/return")
+@bp.route("/billing/return", methods=["POST"])
 @login_required
 @customer_required
 def billing_return():
     customer = current_customer()
-    order_id = request.args.get("order_id", "")
-    token = request.args.get("token", "").strip()
-    order = db.session.query(Order).filter_by(order_id=order_id, customer_email=customer.email).one_or_none()
+    order_id = request.form.get("order_id", "")
+    token = request.form.get("token", "").strip()
+    order = (
+        db.session.query(Order)
+        .filter_by(order_id=order_id, customer_email=customer.email)
+        .with_for_update()
+        .one_or_none()
+    )
     if order is None:
         flash("Order not found.", "error")
         return redirect(url_for("client.billing"))
@@ -592,34 +617,44 @@ def billing_return():
                 flash(f"Provisioning failed: {exc}", "error")
                 return redirect(url_for("client.billing"))
 
-            invoice = Invoice(
-                subscription_external_id=subscription.external_id,
-                customer_email=customer.email,
-                app_slug=order.app_slug,
-                tier_name=order.tier_name,
-                subtotal_cents=order.monthly_price_cents,
-                tax_percent=order.tax_percent,
-                tax_cents=order.tax_cents,
-                fiscal_adjustment_cents=order.fiscal_adjustment_cents,
-                total_cents=order.total_cents,
-                fiscal_country_code=order.fiscal_country_code,
-                fiscal_snapshot_json=order.fiscal_snapshot_json,
-                status="paid",
-                paypal_transaction_id=order.paypal_subscription_id,
-                period_start=order.next_billing_at,
-                period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
+            existing_invoice = (
+                db.session.query(Invoice)
+                .filter_by(subscription_external_id=subscription.external_id, status="paid")
+                .first()
             )
-            db.session.add(invoice)
-            payment = Payment(
-                order_id=order.order_id,
-                subscription_external_id=subscription.external_id,
-                customer_email=customer.email,
-                provider="paypal",
-                provider_reference=order.paypal_subscription_id,
-                amount_cents=order.total_cents,
-                status="completed",
-            )
-            db.session.add(payment)
+            if existing_invoice is None:
+                db.session.add(
+                    Invoice(
+                        subscription_external_id=subscription.external_id,
+                        customer_email=customer.email,
+                        app_slug=order.app_slug,
+                        tier_name=order.tier_name,
+                        subtotal_cents=order.monthly_price_cents,
+                        tax_percent=order.tax_percent,
+                        tax_cents=order.tax_cents,
+                        fiscal_adjustment_cents=order.fiscal_adjustment_cents,
+                        total_cents=order.total_cents,
+                        fiscal_country_code=order.fiscal_country_code,
+                        fiscal_snapshot_json=order.fiscal_snapshot_json,
+                        status="paid",
+                        paypal_transaction_id=order.paypal_subscription_id,
+                        period_start=order.next_billing_at,
+                        period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
+                    )
+                )
+            existing_payment = db.session.query(Payment).filter_by(order_id=order.order_id, status="completed").first()
+            if existing_payment is None:
+                db.session.add(
+                    Payment(
+                        order_id=order.order_id,
+                        subscription_external_id=subscription.external_id,
+                        customer_email=customer.email,
+                        provider="paypal",
+                        provider_reference=order.paypal_subscription_id,
+                        amount_cents=order.total_cents,
+                        status="completed",
+                    )
+                )
             db.session.commit()
             _audit(
                 customer.email,
@@ -641,13 +676,32 @@ def billing_return():
     return redirect(url_for("client.dashboard"))
 
 
-@bp.route("/billing/cancel")
+@bp.route("/billing/return/confirm")
+@login_required
+@customer_required
+def billing_return_confirm():
+    customer = current_customer()
+    order_id = request.args.get("order_id", "")
+    token = request.args.get("token", "")
+    order = db.session.query(Order).filter_by(order_id=order_id, customer_email=customer.email).one_or_none()
+    if order is None:
+        flash("Order not found.", "error")
+        return redirect(url_for("client.billing"))
+    return render_template("client_billing_return_confirm.html", order=order, token=token)
+
+
+@bp.route("/billing/cancel", methods=["POST"])
 @login_required
 @customer_required
 def billing_cancel():
     customer = current_customer()
-    order_id = request.args.get("order_id", "")
-    order = db.session.query(Order).filter_by(order_id=order_id, customer_email=customer.email).one_or_none()
+    order_id = request.form.get("order_id", "")
+    order = (
+        db.session.query(Order)
+        .filter_by(order_id=order_id, customer_email=customer.email)
+        .with_for_update()
+        .one_or_none()
+    )
     if order is None:
         flash("Order not found.", "error")
         return redirect(url_for("client.billing"))
@@ -655,6 +709,19 @@ def billing_cancel():
     db.session.commit()
     flash("PayPal checkout cancelled.", "info")
     return redirect(url_for("client.billing"))
+
+
+@bp.route("/billing/cancel/confirm")
+@login_required
+@customer_required
+def billing_cancel_confirm():
+    customer = current_customer()
+    order_id = request.args.get("order_id", "")
+    order = db.session.query(Order).filter_by(order_id=order_id, customer_email=customer.email).one_or_none()
+    if order is None:
+        flash("Order not found.", "error")
+        return redirect(url_for("client.billing"))
+    return render_template("client_billing_cancel_confirm.html", order=order)
 
 
 @bp.route("/billing/receipt/<invoice_id>")
@@ -761,8 +828,8 @@ def deploy_app(slug):
     if requires_billing:
         try:
             plan_id = paypal_plan_id or f"{slug}:{tier_name}"
-            return_url = url_for("client.billing_return", order_id=order.order_id, _external=True)
-            cancel_url = url_for("client.billing_cancel", order_id=order.order_id, _external=True)
+            return_url = url_for("client.billing_return_confirm", order_id=order.order_id, _external=True)
+            cancel_url = url_for("client.billing_cancel_confirm", order_id=order.order_id, _external=True)
             paypal_sub = create_subscription(
                 plan_id,
                 return_url,

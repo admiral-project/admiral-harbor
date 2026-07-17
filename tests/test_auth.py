@@ -139,6 +139,8 @@ def test_confirm_email_success(client, app):
         db.session.commit()
 
     response = client.get(f"/auth/confirm/{token}")
+    assert response.status_code == 200
+    response = client.post(f"/auth/confirm/{token}")
     assert response.status_code == 302
 
     with app.app_context():

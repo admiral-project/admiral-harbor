@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from app import create_app
 from app.extensions import db
-from app.models import Invoice, Order, Payment, Subscription
+from app.models import CustomerApp, Invoice, Order, Payment, Subscription
 from app.paypal import create_subscription
 
 
@@ -211,8 +211,9 @@ def test_paypal_return_live_marks_order_approved_without_provision(client, monke
     )
 
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
-    response = client.get(
+    response = client.post(
         f"/client/billing/return?order_id={order_id}&token=sub_123",
+        data={"order_id": order_id, "token": "sub_123"},
         follow_redirects=False,
     )
     assert response.status_code in {302, 303}
@@ -222,6 +223,48 @@ def test_paypal_return_live_marks_order_approved_without_provision(client, monke
         assert stored.status == "approved"
         assert db.session.query(Invoice).count() == 0
         assert db.session.query(Payment).count() == 0
+
+
+def test_billing_state_changes_reject_get(client):
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+
+    assert client.get("/client/billing/return").status_code == 405
+    assert client.get("/client/billing/cancel").status_code == 405
+
+
+def test_provision_from_order_is_idempotent(client, app, monkeypatch):
+    from app.client import _provision_from_order
+
+    calls = []
+
+    def provision(app_slug, tier_name, customer_id):
+        calls.append((app_slug, tier_name, customer_id))
+        return {"credentials": [], "operation_id": "op_once"}
+
+    monkeypatch.setattr("app.client.admiral_client.provision_app", provision)
+    monkeypatch.setattr("app.client.admiral_client.get_operation", lambda operation_id: {"instance_id": "inst_once"})
+    with app.app_context():
+        order = Order(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            tier_name="starter",
+            monthly_price_cents=2500,
+            tax_percent=0,
+            tax_cents=0,
+            total_cents=2500,
+            requires_billing=True,
+            status="pending_payment",
+            paypal_subscription_id="idempotent-sub",
+        )
+        db.session.add(order)
+        db.session.commit()
+
+        first = _provision_from_order(order)
+        second = _provision_from_order(order)
+
+        assert first[0] == second[0] == "inst_once"
+        assert len(calls) == 1
+        assert db.session.query(CustomerApp).filter_by(instance_id="inst_once").count() == 1
 
 
 def test_mock_paypal_approve_requires_mock_mode(client, app):
@@ -253,6 +296,11 @@ def test_mock_paypal_approve_redirects_same_origin_return_url(client, app):
         "/mock-paypal/approve?subscription_id=sub_123&return_url=https://localhost:5000/billing/return"
     )
 
+    assert response.status_code == 200
+    response = client.post(
+        "/mock-paypal/approve",
+        data={"subscription_id": "sub_123", "return_url": "https://localhost:5000/billing/return"},
+    )
     assert response.status_code in {302, 303}
     assert response.headers["Location"] == "https://localhost:5000/billing/return?token=sub_123"
 

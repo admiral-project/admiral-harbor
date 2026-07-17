@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Confirm payment - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="form-page">
+ <section class="panel form-panel">
+  <h1>Confirm PayPal payment</h1>
+  <p class="meta">Review the payment result before Harbor provisions this application.</p>
+  <form method="post" action="{{ url_for('client.billing_return') }}" class="stack">
+   <input type="hidden" name="order_id" value="{{ order.order_id }}">
+   <input type="hidden" name="token" value="{{ token }}">
+   <button class="primary" type="submit">Confirm payment</button>
+  </form>
+  <a class="secondary" href="{{ url_for('client.billing') }}">Return to billing</a>
+ </section>
+</section>
+{% endblock %}

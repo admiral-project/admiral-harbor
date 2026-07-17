@@ -325,10 +325,10 @@ def paypal_webhook():
     if not event_id or not subscription_id:
         return jsonify({"error": "invalid webhook payload"}), 400
 
-    # Use SELECT FOR UPDATE to serialise concurrent webhooks for the same
-    # subscription. The BillingEvent duplicate check must happen inside
-    # this locked section to prevent race conditions between concurrent
-    # webhooks with the same event_id.
+    # Lock the order before looking up the subscription. The browser return
+    # path takes the same lock, so return + webhook cannot both provision an
+    # instance for one checkout.
+    order = db.session.query(Order).filter_by(paypal_subscription_id=subscription_id).with_for_update().one_or_none()
     subscription = (
         db.session.query(Subscription).filter_by(paypal_subscription_id=subscription_id).with_for_update().one_or_none()
     )
@@ -339,7 +339,6 @@ def paypal_webhook():
         db.session.commit()
         return jsonify({"status": "duplicate"}), 200
 
-    order = db.session.query(Order).filter_by(paypal_subscription_id=subscription_id).one_or_none()
     status = subscription.status
     if event_type in {"BILLING.SUBSCRIPTION.ACTIVATED", "PAYMENT.SALE.COMPLETED"}:
         status = "active"
@@ -468,19 +467,27 @@ def paypal_webhook():
     return jsonify({"status": status})
 
 
-@bp.route("/mock-paypal/approve")
+@bp.route("/mock-paypal/approve", methods=["GET", "POST"])
 def mock_paypal_approve():
     if current_app.config.get("HARBOR_PAYPAL_MODE", "mock") != "mock":
         return jsonify({"error": "not found"}), 404
 
-    subscription_id = request.args.get("subscription_id", "")
-    return_url = request.args.get("return_url", "")
+    values = request.args if request.method == "GET" else request.form
+    subscription_id = values.get("subscription_id", "")
+    return_url = values.get("return_url", "")
     if not return_url or not subscription_id:
         return jsonify({"error": "missing subscription_id or return_url"}), 400
 
     external_url = current_app.config.get("HARBOR_EXTERNAL_URL", "")
     if not external_url or not _same_origin(return_url, external_url):
         return jsonify({"error": "invalid return_url"}), 400
+
+    if request.method == "GET":
+        return render_template(
+            "mock_paypal_approve.html",
+            subscription_id=subscription_id,
+            return_url=return_url,
+        )
 
     parsed = list(urlparse(return_url))
     query = dict(parse_qs(parsed[4]))

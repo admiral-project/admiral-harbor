@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}Mock PayPal approval - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="form-page">
+ <section class="panel form-panel">
+  <h1>Approve mock PayPal subscription</h1>
+  <p class="meta">This approval page is available only in mock PayPal mode.</p>
+  <form method="post" action="{{ url_for('main.mock_paypal_approve') }}" class="stack">
+   <input type="hidden" name="subscription_id" value="{{ subscription_id }}">
+   <input type="hidden" name="return_url" value="{{ return_url }}">
+   <button class="primary" type="submit">Approve subscription</button>
+  </form>
+ </section>
+</section>
+{% endblock %}

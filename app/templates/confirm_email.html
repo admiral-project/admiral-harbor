@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block title %}Confirm email - {{ portal_name }}{% endblock %}
+{% block body %}
+<section class="form-page">
+ <section class="panel form-panel">
+  <h1>Confirm your email</h1>
+  <p class="meta">Confirm the email address for {{ customer.email }}.</p>
+  <form method="post" action="{{ url_for('auth.confirm_email', token=token) }}" class="stack">
+   <button class="primary" type="submit">Confirm email</button>
+  </form>
+ </section>
+</section>
+{% endblock %}
