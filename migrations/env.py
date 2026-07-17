@@ -1,24 +1,9 @@
 import sys
-from typing import Sequence, Union
 from logging.config import fileConfig
 
 from alembic import context
 from alembic.config import Config as AlembicConfig
 from sqlalchemy import engine_from_config, pool
-
-revision: str = "0"
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
-
-
-def upgrade() -> None:
-    pass
-
-
-def downgrade() -> None:
-    pass
-
 
 config = getattr(context, "config", None) or AlembicConfig()
 
