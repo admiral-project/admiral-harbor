@@ -44,6 +44,15 @@ logging.basicConfig(
 log = logging.getLogger("worker")
 
 
+def _run_worker_step(name, step):
+    """Run one reconciliation step without blocking later steps on failure."""
+    try:
+        return step()
+    except Exception:  # pragma: no cover - exercised through worker integration
+        log.exception("Worker step failed: %s", name)
+        return 0, 1
+
+
 def _generate_invoices(app):
     from app.paypal import PayPalError, get_subscription as paypal_get_sub
 
@@ -516,27 +525,33 @@ def main():
         total_actions = 0
         total_errors = 0
 
-        gi, ge = _generate_invoices(app)
+        gi, ge = _run_worker_step("generate_invoices", lambda: _generate_invoices(app))
         total_actions += gi
         total_errors += ge
 
-        pa, pe = _enforce_payment_policy(app)
+        pa, pe = _run_worker_step("enforce_payment_policy", lambda: _enforce_payment_policy(app))
         total_actions += pa
         total_errors += pe
 
-        ra, re = _reconcile_paypal_subscriptions(app)
+        ra, re = _run_worker_step(
+            "reconcile_paypal_subscriptions",
+            lambda: _reconcile_paypal_subscriptions(app),
+        )
         total_actions += ra
         total_errors += re
 
-        oa, oe = _reconcile_operations(app)
+        oa, oe = _run_worker_step("reconcile_operations", lambda: _reconcile_operations(app))
         total_actions += oa
         total_errors += oe
 
-        sa, se = _sync_remote_instances(app)
+        sa, se = _run_worker_step("sync_remote_instances", lambda: _sync_remote_instances(app))
         total_actions += sa
         total_errors += se
 
-        sfa, sfe = _reconcile_setup_failed(app)
+        sfa, sfe = _run_worker_step(
+            "reconcile_setup_failed",
+            lambda: _reconcile_setup_failed(app),
+        )
         total_actions += sfa
         total_errors += sfe
 
