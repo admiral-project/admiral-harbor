@@ -169,3 +169,187 @@ def test_profile_update(client, app):
         c = Customer.query.filter_by(email="user@example.com").first()
         assert c.display_name == "Updated Name"
         assert c.country == "US"
+
+
+def test_auth_confirmation_expired_helper(app):
+    from app.auth import _confirmation_is_expired
+
+    with app.app_context():
+        c = Customer(email="exp@test.com", display_name="Exp")
+        assert _confirmation_is_expired(c) is True
+
+
+def test_send_confirmation_email_no_host(app):
+    from app.auth import _send_confirmation_email
+
+    app.config["HARBOR_SMTP_HOST"] = ""
+    with app.app_context():
+        c = Customer(email="exp@test.com", display_name="Exp")
+        assert _send_confirmation_email(c, "token") is False
+
+
+def test_send_confirmation_email_with_ssl(app):
+    from app.auth import _send_confirmation_email
+
+    app.config["HARBOR_SMTP_HOST"] = "localhost"
+    app.config["HARBOR_SMTP_USE_SSL"] = True
+    app.config["HARBOR_SMTP_PORT"] = 465
+    with app.test_request_context():
+        c = Customer(email="exp@test.com", display_name="Exp")
+        with patch("smtplib.SMTP_SSL"):
+            assert _send_confirmation_email(c, "token") is True
+
+
+def test_send_confirmation_email_with_tls(app):
+    from app.auth import _send_confirmation_email
+
+    app.config["HARBOR_SMTP_HOST"] = "localhost"
+    app.config["HARBOR_SMTP_USE_SSL"] = False
+    app.config["HARBOR_SMTP_USE_TLS"] = True
+    app.config["HARBOR_SMTP_PORT"] = 587
+    with app.test_request_context():
+        c = Customer(email="exp@test.com", display_name="Exp")
+        with patch("smtplib.SMTP"):
+            assert _send_confirmation_email(c, "token") is True
+
+
+def test_login_rate_limiter(client):
+    from app.auth import login_limiter
+
+    login_limiter.reset("127.0.0.1")
+    # Exceed limit
+    for _ in range(6):
+        client.post("/auth/login", json={"email": "wrong@example.com", "password": "wrong"})
+    response = client.post("/auth/login", json={"email": "wrong@example.com", "password": "wrong"})
+    assert response.status_code == 429
+
+
+def test_register_rate_limiter(client):
+    from app.auth import register_limiter
+
+    register_limiter.reset("127.0.0.1")
+    # Exceed limit (max 3)
+    for _ in range(4):
+        client.post("/auth/register", json={"email": "wrong@example.com", "password": "wrong"})
+    response = client.post("/auth/register", json={"email": "wrong@example.com", "password": "wrong"})
+    assert response.status_code == 429
+
+
+def test_login_form_and_failures(client, app):
+    # Form post failure
+    response = client.post(
+        "/auth/login", data={"email": "nonexistent@test.com", "password": "pass"}, follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert b"Invalid credentials" in response.data
+
+    # Form post missing
+    response = client.post("/auth/login", data={"email": "nonexistent@test.com"}, follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Email and password are required" in response.data
+
+
+def test_login_account_pending_rejected(client, app):
+    with app.app_context():
+        # Create a pending customer
+        p = Customer(
+            email="pending@test.com",
+            display_name="Pending",
+            password_hash=Customer.query.filter_by(email="user@example.com").one().password_hash,
+            signup_status="pending",
+        )
+        # Create a rejected customer
+        r = Customer(
+            email="rejected@test.com",
+            display_name="Rejected",
+            password_hash=Customer.query.filter_by(email="user@example.com").one().password_hash,
+            signup_status="rejected",
+        )
+        db.session.add(p)
+        db.session.add(r)
+        db.session.commit()
+
+    # Login rejected html
+    response = client.post(
+        "/auth/login", data={"email": "rejected@test.com", "password": "secret"}, follow_redirects=True
+    )
+    assert b"rejected" in response.data
+
+    # Login rejected json
+    response = client.post("/auth/login", json={"email": "rejected@test.com", "password": "secret"})
+    assert response.status_code == 403
+
+
+def test_register_html_fails(client):
+    response = client.post("/auth/register", data={"email": "test@test.com"}, follow_redirects=True)
+    assert b"required" in response.data
+
+
+def test_register_duplicate_html(client):
+    response = client.post(
+        "/auth/register",
+        data={
+            "display_name": "Duplicate",
+            "email": "user@example.com",
+            "password": "valid-customer-password",
+            "accept_terms": "on",
+        },
+        follow_redirects=True,
+    )
+    assert b"Customer already exists" in response.data
+
+
+def test_confirm_email_edge_cases(client, app):
+    from app.auth import _token_hash
+
+    with app.app_context():
+        r = Customer(
+            email="rej_confirm@test.com",
+            display_name="Rej",
+            password_hash="some-hash",
+            signup_status="rejected",
+            email_confirmation_token_hash=_token_hash("rej_token"),
+        )
+        db.session.add(r)
+        db.session.commit()
+
+    # Conf missing token
+    response = client.get("/auth/confirm/%20", follow_redirects=True)
+    assert b"missing" in response.data
+
+    # Conf rejected customer
+    response = client.get("/auth/confirm/rej_token", follow_redirects=True)
+    assert b"rejected" in response.data
+
+
+def test_logout_json(client):
+    response = client.post("/auth/logout", headers={"Accept": "application/json"})
+    assert response.json == {"status": "logged_out"}
+
+
+def test_profile_password_update(client, app):
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+
+    # Weak password
+    response = client.post(
+        "/auth/profile",
+        data={"display_name": "Updated Name", "new_password": "weak", "current_password": "secret"},
+        follow_redirects=True,
+    )
+    assert b"at least 12" in response.data
+
+    # Correct update
+    response = client.post(
+        "/auth/profile",
+        data={"display_name": "Updated Name", "new_password": "new-valid-password-123", "current_password": "secret"},
+        follow_redirects=True,
+    )
+    assert b"Profile updated" in response.data
+
+    # Wrong current password
+    response = client.post(
+        "/auth/profile",
+        data={"display_name": "Updated Name", "new_password": "new-valid-password-456", "current_password": "wrong"},
+        follow_redirects=True,
+    )
+    assert b"incorrect" in response.data

@@ -573,3 +573,283 @@ def test_paypal_webhook_rejects_stale_transmission(client):
     )
     assert response.status_code == 400
     assert "stale" in response.json["error"]
+
+
+def test_ready_endpoint_healthy(client, monkeypatch):
+    from app import admiral_client
+
+    monkeypatch.setattr(admiral_client, "_request", lambda *a, **kw: {"status": "ok"})
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+
+
+def test_ready_endpoint_degraded(client, monkeypatch):
+    from app import admiral_client
+
+    def fail_request(*args, **kwargs):
+        raise RuntimeError("admirald is down")
+
+    monkeypatch.setattr(admiral_client, "_request", fail_request)
+
+    response = client.get("/ready")
+    assert response.status_code == 503
+    assert response.json["status"] == "degraded"
+    assert "admirald: unavailable" in response.json["error"]
+
+
+def test_ready_endpoint_forbidden(client):
+    response = client.get(
+        "/ready",
+        environ_overrides={"REMOTE_ADDR": "198.51.100.10"},
+    )
+    assert response.status_code == 403
+
+
+def test_portal_asset_invalid(client):
+    response = client.get("/branding/invalid_asset")
+    assert response.status_code == 404
+
+
+def test_portal_asset_logo_fallback(client):
+    response = client.get("/branding/logo")
+    assert response.status_code == 200
+
+
+def test_portal_asset_favicon_fallback(client):
+    response = client.get("/branding/favicon")
+    assert response.status_code == 200
+
+
+def test_catalog_asset_empty_or_invalid(client):
+    response = client.get("/catalog-assets/%20/filename.png")
+    assert response.status_code == 404
+    response = client.get("/catalog-assets/gitea/nonexistent.png")
+    assert response.status_code == 404
+
+
+def test_api_download_uploaded_backup_unauthorized(client):
+    response = client.get("/api/v1/backups/uploads/bk_123/download", headers={"X-Admiral-Token": "bad-token"})
+    assert response.status_code == 401
+
+
+def test_api_download_uploaded_backup_not_found(client):
+    response = client.get("/api/v1/backups/uploads/bk_123/download", headers={"X-Admiral-Token": "test-token"})
+    assert response.status_code == 404
+
+
+def test_api_download_uploaded_backup_success(client, app):
+    from app.models import UploadedBackup
+    import tempfile
+    from pathlib import Path
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_file.write(b"backup-content")
+    temp_file.close()
+
+    with app.app_context():
+        ub = UploadedBackup(
+            backup_id="bk_exists",
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            stored_path=temp_file.name,
+            original_filename="my-backup.zip",
+            size_bytes=14,
+            checksum_sha256="somechecksum",
+        )
+        db.session.add(ub)
+        db.session.commit()
+
+    response = client.get("/api/v1/backups/uploads/bk_exists/download", headers={"X-Admiral-Token": "test-token"})
+    assert response.status_code == 200
+    assert response.data == b"backup-content"
+
+    Path(temp_file.name).unlink()
+
+
+def test_webhook_transmission_is_fresh_edge_cases(app):
+    from app.portal import _webhook_transmission_is_fresh
+
+    app.config["HARBOR_PAYPAL_MODE"] = "live"
+    with app.app_context():
+        # Missing transmission time
+        assert _webhook_transmission_is_fresh({}) is False
+        # Stale time
+        assert _webhook_transmission_is_fresh({"PAYPAL-TRANSMISSION-TIME": "2000-01-01T00:00:00Z"}) is False
+        # Empty/invalid time string
+        assert _webhook_transmission_is_fresh({"PAYPAL-TRANSMISSION-TIME": "invalid"}) is False
+
+
+def test_same_origin_helper():
+    from app.portal import _same_origin
+
+    assert _same_origin("https://localhost:5000", "https://localhost:5000/path") is True
+    assert _same_origin("https://localhost:5000", "https://otherhost:5000/path") is False
+
+
+def test_paypal_webhook_invalid_payload(client):
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={"id": ""},
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+    assert response.status_code == 400
+
+
+def test_paypal_webhook_not_found(client):
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={
+            "id": "evt_not_found",
+            "event_type": "BILLING.SUBSCRIPTION.CANCELLED",
+            "resource": {"id": "sub_not_found"},
+        },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+    assert response.status_code == 404
+
+
+def test_paypal_webhook_cancelled(client, app):
+    with app.app_context():
+        sub = Subscription(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            status="active",
+            monthly_price_cents=2500,
+            tier_name="starter",
+            paypal_subscription_id="sub_cancel_me",
+            tax_percent=0,
+            tax_cents=0,
+            fiscal_adjustment_cents=0,
+            total_cents=2500,
+        )
+        db.session.add(sub)
+        db.session.commit()
+
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={"id": "evt_cancel", "event_type": "BILLING.SUBSCRIPTION.CANCELLED", "resource": {"id": "sub_cancel_me"}},
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+    assert response.status_code == 200
+
+    with app.app_context():
+        updated_sub = db.session.query(Subscription).filter_by(paypal_subscription_id="sub_cancel_me").one()
+        assert updated_sub.status == "cancelled"
+
+
+def test_paypal_webhook_past_due_and_disputes(client, app):
+    with app.app_context():
+        sub = Subscription(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            status="active",
+            monthly_price_cents=2500,
+            tier_name="starter",
+            paypal_subscription_id="sub_dispute_me",
+            tax_percent=0,
+            tax_cents=0,
+            fiscal_adjustment_cents=0,
+            total_cents=2500,
+        )
+        db.session.add(sub)
+        db.session.commit()
+
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={"id": "evt_dispute", "event_type": "CUSTOMER.DISPUTE.CREATED", "resource": {"id": "sub_dispute_me"}},
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+    assert response.status_code == 200
+
+    with app.app_context():
+        updated_sub = db.session.query(Subscription).filter_by(paypal_subscription_id="sub_dispute_me").one()
+        assert updated_sub.status == "past_due"
+
+
+def test_paypal_webhook_duplicate(client, app):
+    with app.app_context():
+        sub = Subscription(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            status="active",
+            monthly_price_cents=2500,
+            tier_name="starter",
+            paypal_subscription_id="sub_dup",
+            tax_percent=0,
+            tax_cents=0,
+            fiscal_adjustment_cents=0,
+            total_cents=2500,
+        )
+        db.session.add(sub)
+        db.session.commit()
+
+    # First delivery
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={"id": "evt_dup", "event_type": "BILLING.SUBSCRIPTION.CANCELLED", "resource": {"id": "sub_dup"}},
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+    assert response.status_code == 200
+
+    # Redelivery
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={"id": "evt_dup", "event_type": "BILLING.SUBSCRIPTION.CANCELLED", "resource": {"id": "sub_dup"}},
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+    assert response.status_code == 200
+    assert response.json["status"] == "duplicate"
+
+
+def test_paypal_webhook_provision_failure(client, app, monkeypatch):
+    from app.admiral_client import AdmiralAPIError
+
+    def fail_provision(*args, **kwargs):
+        raise AdmiralAPIError("admirald is on fire")
+
+    monkeypatch.setattr("app.client.admiral_client.provision_app", fail_provision)
+
+    with app.app_context():
+        sub = Subscription(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            status="active",
+            monthly_price_cents=2500,
+            tier_name="starter",
+            paypal_subscription_id="sub_prov_fail",
+            tax_percent=0,
+            tax_cents=0,
+            fiscal_adjustment_cents=0,
+            total_cents=2500,
+        )
+        order = Order(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            tier_name="starter",
+            monthly_price_cents=2500,
+            tax_percent=0,
+            tax_cents=0,
+            total_cents=2500,
+            requires_billing=True,
+            status="pending_payment",
+            paypal_subscription_id="sub_prov_fail",
+        )
+        db.session.add(sub)
+        db.session.add(order)
+        db.session.commit()
+
+    response = client.post(
+        "/billing/webhooks/paypal",
+        json={
+            "id": "evt_prov_fail",
+            "event_type": "PAYMENT.SALE.COMPLETED",
+            "resource": {
+                "id": "sale_prov_fail",
+                "billing_agreement_id": "sub_prov_fail",
+                "amount": {"total": "25.00", "currency": "USD"},
+            },
+        },
+        headers={"X-Admiral-Webhook-Test": "test-mock-token"},
+    )
+    assert response.status_code == 502

@@ -1389,11 +1389,14 @@ def support_create():
         return redirect(url_for("client.support_create_page"))
     if priority not in ["low", "medium", "high", "critical"]:
         priority = "medium"
+    sub = None
     if subscription_id:
         sub = db.session.get(Subscription, subscription_id)
         if not sub or sub.customer_email != customer.email:
             subscription_id = None
+            sub = None
     ticket = SupportIncident(
+        instance_id=sub.instance_id if sub else "general",
         customer_email=customer.email,
         subject=subject,
         description=description,
