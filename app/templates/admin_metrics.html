@@ -54,23 +54,20 @@
  </tr>
  </thead>
  <tbody>
- {% set prev_revenue = 0 %}
- {% for month_key in monthly_revenue | dictsort | reverse %}
+  {% for item in historical_revenue %}
  <tr>
- <td><strong>{{ monthly_revenue | list | last if loop.first else month_key }}</strong></td>
- <td>${{ "%.2f"|format(monthly_revenue[month_key]) }}</td>
+  <td><strong>{{ item.month }}</strong></td>
+  <td>${{ "%.2f"|format(item.revenue) }}</td>
  <td>
- {% if loop.first %}
+  {% if item.diff is none %}
  —
  {% else %}
- {% set diff = monthly_revenue[month_key] - prev_revenue %}
- <span style="{% if diff >= 0 %}color: #27ae60;{% else %}color: #e74c3c;{% endif %}">
- {% if diff >= 0 %}+{% endif %}${{ "%.2f"|format(diff) }}
+  <span style="{% if item.diff >= 0 %}color: #27ae60;{% else %}color: #e74c3c;{% endif %}">
+  {% if item.diff >= 0 %}+{% endif %}${{ "%.2f"|format(item.diff) }}
  </span>
  {% endif %}
  </td>
  </tr>
- {% set prev_revenue = monthly_revenue[month_key] %}
  {% endfor %}
  </tbody>
  </table>

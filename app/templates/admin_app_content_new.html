@@ -190,7 +190,7 @@
   </div>
   <div class="card" style="padding:1rem;">
    <p class="metric-label">Checksum</p>
-   <p><code style="font-size:0.7rem;">{{ app.upstream_checksum[:24] or '-' }}{% if app.upstream_checksum and app.upstream_checksum|length > 24 %}…{% endif %}</code></p>
+   <p><code style="font-size:0.7rem;">{% if app.upstream_checksum %}{{ app.upstream_checksum[:24] }}{% if app.upstream_checksum|length > 24 %}…{% endif %}{% else %}-{% endif %}</code></p>
   </div>
   <div class="card" style="padding:1rem;">
    <p class="metric-label">Última sincronización</p>

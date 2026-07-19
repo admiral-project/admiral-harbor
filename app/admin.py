@@ -548,9 +548,25 @@ def _get_sla_status(ticket):
     """
     now = datetime.now(UTC)
 
+    resolved_at = ticket.resolved_at
+    if resolved_at and resolved_at.tzinfo is None:
+        resolved_at = resolved_at.replace(tzinfo=UTC)
+
+    resolution_deadline = ticket.resolution_deadline
+    if resolution_deadline and resolution_deadline.tzinfo is None:
+        resolution_deadline = resolution_deadline.replace(tzinfo=UTC)
+
+    response_deadline = ticket.response_deadline
+    if response_deadline and response_deadline.tzinfo is None:
+        response_deadline = response_deadline.replace(tzinfo=UTC)
+
+    created_at = ticket.created_at
+    if created_at and created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=UTC)
+
     # If resolved, check if resolution deadline was met
-    if ticket.resolved_at:
-        if ticket.resolution_deadline and ticket.resolved_at > ticket.resolution_deadline:
+    if resolved_at:
+        if resolution_deadline and resolved_at > resolution_deadline:
             return {
                 "sla_status": "violated",
                 "detail": "Resolution SLA violated",
@@ -565,16 +581,16 @@ def _get_sla_status(ticket):
         }
 
     # Check response deadline
-    if ticket.response_deadline and not ticket.assigned_to:
-        if now > ticket.response_deadline:
+    if response_deadline and not ticket.assigned_to:
+        if now > response_deadline:
             return {
                 "sla_status": "violated",
                 "detail": "Response SLA violated (not assigned)",
                 "time_remaining": None,
                 "percent_used": 100,
             }
-        time_remaining = ticket.response_deadline - now
-        total_response_time = ticket.response_deadline - ticket.created_at
+        time_remaining = response_deadline - now
+        total_response_time = response_deadline - created_at
         percent_used = int(
             (total_response_time.total_seconds() - time_remaining.total_seconds())
             / total_response_time.total_seconds()
@@ -592,16 +608,16 @@ def _get_sla_status(ticket):
         }
 
     # Check resolution deadline
-    if ticket.resolution_deadline:
-        if now > ticket.resolution_deadline:
+    if resolution_deadline:
+        if now > resolution_deadline:
             return {
                 "sla_status": "violated",
                 "detail": "Resolution SLA violated",
                 "time_remaining": None,
                 "percent_used": 100,
             }
-        time_remaining = ticket.resolution_deadline - now
-        total_resolution_time = ticket.resolution_deadline - ticket.created_at
+        time_remaining = resolution_deadline - now
+        total_resolution_time = resolution_deadline - created_at
         percent_used = int(
             (total_resolution_time.total_seconds() - time_remaining.total_seconds())
             / total_resolution_time.total_seconds()
@@ -793,12 +809,14 @@ def metrics():
 
     # Revenue comparison: last 6 months
     monthly_revenue = {}
+    historical_revenue = []
+    prev_rev = None
     for i in range(5, -1, -1):
         current = month_start - timedelta(days=i * 30)
         current_month = current.replace(day=1)
         next_month = (current_month + timedelta(days=32)).replace(day=1)
 
-        revenue = (
+        revenue_cents = (
             db.session.query(func.sum(Invoice.total_cents))
             .filter(
                 Invoice.created_at >= current_month,
@@ -808,9 +826,25 @@ def metrics():
             .scalar()
             or 0
         )
-
+        rev = revenue_cents / 100
         month_key = current_month.strftime("%Y-%m")
-        monthly_revenue[month_key] = revenue / 100
+        monthly_revenue[month_key] = rev
+
+        diff = None
+        if prev_rev is not None:
+            diff = rev - prev_rev
+
+        historical_revenue.append(
+            {
+                "month": month_key,
+                "revenue": rev,
+                "diff": diff,
+            }
+        )
+        prev_rev = rev
+
+    # Reverse to list newest month first for display
+    historical_revenue.reverse()
 
     # Subscription metrics
     total_subs = db.session.query(Subscription).count()
@@ -835,6 +869,7 @@ def metrics():
         "admin_metrics.html",
         mrr_data=mrr_data,
         monthly_revenue=monthly_revenue,
+        historical_revenue=historical_revenue,
         total_subs=total_subs,
         active_subs=active_subs,
         churn_rate=churn_rate,
@@ -2041,7 +2076,10 @@ def ticket_update_status(ticket_id):
     if new_status in ["resolved", "closed"] and not ticket.resolved_at:
         ticket.resolved_at = datetime.now(UTC)
         # Check if SLA was violated
-        if ticket.resolution_deadline and ticket.resolved_at > ticket.resolution_deadline:
+        resolution_deadline = ticket.resolution_deadline
+        if resolution_deadline and resolution_deadline.tzinfo is None:
+            resolution_deadline = resolution_deadline.replace(tzinfo=UTC)
+        if resolution_deadline and ticket.resolved_at > resolution_deadline:
             ticket.sla_violated = True
 
     db.session.add(
