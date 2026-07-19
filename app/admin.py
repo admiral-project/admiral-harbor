@@ -809,12 +809,14 @@ def metrics():
 
     # Revenue comparison: last 6 months
     monthly_revenue = {}
+    historical_revenue = []
+    prev_rev = None
     for i in range(5, -1, -1):
         current = month_start - timedelta(days=i * 30)
         current_month = current.replace(day=1)
         next_month = (current_month + timedelta(days=32)).replace(day=1)
 
-        revenue = (
+        revenue_cents = (
             db.session.query(func.sum(Invoice.total_cents))
             .filter(
                 Invoice.created_at >= current_month,
@@ -824,9 +826,25 @@ def metrics():
             .scalar()
             or 0
         )
-
+        rev = revenue_cents / 100
         month_key = current_month.strftime("%Y-%m")
-        monthly_revenue[month_key] = revenue / 100
+        monthly_revenue[month_key] = rev
+
+        diff = None
+        if prev_rev is not None:
+            diff = rev - prev_rev
+
+        historical_revenue.append(
+            {
+                "month": month_key,
+                "revenue": rev,
+                "diff": diff,
+            }
+        )
+        prev_rev = rev
+
+    # Reverse to list newest month first for display
+    historical_revenue.reverse()
 
     # Subscription metrics
     total_subs = db.session.query(Subscription).count()
@@ -851,6 +869,7 @@ def metrics():
         "admin_metrics.html",
         mrr_data=mrr_data,
         monthly_revenue=monthly_revenue,
+        historical_revenue=historical_revenue,
         total_subs=total_subs,
         active_subs=active_subs,
         churn_rate=churn_rate,

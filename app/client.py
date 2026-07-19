@@ -1396,7 +1396,7 @@ def support_create():
             subscription_id = None
             sub = None
     ticket = SupportIncident(
-        instance_id=sub.instance_id if sub else "general",
+        instance_id=sub.instance_id if (sub and sub.instance_id) else "general",
         customer_email=customer.email,
         subject=subject,
         description=description,
