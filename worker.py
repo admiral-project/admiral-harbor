@@ -24,9 +24,11 @@ from sqlalchemy import delete
 from app import create_app
 from app.admiral_client import (
     AdmiralAPIError,
-    action as admiral_action,
     get_operation,
     list_customer_apps,
+)
+from app.admiral_client import (
+    action as admiral_action,
 )
 from app.extensions import db
 from app.models import (
@@ -34,8 +36,8 @@ from app.models import (
     CustomerApp,
     HarborMeta,
     Invoice,
-    RestoreRequest,
     RateLimit,
+    RestoreRequest,
     Subscription,
     WorkerLog,
 )
@@ -57,7 +59,8 @@ def _run_worker_step(name, step):
 
 
 def _generate_invoices(app):
-    from app.paypal import PayPalError, get_subscription as paypal_get_sub
+    from app.paypal import PayPalError
+    from app.paypal import get_subscription as paypal_get_sub
 
     actions = 0
     errors = 0
@@ -225,7 +228,8 @@ def _enforce_payment_policy(app):
 
 
 def _reconcile_paypal_subscriptions(app):
-    from app.paypal import PayPalError, get_subscription as paypal_get_sub
+    from app.paypal import PayPalError
+    from app.paypal import get_subscription as paypal_get_sub
 
     actions = 0
     errors = 0
@@ -455,7 +459,11 @@ def _reconcile_setup_failed(app):
     """
     from app.paypal import (
         PayPalError,
+    )
+    from app.paypal import (
         cancel_subscription as paypal_cancel,
+    )
+    from app.paypal import (
         refund_last_sale as paypal_refund,
     )
 

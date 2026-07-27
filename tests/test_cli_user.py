@@ -1,8 +1,10 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from app.cli.user import cmd_create_admin, cmd_create_customer, cmd_list, cmd_set_password, cmd_toggle_active
-from app.models import HarborAdminUser, Customer
 from app.extensions import db
+from app.models import Customer, HarborAdminUser
 
 
 def test_cmd_list_table(app):
@@ -34,9 +36,8 @@ def test_cmd_toggle_active(app):
 
 
 def test_cmd_toggle_active_not_found(app):
-    with app.app_context():
-        with pytest.raises(SystemExit):
-            cmd_toggle_active("nonexistent")
+    with app.app_context(), pytest.raises(SystemExit):
+        cmd_toggle_active("nonexistent")
 
 
 def test_cmd_set_password_success(app):

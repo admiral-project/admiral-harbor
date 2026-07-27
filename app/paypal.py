@@ -37,8 +37,8 @@ def _resolve_secret(value):
 
 def _db_paypal_config():
     """Return PayPal config from DB, falling back to env vars (current_app.config)."""
-    from app.models import HarborPayPalConfig
     from app.extensions import db
+    from app.models import HarborPayPalConfig
 
     cfg = db.session.query(HarborPayPalConfig).first()
     if cfg is not None and cfg.mode != "mock":

@@ -10,11 +10,11 @@ Usage:
   python -m cli sync --status  - Show last sync status
 """
 
-import sys
 import logging
+import sys
 
 from app import create_app
-from app.catalog_service import sync_catalog, get_last_sync, get_app_status_label
+from app.catalog_service import get_app_status_label, get_last_sync, sync_catalog
 from app.extensions import db
 from app.models import CatalogApp
 

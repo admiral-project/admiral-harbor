@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import UTC, datetime, timedelta
 import os
 import tempfile
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -30,6 +30,8 @@ from app.extensions import db
 from app.fiscal import (
     acceptance_snapshot,
     contract_snapshot,
+)
+from app.fiscal import (
     gate as fiscal_gate,
 )
 from app.identity import current_customer, customer_required, login_required
@@ -55,14 +57,16 @@ from app.models import (
     UploadedBackup,
     compute_sha256,
 )
-from app.validation import is_valid_email
 from app.paypal import (
     PayPalError,
-    cancel_subscription as paypal_cancel_subscription,
     create_subscription,
     get_subscription,
     is_mock_mode,
 )
+from app.paypal import (
+    cancel_subscription as paypal_cancel_subscription,
+)
+from app.validation import is_valid_email
 
 bp = Blueprint("client", __name__, url_prefix="/client")
 
@@ -880,7 +884,7 @@ def deploy_app(slug):
             flash(f"Cannot provision: {validation['message']}", "error")
             return redirect(url_for("main.app_detail", slug=slug))
 
-        instance_id, subscription, credentials = _provision_from_order(order)
+        instance_id, _subscription, credentials = _provision_from_order(order)
     except AdmiralAPIError as exc:
         order.status = "failed"
         db.session.commit()
@@ -1091,24 +1095,23 @@ def instance_action(instance_id):
                 )
                 return redirect(url_for("client.instance_detail", instance_id=instance_id))
             subscription = db.session.get(Subscription, instance.subscription_id)
-            if subscription:
-                if subscription.paypal_subscription_id:
-                    try:
-                        paypal_cancel_subscription(
-                            subscription.paypal_subscription_id,
-                            "Instance cancelled by customer",
-                        )
-                    except PayPalError as exc:
-                        current_app.logger.warning(
-                            "PayPal cancel failed for subscription %s: %s",
-                            subscription.paypal_subscription_id,
-                            exc,
-                        )
-                        flash(
-                            "We could not cancel the PayPal subscription. Please try again.",
-                            "error",
-                        )
-                        return redirect(url_for("client.instance_detail", instance_id=instance_id))
+            if subscription and subscription.paypal_subscription_id:
+                try:
+                    paypal_cancel_subscription(
+                        subscription.paypal_subscription_id,
+                        "Instance cancelled by customer",
+                    )
+                except PayPalError as exc:
+                    current_app.logger.warning(
+                        "PayPal cancel failed for subscription %s: %s",
+                        subscription.paypal_subscription_id,
+                        exc,
+                    )
+                    flash(
+                        "We could not cancel the PayPal subscription. Please try again.",
+                        "error",
+                    )
+                    return redirect(url_for("client.instance_detail", instance_id=instance_id))
             response = admiral_client.action(instance.instance_id, "deprovision", customer_id=customer.public_id)
             if subscription:
                 subscription.status = "cancelled"

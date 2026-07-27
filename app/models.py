@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from datetime import UTC, datetime
 from hashlib import sha256
-import logging
 from uuid import uuid4
 
 from argon2 import PasswordHasher

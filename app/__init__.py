@@ -1,32 +1,32 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import os
+from pathlib import Path
 
 from flask import Flask, request
 from flask_login import current_user
-from pathlib import Path
 from sqlalchemy import inspect
-import logging
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.admin import bp as admin_bp
-from app.branding import ensure_default_portal_settings, get_portal_branding
 from app.auth import bp as auth_bp
+from app.branding import ensure_default_portal_settings, get_portal_branding
 from app.catalog import bp as catalog_bp
 from app.client import bp as client_bp
 from app.csrf import init_csrf_protection
 from app.extensions import alembic, db, login_manager
-from app.markdown import render_markdown
-from app.secrets_manager import SecretsManager
 from app.identity import (
     check_session_idle_timeout,
     current_admin,
     current_customer,
 )
+from app.markdown import render_markdown
 from app.models import HarborAdminUser
-from app.security import init_security_headers, validate_production_config
 from app.portal import bp as main_bp
-from werkzeug.middleware.proxy_fix import ProxyFix
+from app.secrets_manager import SecretsManager
+from app.security import init_security_headers, validate_production_config
 
 logger = logging.getLogger("admiral-harbor")
 
@@ -111,7 +111,8 @@ def create_app(config_object="app.config.Config"):
 
     @app.before_request
     def _check_session_idle():
-        from flask import jsonify as _jsonify, flash as _flash
+        from flask import flash as _flash
+        from flask import jsonify as _jsonify
 
         if request.endpoint in ("static",):
             return
@@ -186,6 +187,6 @@ def create_app(config_object="app.config.Config"):
             )
 
         except Exception as e:
-            logger.error(f"Application startup failed: {str(e)}", exc_info=True)
+            logger.error(f"Application startup failed: {e!s}", exc_info=True)
 
     return app

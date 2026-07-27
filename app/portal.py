@@ -5,10 +5,8 @@ import ipaddress
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from uuid import uuid4
-
-from sqlalchemy import text
 
 from flask import (
     Blueprint,
@@ -20,13 +18,15 @@ from flask import (
     send_file,
     url_for,
 )
+from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
 from app import admiral_client
 from app.admiral_client import AdmiralAPIError
 from app.config import overdue_policy
 from app.extensions import db
-from app.fiscal import contract_snapshot, gate as fiscal_gate
+from app.fiscal import contract_snapshot
+from app.fiscal import gate as fiscal_gate
 from app.identity import current_customer
 from app.models import (
     AppCourse,
@@ -58,7 +58,7 @@ def _webhook_transmission_is_fresh(headers):
     if not value:
         return False
     try:
-        transmitted_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        transmitted_at = datetime.fromisoformat(value)
     except ValueError:
         return False
     max_age = int(current_app.config.get("HARBOR_PAYPAL_WEBHOOK_MAX_AGE_SECONDS", 300))

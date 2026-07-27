@@ -11,11 +11,9 @@ os.environ["HARBOR_DATABASE_URL"] = "sqlite://"
 import tempfile
 
 import pytest
-
 from argon2 import PasswordHasher
 
-from app import create_app
-from app import admiral_client
+from app import admiral_client, create_app
 from app.extensions import db
 from app.models import CatalogApp, Customer, CustomerApp, HarborAdminUser, Subscription
 

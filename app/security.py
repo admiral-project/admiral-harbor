@@ -3,7 +3,6 @@
 
 import logging
 import os
-from typing import Optional
 
 from flask import Flask
 
@@ -22,7 +21,7 @@ def _warn_default(name, value):
         logger.warning("%s is using a development default; set it explicitly for production", name)
 
 
-def get_required_env_var(name: str, default: Optional[str] = None, prod_mode: bool = False) -> str:
+def get_required_env_var(name: str, default: str | None = None, prod_mode: bool = False) -> str:
     value = os.environ.get(name)
     if not value:
         is_production = os.environ.get("ENV", "").lower() == "production"

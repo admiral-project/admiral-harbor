@@ -639,9 +639,10 @@ def test_api_download_uploaded_backup_not_found(client):
 
 
 def test_api_download_uploaded_backup_success(client, app):
-    from app.models import UploadedBackup
     import tempfile
     from pathlib import Path
+
+    from app.models import UploadedBackup
 
     temp_file = tempfile.NamedTemporaryFile(delete=False)
     temp_file.write(b"backup-content")

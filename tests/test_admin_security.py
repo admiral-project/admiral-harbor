@@ -1,6 +1,7 @@
-from app.models import HarborAdminUser
-from app.extensions import db
 from argon2 import PasswordHasher
+
+from app.extensions import db
+from app.models import HarborAdminUser
 
 ph = PasswordHasher()
 

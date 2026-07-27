@@ -4,12 +4,10 @@
 from unittest.mock import patch
 
 import app.admin as admin_module
+from app.admin import escape_like_pattern
 from app.admiral_client import AdmiralAPIError
 from app.extensions import db
 from app.models import HarborPayPalConfig, Subscription
-
-
-from app.admin import escape_like_pattern
 
 
 def test_customer_search_escapes_like_wildcards():
@@ -230,8 +228,9 @@ def test_paypal_webhook_idempotent(client):
 
 
 def test_sla_helpers():
-    from datetime import datetime, timedelta, UTC
-    from app.admin import _calculate_sla_deadlines, _get_sla_status, _format_timedelta
+    from datetime import UTC, datetime, timedelta
+
+    from app.admin import _calculate_sla_deadlines, _format_timedelta, _get_sla_status
     from app.models import SupportIncident
 
     # 1. _calculate_sla_deadlines
@@ -471,7 +470,7 @@ def test_fiscal_types_and_requests(client, app):
     )
     assert response.status_code == 200
 
-    from app.models import FiscalTreatmentType, CustomerFiscalRequest
+    from app.models import CustomerFiscalRequest, FiscalTreatmentType
 
     with app.app_context():
         ft = db.session.query(FiscalTreatmentType).filter_by(name="TaxFR").one()

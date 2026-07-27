@@ -2,22 +2,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
-from app.fiscal import (
-    country_code,
-    base_tax_percent,
-    active_treatments,
-    pending_requests,
-    approved_optional_treatments,
-    applies,
-    acceptance_snapshot,
-    has_accepted_current_mandatory_terms,
-    contract_snapshot,
-    gate,
-)
 from app.extensions import db
-from app.models import FiscalTreatmentType, CustomerFiscalRequest, Customer
+from app.fiscal import (
+    acceptance_snapshot,
+    active_treatments,
+    applies,
+    approved_optional_treatments,
+    base_tax_percent,
+    contract_snapshot,
+    country_code,
+    gate,
+    has_accepted_current_mandatory_terms,
+    pending_requests,
+)
+from app.models import Customer, CustomerFiscalRequest, FiscalTreatmentType
 
 
 def test_country_code():

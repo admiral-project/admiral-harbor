@@ -1,17 +1,17 @@
-from app.settings import (
-    get_setting,
-    set_setting,
-    get_all_settings,
-    set_smtp_from,
-    get_smtp_from,
-    set_external_url,
-    get_external_url,
-    set_max_backup_upload_bytes,
-    get_max_backup_upload_bytes,
-    overdue_policy_dict,
-)
-from app.models import HarborMeta
 from app.extensions import db
+from app.models import HarborMeta
+from app.settings import (
+    get_all_settings,
+    get_external_url,
+    get_max_backup_upload_bytes,
+    get_setting,
+    get_smtp_from,
+    overdue_policy_dict,
+    set_external_url,
+    set_max_backup_upload_bytes,
+    set_setting,
+    set_smtp_from,
+)
 
 
 def test_get_setting_default(app):

@@ -4,3 +4,4 @@ extend-ignore = E203, W503
 exclude = migrations/
 per-file-ignores =
     tests/conftest.py: E402
+    migrate.py: E402

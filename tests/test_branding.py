@@ -3,28 +3,29 @@
 
 import io
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 from werkzeug.datastructures import FileStorage
 
 from app.branding import (
-    get_tax_rates,
-    set_tax_rates,
-    save_portal_asset,
-    save_catalog_asset,
-    portal_asset_url,
-    get_currency,
-    get_tos_url,
-    set_portal_tos_url,
-    set_portal_currency,
-    get_portal_branding,
-    update_portal_branding,
-    ensure_default_portal_settings,
-    DEFAULT_TAX_RATES,
-    DEFAULT_PORTAL_NAME,
-    DEFAULT_PORTAL_DESCRIPTION,
     DEFAULT_CURRENCY,
+    DEFAULT_PORTAL_DESCRIPTION,
+    DEFAULT_PORTAL_NAME,
+    DEFAULT_TAX_RATES,
     TAX_RATES_KEY,
+    ensure_default_portal_settings,
+    get_currency,
+    get_portal_branding,
+    get_tax_rates,
+    get_tos_url,
+    portal_asset_url,
+    save_catalog_asset,
+    save_portal_asset,
+    set_portal_currency,
+    set_portal_tos_url,
+    set_tax_rates,
+    update_portal_branding,
 )
 from app.extensions import db
 from app.models import HarborMeta

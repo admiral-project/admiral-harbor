@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+
 from app.security import (
-    validate_password_strength,
     get_required_env_var,
+    validate_password_strength,
     validate_production_config,
 )
 

@@ -8,7 +8,7 @@ from app import create_app
 
 def print_usage():
     print("Usage: harborctl <command> [options]")
-    print("")
+    print()
     print("Commands:")
     print("  user <action>   Manage users")
     print("  ping            Check connectivity to admirald")

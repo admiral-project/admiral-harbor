@@ -14,15 +14,15 @@ Usage:
     python dev_run.py
 """
 
-import os
-import sys
-import time
-import secrets
 import logging
+import os
+import secrets
+import sys
 import threading
+import time
 from datetime import UTC, datetime, timedelta
 
-from flask import Flask, redirect, request, jsonify, abort
+from flask import Flask, abort, jsonify, redirect, request
 
 # ── Configuration ──────────────────────────────────────────────────────────
 
@@ -762,7 +762,7 @@ def mock_paypal_approve():
     if not return_url and not subscription_id:
         return jsonify({"error": "missing subscription_id or return_url"}), 400
     log.info("Mock PayPal: approving subscription %s", subscription_id)
-    from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
+    from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
     parsed = list(urlparse(return_url))
     query = dict(parse_qs(parsed[4]))
@@ -829,9 +829,7 @@ def _fleet_simulation():
                 continue
             if op["action"] == "provision_app":
                 inst["technical_status"] = "running"
-            elif op["action"] == "restore_backup":
-                inst["technical_status"] = "paused"
-            elif op["action"] in ("pause", "pause_app"):
+            elif op["action"] == "restore_backup" or op["action"] in ("pause", "pause_app"):
                 inst["technical_status"] = "paused"
             elif op["action"] in ("resume", "resume_app"):
                 inst["technical_status"] = "running"
@@ -842,8 +840,8 @@ def _fleet_simulation():
 def _worker_loop():
     from app import create_app as _create_worker_app
     from worker import (
-        _generate_invoices,
         _enforce_payment_policy,
+        _generate_invoices,
         _reconcile_paypal_subscriptions,
         _sync_remote_instances,
     )

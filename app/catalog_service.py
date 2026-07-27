@@ -1,10 +1,9 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import logging
 from datetime import UTC, datetime
-
-import json
 
 from app import admiral_client
 from app.extensions import db
@@ -15,8 +14,6 @@ logger = logging.getLogger("admiral-harbor")
 
 class SyncException(Exception):
     """Raised when catalog synchronization fails"""
-
-    pass
 
 
 def sync_catalog(origin="manual", actor=None):
@@ -322,14 +319,14 @@ def validate_before_provisioning(app_slug, tier_id):
         }
 
     except admiral_client.AdmiralAPIError as e:
-        logger.error(f"Validation error for {app_slug}/{tier_id}: {str(e)}")
+        logger.error(f"Validation error for {app_slug}/{tier_id}: {e!s}")
         return {
             "valid": False,
             "reason": "validation_error",
             "message": "Cannot reach admirald, try again later",
         }
     except Exception as e:
-        logger.error(f"Unexpected validation error: {str(e)}", exc_info=True)
+        logger.error(f"Unexpected validation error: {e!s}", exc_info=True)
         return {
             "valid": False,
             "reason": "internal_error",

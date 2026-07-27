@@ -80,14 +80,14 @@ def test_reconcile_setup_failed_noop_when_already_cancelled(client):
     with (
         patch("app.paypal.cancel_subscription") as mock_cancel,
         patch("app.paypal.refund_last_sale") as mock_refund,
+        client.application.app_context(),
     ):
-        with client.application.app_context():
-            sub = db.session.get(Subscription, sub_id)
-            sub.status = "cancelled"
-            db.session.commit()
-            from worker import _reconcile_setup_failed
+        sub = db.session.get(Subscription, sub_id)
+        sub.status = "cancelled"
+        db.session.commit()
+        from worker import _reconcile_setup_failed
 
-            actions, errors = _reconcile_setup_failed(client.application)
+        actions, _errors = _reconcile_setup_failed(client.application)
 
     assert actions == 0
     mock_cancel.assert_not_called()
@@ -136,7 +136,7 @@ def test_reconcile_setup_failed_noop_when_no_paypal_id(client):
         from worker import _reconcile_setup_failed
 
         with client.application.app_context():
-            actions, errors = _reconcile_setup_failed(client.application)
+            actions, _errors = _reconcile_setup_failed(client.application)
 
     assert actions == 0
     mock_cancel.assert_not_called()

@@ -1,10 +1,11 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import UTC, datetime
 from unittest.mock import patch
-from app.models import Customer
+
 from app.extensions import db
-from datetime import datetime, UTC
+from app.models import Customer
 
 
 def test_login_logout_me(client):
@@ -54,8 +55,9 @@ def test_register_accepts_terms(client, app):
 
 
 def test_login_failure_returns_generic_unauthorized(client):
-    from argon2.exceptions import VerifyMismatchError
     from unittest.mock import Mock, patch
+
+    from argon2.exceptions import VerifyMismatchError
 
     mock_hasher = Mock()
     mock_hasher.verify.side_effect = VerifyMismatchError

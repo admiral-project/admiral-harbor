@@ -122,16 +122,14 @@ def cmd_list(output):
     print(f"{'Username':20} {'Display Name':25} {'Active':8} {'Created':20}")
     print(f"{'---':20} {'---':25} {'---':8} {'---':20}")
     for u in admins:
-        print(f"{u.username:20} {(u.display_name or ''):25} {str(u.is_active):8} {str(u.created_at):20}")
+        print(f"{u.username:20} {(u.display_name or ''):25} {u.is_active!s:8} {u.created_at!s:20}")
 
     print()
     print("Customers:")
     print(f"{'Email':30} {'Display Name':25} {'Active':8} {'Country':8} {'Created':20}")
     print(f"{'---':30} {'---':25} {'---':8} {'---':8} {'---':20}")
     for c in customers:
-        print(
-            f"{c.email:30} {(c.display_name or ''):25} {str(c.is_active):8} {(c.country or ''):8} {str(c.created_at):20}"  # noqa: E501
-        )
+        print(f"{c.email:30} {(c.display_name or ''):25} {c.is_active!s:8} {(c.country or ''):8} {c.created_at!s:20}")
 
 
 def cmd_set_password(username):
@@ -170,7 +168,7 @@ def cmd_toggle_active(username):
 
 def print_user_usage():
     print("Usage: harborctl user <action> [options]")
-    print("")
+    print()
     print("Actions:")
     print("  create           Create a user")
     print("  list             List users")

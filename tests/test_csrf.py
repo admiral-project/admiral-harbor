@@ -8,7 +8,7 @@ from flask import session
 
 def test_generate_csrf_token_public(app):
     with app.test_request_context():
-        from app.csrf import generate_csrf_token, _csrf_role
+        from app.csrf import _csrf_role, generate_csrf_token
 
         assert _csrf_role() == "public"
         token = generate_csrf_token()
@@ -18,10 +18,11 @@ def test_generate_csrf_token_public(app):
 
 def test_csrf_role_admin(app):
     with app.test_request_context():
-        from app.csrf import _csrf_role
         from flask_login import login_user
-        from app.models import HarborAdminUser
+
+        from app.csrf import _csrf_role
         from app.extensions import db
+        from app.models import HarborAdminUser
 
         admin = db.session.query(HarborAdminUser).filter_by(username="testadmin").one()
         login_user(admin)
@@ -69,10 +70,11 @@ def test_validate_csrf_skips_exempt_endpoint_via_real_request(client):
 
 def test_generate_csrf_token_admin_role(app):
     with app.test_request_context():
-        from app.csrf import generate_csrf_token, _csrf_role
         from flask_login import login_user
-        from app.models import HarborAdminUser
+
+        from app.csrf import _csrf_role, generate_csrf_token
         from app.extensions import db
+        from app.models import HarborAdminUser
 
         admin = db.session.query(HarborAdminUser).filter_by(username="testadmin").one()
         login_user(admin)
@@ -83,7 +85,7 @@ def test_generate_csrf_token_admin_role(app):
 
 def test_generate_csrf_token_customer_role(app):
     with app.test_request_context():
-        from app.csrf import generate_csrf_token, _csrf_role
+        from app.csrf import _csrf_role, generate_csrf_token
 
         session["customer_email"] = "user@example.com"
         assert _csrf_role() == "customer"

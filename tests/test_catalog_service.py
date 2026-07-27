@@ -1,13 +1,14 @@
 from unittest.mock import patch
+
+from app.admiral_client import AdmiralAPIError
 from app.catalog_service import (
-    sync_catalog,
-    is_app_publishable,
     get_app_status_label,
+    is_app_publishable,
+    sync_catalog,
     validate_before_provisioning,
 )
-from app.models import CatalogApp, CatalogSyncAudit
 from app.extensions import db
-from app.admiral_client import AdmiralAPIError
+from app.models import CatalogApp, CatalogSyncAudit
 
 
 def test_sync_catalog_success(app):
@@ -23,21 +24,20 @@ def test_sync_catalog_success(app):
         }
     ]
 
-    with patch("app.admiral_client.list_apps", return_value=mock_apps):
-        with app.app_context():
-            # Clear existing data
-            db.session.query(CatalogApp).delete()
-            db.session.query(CatalogSyncAudit).delete()
-            db.session.commit()
+    with patch("app.admiral_client.list_apps", return_value=mock_apps), app.app_context():
+        # Clear existing data
+        db.session.query(CatalogApp).delete()
+        db.session.query(CatalogSyncAudit).delete()
+        db.session.commit()
 
-            result = sync_catalog(origin="test", actor="tester")
-            assert result["success"] is True
-            assert result["synced"] == 1
+        result = sync_catalog(origin="test", actor="tester")
+        assert result["success"] is True
+        assert result["synced"] == 1
 
-            app_record = CatalogApp.query.filter_by(upstream_app_id="test-app").first()
-            assert app_record is not None
-            assert app_record.name == "Test App"
-            assert app_record.upstream_revision == 1
+        app_record = CatalogApp.query.filter_by(upstream_app_id="test-app").first()
+        assert app_record is not None
+        assert app_record.name == "Test App"
+        assert app_record.upstream_revision == 1
 
 
 def test_sync_catalog_missing_upstream(app):
@@ -52,14 +52,13 @@ def test_sync_catalog_missing_upstream(app):
         db.session.add(existing_app)
         db.session.commit()
 
-    with patch("app.admiral_client.list_apps", return_value=[]):
-        with app.app_context():
-            result = sync_catalog(origin="test", actor="tester")
-            assert result["success"] is True
-            assert result["marked_missing"] == 1
+    with patch("app.admiral_client.list_apps", return_value=[]), app.app_context():
+        result = sync_catalog(origin="test", actor="tester")
+        assert result["success"] is True
+        assert result["marked_missing"] == 1
 
-            app_record = CatalogApp.query.filter_by(upstream_app_id="missing-app").first()
-            assert app_record.upstream_present is False
+        app_record = CatalogApp.query.filter_by(upstream_app_id="missing-app").first()
+        assert app_record.upstream_present is False
 
 
 def test_sync_catalog_already_in_progress(app):
@@ -209,13 +208,15 @@ def test_validate_before_provisioning_success(app):
         db.session.add(ca)
         db.session.commit()
 
-    with patch(
-        "app.admiral_client.validate_provisioning", return_value={"valid": True, "revision": 1, "checksum": "sum"}
+    with (
+        patch(
+            "app.admiral_client.validate_provisioning", return_value={"valid": True, "revision": 1, "checksum": "sum"}
+        ),
+        app.app_context(),
     ):
-        with app.app_context():
-            result = validate_before_provisioning("app1", "tier")
-            assert result["valid"] is True
-            assert result["reason"] == "ok"
+        result = validate_before_provisioning("app1", "tier")
+        assert result["valid"] is True
+        assert result["reason"] == "ok"
 
 
 def test_validate_before_provisioning_api_error(app):
@@ -249,8 +250,7 @@ def test_validate_before_provisioning_unexpected_error(app):
         db.session.add(ca)
         db.session.commit()
 
-    with patch("app.admiral_client.validate_provisioning", side_effect=Exception("Boom")):
-        with app.app_context():
-            result = validate_before_provisioning("app1", "tier")
-            assert result["valid"] is False
-            assert result["reason"] == "internal_error"
+    with patch("app.admiral_client.validate_provisioning", side_effect=Exception("Boom")), app.app_context():
+        result = validate_before_provisioning("app1", "tier")
+        assert result["valid"] is False
+        assert result["reason"] == "internal_error"

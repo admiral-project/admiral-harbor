@@ -1,6 +1,8 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 import requests
+
 from app.cli.ping import handle_ping
 
 
@@ -43,11 +45,10 @@ def test_handle_ping_failure(app):
 
 def test_handle_ping_unreachable(app):
     app.config["ADMIRAL_HARBOR_API_TOKEN"] = "harbor-token"
-    with patch("requests.get", side_effect=requests.exceptions.ConnectionError()):
-        with app.app_context():
-            with pytest.raises(SystemExit) as excinfo:
-                handle_ping()
-            assert excinfo.value.code == 1
+    with patch("requests.get", side_effect=requests.exceptions.ConnectionError()), app.app_context():
+        with pytest.raises(SystemExit) as excinfo:
+            handle_ping()
+        assert excinfo.value.code == 1
 
 
 def test_handle_ping_missing_token(app):

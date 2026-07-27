@@ -2,12 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
-
 from sqlalchemy.exc import IntegrityError
 
+from app import create_app
 from app.extensions import alembic, db
 from app.models import HarborAdminUser
-from app import create_app
 
 
 def test_create_app(monkeypatch):

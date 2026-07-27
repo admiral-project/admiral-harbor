@@ -1,7 +1,7 @@
+from datetime import UTC, datetime
 from functools import wraps
 from secrets import token_urlsafe
 
-from datetime import UTC, datetime
 from flask import abort, flash, g, redirect, request, session, url_for
 from flask_login import current_user
 

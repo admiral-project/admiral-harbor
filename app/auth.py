@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import smtplib
+import ssl
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from hashlib import sha256
-import smtplib
-import ssl
 from secrets import token_urlsafe
 
 from argon2 import PasswordHasher
@@ -23,6 +23,7 @@ from flask import (
 )
 from flask_login import logout_user
 
+from app.countries import COUNTRIES as _COUNTRIES
 from app.extensions import db
 from app.identity import (
     clear_user_session,
@@ -34,8 +35,6 @@ from app.models import AuditLog, Customer
 from app.rate_limit import RateLimiter
 from app.security import validate_password_strength
 from app.validation import is_valid_email
-
-from app.countries import COUNTRIES as _COUNTRIES
 
 ph = PasswordHasher()
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -87,14 +86,11 @@ def _send_confirmation_email(customer, token):
     message["From"] = current_app.config.get("HARBOR_SMTP_FROM", "noreply@example.com")
     message["To"] = customer.email
     message.set_content(
-        "Hello {name},\n\n"
+        f"Hello {customer.display_name},\n\n"
         "Your Harbor account was created.\n"
         "Confirm your email with this link:\n\n"
-        "{url}\n\n"
-        "If you cannot use email confirmation, a Harbor administrator can approve your account manually.\n".format(
-            name=customer.display_name,
-            url=_confirmation_url(token),
-        )
+        f"{_confirmation_url(token)}\n\n"
+        "If you cannot use email confirmation, a Harbor administrator can approve your account manually.\n"
     )
 
     port = int(current_app.config.get("HARBOR_SMTP_PORT", 587))
@@ -350,7 +346,8 @@ def register():
         )
     else:
         flash(
-            "Cuenta creada. Harbor no pudo enviar el correo de confirmacion, asi que el admin de Harbor puede aprobarla manualmente.",  # noqa: E501
+            "Cuenta creada. Harbor no pudo enviar el correo de confirmacion,"
+            " asi que el admin de Harbor puede aprobarla manualmente.",
             "warning",
         )
     return redirect(url_for("auth.login_page"))

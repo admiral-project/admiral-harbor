@@ -1,16 +1,18 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 import requests
+from flask import current_app
+
 from app.admiral_client import (
+    AdmiralAPIError,
+    _headers,
+    _request,
     get_app,
     normalize_tiers,
     parse_tiers_from_yaml,
-    AdmiralAPIError,
-    _request,
-    _headers,
     provision_app,
 )
-from flask import current_app
 
 
 def test_headers(app):
@@ -63,11 +65,10 @@ def test_request_http_error(app):
 
 
 def test_request_exception(app):
-    with patch("requests.request", side_effect=requests.RequestException("Conn error")):
-        with app.app_context():
-            with pytest.raises(AdmiralAPIError) as excinfo:
-                _request("GET", "/fail")
-            assert "Conn error" in str(excinfo.value)
+    with patch("requests.request", side_effect=requests.RequestException("Conn error")), app.app_context():
+        with pytest.raises(AdmiralAPIError) as excinfo:
+            _request("GET", "/fail")
+        assert "Conn error" in str(excinfo.value)
 
 
 def test_parse_tiers_from_yaml():
@@ -117,9 +118,8 @@ def test_normalize_tiers():
 
 def test_get_app(app):
     mock_app_data = {"name": "test-app", "raw_yaml": "tiers:\n  t1:\n    price_monthly: 0\n    free: true"}
-    with patch("app.admiral_client._request", return_value=mock_app_data):
-        with app.app_context():
-            app_info = get_app("test-app")
-            assert app_info["name"] == "test-app"
-            assert "tiers" in app_info
-            assert app_info["requires_billing"] is False
+    with patch("app.admiral_client._request", return_value=mock_app_data), app.app_context():
+        app_info = get_app("test-app")
+        assert app_info["name"] == "test-app"
+        assert "tiers" in app_info
+        assert app_info["requires_billing"] is False

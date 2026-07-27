@@ -1,9 +1,13 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import csv
+import io
+import json
+from datetime import UTC, datetime, timedelta
+
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-import json
 from flask import (
     Blueprint,
     abort,
@@ -13,19 +17,23 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     session,
     url_for,
-    send_file,
 )
 from flask_login import current_user, login_user, logout_user
-
-from datetime import UTC, datetime, timedelta
 from sqlalchemy import func
-import csv
-import io
 
-
-from app.extensions import db
+from app.admiral_client import (
+    AdmiralAPIError,
+    get_backup,
+    get_customer_app,
+    get_instance_inspect,
+    get_operation,
+    list_apps,
+    list_backups,
+    provision_app,
+)
 from app.branding import (
     get_portal_branding,
     get_tax_rates,
@@ -35,19 +43,9 @@ from app.branding import (
     set_tax_rates,
     update_portal_branding,
 )
-from app.identity import admin_required, create_user_session, clear_user_session
-from app.rate_limit import RateLimiter
-from app.security import validate_password_strength
-from app.admiral_client import (
-    AdmiralAPIError,
-    get_operation,
-    list_apps,
-    provision_app,
-    get_customer_app,
-    get_instance_inspect,
-    list_backups,
-    get_backup,
-)
+from app.countries import COUNTRIES, COUNTRY_NAMES
+from app.extensions import db
+from app.identity import admin_required, clear_user_session, create_user_session
 from app.models import (
     AppCourse,
     AppCourseTierDiscount,
@@ -62,14 +60,15 @@ from app.models import (
     FiscalTreatmentType,
     HarborAdminUser,
     HarborMeta,
+    HarborPayPalConfig,
     Invoice,
     LMSSettings,
+    Payment,
     Subscription,
     SupportIncident,
-    Payment,
-    HarborPayPalConfig,
 )
-from app.countries import COUNTRIES, COUNTRY_NAMES
+from app.rate_limit import RateLimiter
+from app.security import validate_password_strength
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -1274,13 +1273,19 @@ def sync_catalog():
             AuditLog(
                 actor=username,
                 action="sync_catalog",
-                detail=f"Synced catalog: {result['synced']} new, {result['updated']} updated, {result['marked_missing']} marked missing",  # noqa: E501
+                detail=(
+                    f"Synced catalog: {result['synced']} new, "
+                    f"{result['updated']} updated, "
+                    f"{result['marked_missing']} marked missing"
+                ),
                 ip_address=request.remote_addr or "",
             )
         )
         db.session.commit()
         flash(
-            f"Catalog synced: {result['synced']} new, {result['updated']} updated, {result['marked_missing']} marked missing.",  # noqa: E501
+            f"Catalog synced: {result['synced']} new, "
+            f"{result['updated']} updated, "
+            f"{result['marked_missing']} marked missing.",
             "success",
         )
     else:
@@ -1321,7 +1326,7 @@ def catalog_sync_history():
 @admin_required
 def app_set_availability(upstream_app_id):
     """Toggle app availability in admirald."""
-    from app.admiral_client import update_availability, AdmiralAPIError
+    from app.admiral_client import AdmiralAPIError, update_availability
 
     availability = request.form.get("availability", "available")
     reason = request.form.get("reason", "").strip()
@@ -1352,20 +1357,20 @@ def app_set_availability(upstream_app_id):
 def harbor_settings():
     """Edit commercial settings persisted in database (no shell access needed)."""
     from app.settings import (
-        get_smtp_from,
-        set_smtp_from,
         get_external_url,
-        set_external_url,
         get_max_backup_upload_bytes,
-        set_max_backup_upload_bytes,
-        get_overdue_policy_version,
-        set_overdue_policy_version,
-        get_overdue_suspend_after_days,
-        set_overdue_suspend_after_days,
         get_overdue_deprovision_after_days,
-        set_overdue_deprovision_after_days,
         get_overdue_last_backup_retention_days,
+        get_overdue_policy_version,
+        get_overdue_suspend_after_days,
+        get_smtp_from,
+        set_external_url,
+        set_max_backup_upload_bytes,
+        set_overdue_deprovision_after_days,
         set_overdue_last_backup_retention_days,
+        set_overdue_policy_version,
+        set_overdue_suspend_after_days,
+        set_smtp_from,
     )
 
     if request.method == "POST":
@@ -1821,7 +1826,7 @@ def instances_list():
             total=len(instances_data),
         )
     except Exception as e:
-        flash(f"Error loading instances: {str(e)}", "error")
+        flash(f"Error loading instances: {e!s}", "error")
         return render_template("admin_instances.html", instances=[], total=0)
 
 
@@ -1900,7 +1905,7 @@ def instance_detail(instance_id):
             backups=backups,
         )
     except AdmiralAPIError as e:
-        flash(f"Error loading instance: {str(e)}", "error")
+        flash(f"Error loading instance: {e!s}", "error")
         return redirect(url_for("admin.instances_list"))
 
 
@@ -1939,7 +1944,7 @@ def backups_list():
             total=len(all_backups),
         )
     except Exception as e:
-        flash(f"Error loading backups: {str(e)}", "error")
+        flash(f"Error loading backups: {e!s}", "error")
         return render_template("admin_backups.html", backups=[], status_filter=None, total=0)
 
 
@@ -1963,7 +1968,7 @@ def backup_detail(backup_id):
             subscription=subscription,
         )
     except AdmiralAPIError as e:
-        flash(f"Error loading backup: {str(e)}", "error")
+        flash(f"Error loading backup: {e!s}", "error")
         return redirect(url_for("admin.backups_list"))
 
 

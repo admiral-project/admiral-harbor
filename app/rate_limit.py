@@ -3,9 +3,10 @@
 
 import time
 
+from sqlalchemy import delete
+
 from app.extensions import db
 from app.models import RateLimit
-from sqlalchemy import delete
 
 
 def _insert_counter(identifier, now):

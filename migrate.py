@@ -4,9 +4,10 @@ import os
 
 os.environ["HARBOR_MIGRATE"] = "1"
 
-from app import create_app  # noqa: E402
-from app.extensions import alembic, db  # noqa: E402
-from sqlalchemy import inspect  # noqa: E402
+from sqlalchemy import inspect
+
+from app import create_app
+from app.extensions import alembic, db
 
 app = create_app()
 
