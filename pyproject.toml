@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "admiral-harbor"
-version = "0.0.1beta17"
+version = "0.0.1beta18"
 description = "Admiral customer portal"
 requires-python = ">=3.11"
 dependencies = [
