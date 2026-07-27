@@ -166,7 +166,8 @@ def login():
     if customer is None:
         if request.is_json:
             current_app.logger.warning(
-                "customer login failed",
+                "[client %s] customer login failed",
+                ip,
                 extra={
                     "email": email,
                     "reason": "invalid_credentials",
@@ -183,7 +184,8 @@ def login():
     except VerifyMismatchError:
         if request.is_json:
             current_app.logger.warning(
-                "customer login failed",
+                "[client %s] customer login failed",
+                ip,
                 extra={
                     "email": email,
                     "reason": "invalid_credentials",
@@ -198,7 +200,8 @@ def login():
     if not customer.can_access():
         if request.is_json:
             current_app.logger.warning(
-                "customer login failed",
+                "[client %s] customer login failed",
+                ip,
                 extra={
                     "email": email,
                     "reason": "account_not_accessible",

@@ -128,7 +128,8 @@ def login():
     admin = db.session.query(HarborAdminUser).filter_by(username=username).one_or_none()
     if admin is None:
         current_app.logger.warning(
-            "admin login failed",
+            "[client %s] admin login failed",
+            ip,
             extra={"username": username, "reason": "user_not_found", "ip": ip},
         )
         flash("Invalid admin credentials.", "error")
@@ -137,7 +138,8 @@ def login():
         ph.verify(admin.password_hash, password)
     except VerifyMismatchError:
         current_app.logger.warning(
-            "admin login failed",
+            "[client %s] admin login failed",
+            ip,
             extra={"username": username, "reason": "invalid_password", "ip": ip},
         )
         flash("Invalid admin credentials.", "error")
