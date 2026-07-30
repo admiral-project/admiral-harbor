@@ -78,6 +78,20 @@ def escape_like_pattern(value):
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _ensure_utc(value):
+    """Normalize database datetimes before comparing them with UTC now."""
+    if value and value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
+
+
+def _month_start(value, months_ago=0):
+    """Return the first day of a calendar month, offset by months."""
+    month_index = value.year * 12 + value.month - 1 - months_ago
+    year, month_index = divmod(month_index, 12)
+    return value.replace(year=year, month=month_index + 1, day=1)
+
+
 ph = PasswordHasher()
 admin_login_limiter = RateLimiter(max_attempts=5, window_seconds=60)
 
@@ -549,21 +563,10 @@ def _get_sla_status(ticket):
     """
     now = datetime.now(UTC)
 
-    resolved_at = ticket.resolved_at
-    if resolved_at and resolved_at.tzinfo is None:
-        resolved_at = resolved_at.replace(tzinfo=UTC)
-
-    resolution_deadline = ticket.resolution_deadline
-    if resolution_deadline and resolution_deadline.tzinfo is None:
-        resolution_deadline = resolution_deadline.replace(tzinfo=UTC)
-
-    response_deadline = ticket.response_deadline
-    if response_deadline and response_deadline.tzinfo is None:
-        response_deadline = response_deadline.replace(tzinfo=UTC)
-
-    created_at = ticket.created_at
-    if created_at and created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=UTC)
+    resolved_at = _ensure_utc(ticket.resolved_at)
+    resolution_deadline = _ensure_utc(ticket.resolution_deadline)
+    response_deadline = _ensure_utc(ticket.response_deadline)
+    created_at = _ensure_utc(ticket.created_at)
 
     # If resolved, check if resolution deadline was met
     if resolved_at:
@@ -813,8 +816,7 @@ def metrics():
     historical_revenue = []
     prev_rev = None
     for i in range(5, -1, -1):
-        current = month_start - timedelta(days=i * 30)
-        current_month = current.replace(day=1)
+        current_month = _month_start(month_start, i)
         next_month = (current_month + timedelta(days=32)).replace(day=1)
 
         revenue_cents = (
