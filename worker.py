@@ -53,11 +53,7 @@ def _try_acquire_worker_lock():
     """Acquire the process-wide PostgreSQL lock used by the worker timer."""
     if db.engine.dialect.name != "postgresql":
         return True
-    return bool(
-        db.session.execute(
-            text("SELECT pg_try_advisory_lock(hashtext('admiral_harbor_worker'))")
-        ).scalar()
-    )
+    return bool(db.session.execute(text("SELECT pg_try_advisory_lock(hashtext('admiral_harbor_worker'))")).scalar())
 
 
 def _release_worker_lock():
