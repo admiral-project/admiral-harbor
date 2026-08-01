@@ -19,7 +19,7 @@ import ssl
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 
-from sqlalchemy import delete
+from sqlalchemy import delete, text
 
 from app import create_app
 from app.admiral_client import (
@@ -47,6 +47,22 @@ logging.basicConfig(
     format="[worker] %(levelname)s %(message)s",
 )
 log = logging.getLogger("worker")
+
+
+def _try_acquire_worker_lock():
+    """Acquire the process-wide PostgreSQL lock used by the worker timer."""
+    if db.engine.dialect.name != "postgresql":
+        return True
+    return bool(
+        db.session.execute(
+            text("SELECT pg_try_advisory_lock(hashtext('admiral_harbor_worker'))")
+        ).scalar()
+    )
+
+
+def _release_worker_lock():
+    if db.engine.dialect.name == "postgresql":
+        db.session.execute(text("SELECT pg_advisory_unlock(hashtext('admiral_harbor_worker'))"))
 
 
 def _run_worker_step(name, step):
@@ -548,61 +564,72 @@ def _last_worker_run_at():
 def main():
     app = create_app()
     with app.app_context():
-        started_at = datetime.now(UTC)
-        log.info("Worker started at %s", started_at.isoformat())
+        if not _try_acquire_worker_lock():
+            log.info("Another Harbor worker is running; skipping this invocation")
+            return
+        try:
+            _run_worker(app)
+        finally:
+            _release_worker_lock()
+            db.session.commit()
 
-        total_actions = 0
-        total_errors = 0
 
-        ca, ce = _run_worker_step("cleanup_rate_limits", lambda: _cleanup_rate_limits(app))
-        total_actions += ca
-        total_errors += ce
+def _run_worker(app):
+    started_at = datetime.now(UTC)
+    log.info("Worker started at %s", started_at.isoformat())
 
-        gi, ge = _run_worker_step("generate_invoices", lambda: _generate_invoices(app))
-        total_actions += gi
-        total_errors += ge
+    total_actions = 0
+    total_errors = 0
 
-        pa, pe = _run_worker_step("enforce_payment_policy", lambda: _enforce_payment_policy(app))
-        total_actions += pa
-        total_errors += pe
+    ca, ce = _run_worker_step("cleanup_rate_limits", lambda: _cleanup_rate_limits(app))
+    total_actions += ca
+    total_errors += ce
 
-        ra, re = _run_worker_step(
-            "reconcile_paypal_subscriptions",
-            lambda: _reconcile_paypal_subscriptions(app),
+    gi, ge = _run_worker_step("generate_invoices", lambda: _generate_invoices(app))
+    total_actions += gi
+    total_errors += ge
+
+    pa, pe = _run_worker_step("enforce_payment_policy", lambda: _enforce_payment_policy(app))
+    total_actions += pa
+    total_errors += pe
+
+    ra, re = _run_worker_step(
+        "reconcile_paypal_subscriptions",
+        lambda: _reconcile_paypal_subscriptions(app),
+    )
+    total_actions += ra
+    total_errors += re
+
+    oa, oe = _run_worker_step("reconcile_operations", lambda: _reconcile_operations(app))
+    total_actions += oa
+    total_errors += oe
+
+    sa, se = _run_worker_step("sync_remote_instances", lambda: _sync_remote_instances(app))
+    total_actions += sa
+    total_errors += se
+
+    sfa, sfe = _run_worker_step(
+        "reconcile_setup_failed",
+        lambda: _reconcile_setup_failed(app),
+    )
+    total_actions += sfa
+    total_errors += sfe
+
+    HarborMeta.set("last_worker_run_at", datetime.now(UTC).isoformat())
+
+    summary = f"Actions: {total_actions}, Errors: {total_errors}"
+    db.session.add(
+        WorkerLog(
+            started_at=started_at,
+            completed_at=datetime.now(UTC),
+            actions_taken=total_actions,
+            errors=total_errors,
+            summary=summary,
         )
-        total_actions += ra
-        total_errors += re
+    )
+    db.session.commit()
 
-        oa, oe = _run_worker_step("reconcile_operations", lambda: _reconcile_operations(app))
-        total_actions += oa
-        total_errors += oe
-
-        sa, se = _run_worker_step("sync_remote_instances", lambda: _sync_remote_instances(app))
-        total_actions += sa
-        total_errors += se
-
-        sfa, sfe = _run_worker_step(
-            "reconcile_setup_failed",
-            lambda: _reconcile_setup_failed(app),
-        )
-        total_actions += sfa
-        total_errors += sfe
-
-        HarborMeta.set("last_worker_run_at", datetime.now(UTC).isoformat())
-
-        summary = f"Actions: {total_actions}, Errors: {total_errors}"
-        db.session.add(
-            WorkerLog(
-                started_at=started_at,
-                completed_at=datetime.now(UTC),
-                actions_taken=total_actions,
-                errors=total_errors,
-                summary=summary,
-            )
-        )
-        db.session.commit()
-
-        log.info("Worker finished: %s", summary)
+    log.info("Worker finished: %s", summary)
 
 
 if __name__ == "__main__":
