@@ -36,12 +36,12 @@ def _resolve_secret(value):
 
 
 def _db_paypal_config():
-    """Return PayPal config from DB, falling back to env vars (current_app.config)."""
+    """Return the persisted PayPal config, with env only as bootstrap fallback."""
     from app.extensions import db
     from app.models import HarborPayPalConfig
 
     cfg = db.session.query(HarborPayPalConfig).first()
-    if cfg is not None and cfg.mode != "mock":
+    if cfg is not None:
         return {
             "mode": cfg.mode,
             "client_id": cfg.client_id or "",
