@@ -41,6 +41,10 @@ from app.models import (
     Subscription,
     WorkerLog,
 )
+from app.settings import (
+    get_overdue_deprovision_after_days,
+    get_overdue_suspend_after_days,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -166,8 +170,10 @@ def _cleanup_rate_limits(app):
 
 
 def _enforce_payment_policy(app):
-    overdue_suspend_days = app.config["HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"]
-    overdue_deprovision_days = app.config["HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"]
+    # Commercial policy is operator-managed state and therefore comes from the
+    # database. Environment values remain deployment defaults only.
+    overdue_suspend_days = get_overdue_suspend_after_days()
+    overdue_deprovision_days = get_overdue_deprovision_after_days()
     now = datetime.now(UTC)
     actions = 0
     errors = 0
@@ -283,6 +289,20 @@ def _reconcile_paypal_subscriptions(app):
                 "PayPal subscription %s reactivated, restoring active",
                 sub.paypal_subscription_id,
             )
+            instance = (
+                db.session.query(CustomerApp)
+                .filter_by(subscription_id=sub.id)
+                .filter(CustomerApp.status.in_(["paused", "stopped", "suspended"]))
+                .one_or_none()
+            )
+            if instance is not None:
+                try:
+                    admiral_action(instance.instance_id, "resume")
+                    instance.status = "running"
+                    actions += 1
+                except AdmiralAPIError as exc:
+                    log.error("Resume failed for reactivated instance %s: %s", instance.instance_id, exc)
+                    errors += 1
             sub.status = "active"
             actions += 1
 
@@ -516,6 +536,19 @@ def _reconcile_setup_failed(app):
                 exc,
             )
             errors += 1
+            # Never cancel a paid subscription when the compensating refund did
+            # not complete. Keeping it visible lets the next worker run retry it
+            # and leaves the case available for manual intervention.
+            db.session.add(
+                WorkerLog(
+                    started_at=datetime.now(UTC),
+                    completed_at=datetime.now(UTC),
+                    actions_taken=0,
+                    errors=1,
+                    summary=(f"setup_failed refund pending for instance {local_app.instance_id}"),
+                )
+            )
+            continue
 
         try:
             paypal_cancel(

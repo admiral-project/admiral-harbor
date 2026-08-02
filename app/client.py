@@ -544,6 +544,25 @@ def subscription_cancel(subscription_id):
                 "error",
             )
             return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
+    if subscription.instance_id:
+        try:
+            response = admiral_client.action(
+                subscription.instance_id,
+                "deprovision",
+                customer_id=customer.public_id,
+            )
+        except AdmiralAPIError as exc:
+            current_app.logger.error(
+                "Deprovision failed for cancelled subscription %s: %s", subscription.external_id, exc
+            )
+            flash("Payment was cancelled, but application teardown could not be queued. Please contact support.", "error")
+            return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
+        if response and response.get("operation_id"):
+            current_app.logger.info(
+                "Queued deprovision %s for cancelled subscription %s",
+                response["operation_id"],
+                subscription.external_id,
+            )
     subscription.status = "cancelled"
     change = SubscriptionChange(
         subscription_id=subscription.id,
