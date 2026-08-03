@@ -40,20 +40,27 @@ def _db_paypal_config():
     from app.extensions import db
     from app.models import HarborPayPalConfig
 
+    env_config = {
+        "mode": current_app.config.get("HARBOR_PAYPAL_MODE", "mock"),
+        "client_id": current_app.config.get("HARBOR_PAYPAL_CLIENT_ID", ""),
+        "client_secret": current_app.config.get("HARBOR_PAYPAL_CLIENT_SECRET", ""),
+        "webhook_id": current_app.config.get("HARBOR_PAYPAL_WEBHOOK_ID", ""),
+    }
     cfg = db.session.query(HarborPayPalConfig).first()
     if cfg is not None:
+        # An empty row is the lazy bootstrap marker created by visiting the
+        # admin page. It must not override a complete environment config.
+        if not (cfg.client_id or cfg.client_secret or cfg.webhook_id) and any(
+            env_config[key] for key in ("client_id", "client_secret", "webhook_id")
+        ):
+            return env_config
         return {
             "mode": cfg.mode,
             "client_id": cfg.client_id or "",
             "client_secret": _resolve_secret(cfg.client_secret or ""),
             "webhook_id": cfg.webhook_id or "",
         }
-    return {
-        "mode": current_app.config.get("HARBOR_PAYPAL_MODE", "mock"),
-        "client_id": current_app.config.get("HARBOR_PAYPAL_CLIENT_ID", ""),
-        "client_secret": current_app.config.get("HARBOR_PAYPAL_CLIENT_SECRET", ""),
-        "webhook_id": current_app.config.get("HARBOR_PAYPAL_WEBHOOK_ID", ""),
-    }
+    return env_config
 
 
 _PAYPAL_BASE_URLS = {

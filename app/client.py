@@ -560,7 +560,17 @@ def subscription_cancel(subscription_id):
                 "error",
             )
             return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
-        if response and response.get("operation_id"):
+        if not isinstance(response, dict) or not response.get("operation_id"):
+            current_app.logger.error(
+                "Deprovision response did not include an operation for cancelled subscription %s",
+                subscription.external_id,
+            )
+            flash(
+                "Payment was cancelled, but application teardown could not be queued. Please contact support.",
+                "error",
+            )
+            return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
+        if response.get("operation_id"):
             current_app.logger.info(
                 "Queued deprovision %s for cancelled subscription %s",
                 response["operation_id"],
