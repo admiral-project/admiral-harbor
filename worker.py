@@ -36,6 +36,7 @@ from app.models import (
     CustomerApp,
     HarborMeta,
     Invoice,
+    Order,
     RateLimit,
     RestoreRequest,
     Subscription,
@@ -169,6 +170,17 @@ def _cleanup_rate_limits(app):
     return removed, 0
 
 
+def _expire_unconfirmed_orders(app):
+    cutoff = datetime.now(UTC) - timedelta(minutes=30)
+    orders = db.session.query(Order).filter(Order.status == "approved", Order.created_at < cutoff).all()
+    for order in orders:
+        order.status = "payment_confirmation_timeout"
+        log.warning("PayPal confirmation timed out for order %s", order.order_id)
+    if orders:
+        db.session.commit()
+    return len(orders), 0
+
+
 def _enforce_payment_policy(app):
     # Commercial policy is operator-managed state and therefore comes from the
     # database. Environment values remain deployment defaults only.
@@ -297,14 +309,18 @@ def _reconcile_paypal_subscriptions(app):
             )
             if instance is not None:
                 try:
-                    admiral_action(instance.instance_id, "resume")
+                    customer = db.session.query(Customer).filter_by(email=sub.customer_email).one_or_none()
+                    if customer is None:
+                        raise AdmiralAPIError("customer not found for subscription")
+                    admiral_action(instance.instance_id, "resume", customer_id=customer.public_id)
                     instance.status = "running"
                     actions += 1
                 except AdmiralAPIError as exc:
                     log.error("Resume failed for reactivated instance %s: %s", instance.instance_id, exc)
                     errors += 1
-            sub.status = "active"
-            actions += 1
+            else:
+                sub.status = "active"
+                actions += 1
 
     db.session.commit()
     return actions, errors
@@ -613,6 +629,10 @@ def _run_worker(app):
     ca, ce = _run_worker_step("cleanup_rate_limits", lambda: _cleanup_rate_limits(app))
     total_actions += ca
     total_errors += ce
+
+    eo, ee = _run_worker_step("expire_unconfirmed_orders", lambda: _expire_unconfirmed_orders(app))
+    total_actions += eo
+    total_errors += ee
 
     gi, ge = _run_worker_step("generate_invoices", lambda: _generate_invoices(app))
     total_actions += gi

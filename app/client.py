@@ -299,7 +299,7 @@ def _provision_from_order(order):
         except AdmiralAPIError:
             pass
     if not instance_id:
-        instance_id = f"inst_{uuid4().hex[:16]}"
+        raise AdmiralAPIError("Admiral did not return a provisioned instance ID")
     if not hostname:
         hostname = instance_id
 
@@ -421,6 +421,9 @@ def subscription_detail(subscription_id):
     subscription = db.session.get(Subscription, subscription_id)
     if not subscription or subscription.customer_email != customer.email:
         flash("Subscription not found", "error")
+        return redirect(url_for("client.subscriptions_list"))
+    if subscription.status == "cancelled":
+        flash("Subscription is already cancelled.", "info")
         return redirect(url_for("client.subscriptions_list"))
     payments = (
         db.session.query(Payment)
@@ -1144,7 +1147,15 @@ def instance_action(instance_id):
                         "error",
                     )
                     return redirect(url_for("client.instance_detail", instance_id=instance_id))
-            response = admiral_client.action(instance.instance_id, "deprovision", customer_id=customer.public_id)
+            try:
+                response = admiral_client.action(instance.instance_id, "deprovision", customer_id=customer.public_id)
+            except AdmiralAPIError as exc:
+                current_app.logger.error("Instance deprovision failed during cancellation: %s", exc)
+                flash("Payment was cancelled, but application teardown could not be queued. Please contact support.", "error")
+                return redirect(url_for("client.instance_detail", instance_id=instance_id))
+            if not isinstance(response, dict) or not response.get("operation_id"):
+                flash("Payment was cancelled, but application teardown could not be queued. Please contact support.", "error")
+                return redirect(url_for("client.instance_detail", instance_id=instance_id))
             if subscription:
                 subscription.status = "cancelled"
             _event(
@@ -1310,12 +1321,14 @@ def request_restore(instance_id):
         external_url = current_app.config["HARBOR_EXTERNAL_URL"]
         source = {
             "type": "https",
-            "uri": f"{external_url}/api/v1/backups/uploads/{uploaded.backup_id}",
+            "uri": f"{external_url}/api/v1/backups/uploads/{uploaded.backup_id}?customer_id={customer.public_id}",
             "checksum": uploaded.checksum_sha256,
             "size_bytes": uploaded.size_bytes,
         }
     try:
-        response = admiral_client.restore_backup(backup_id, instance.instance_id, service_name, source=source)
+        response = admiral_client.restore_backup(
+            backup_id, instance.instance_id, service_name, source=source, customer_id=customer.public_id
+        )
     except AdmiralAPIError as exc:
         flash(f"Restore request failed: {exc}", "error")
         return redirect(url_for("client.instance_detail", instance_id=instance_id))

@@ -141,7 +141,7 @@ def _provision_subscription(subscription):
         except AdmiralAPIError:
             pass
     if not instance_id:
-        instance_id = f"inst_{uuid4().hex[:16]}"
+        raise AdmiralAPIError("Admiral did not return a provisioned instance ID")
     if not hostname:
         hostname = instance_id
     db.session.add(
@@ -571,7 +571,9 @@ def api_download_uploaded_backup(backup_id):
         )
         return jsonify({"error": "unauthorized"}), 401
     api_token_limiter.reset(limiter_key)
+    customer_id = request.args.get("customer_id", "").strip()
+    customer = db.session.query(Customer).filter_by(public_id=customer_id, is_active=True).one_or_none()
     backup = db.session.query(UploadedBackup).filter_by(backup_id=backup_id).one_or_none()
-    if backup is None:
+    if customer is None or backup is None or backup.customer_email != customer.email:
         return jsonify({"error": "backup not found"}), 404
     return send_file(backup.stored_path, as_attachment=True, download_name=backup.original_filename)

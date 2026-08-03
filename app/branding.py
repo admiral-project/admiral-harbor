@@ -14,7 +14,7 @@ DEFAULT_PORTAL_NAME = "Admiral Harbor"
 DEFAULT_PORTAL_DESCRIPTION = "Customer portal"
 DEFAULT_TAX_RATES = {"NI": 15}
 DEFAULT_CURRENCY = "USD"
-ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".svg"}
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"}
 CATALOG_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 
 PORTAL_NAME_KEY = "portal_name"

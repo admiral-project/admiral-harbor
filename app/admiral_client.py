@@ -169,7 +169,7 @@ def get_operation(operation_id):
     return _request("GET", "/api/v1/operations", params={"id": operation_id}, timeout=30)
 
 
-def restore_backup(backup_id, instance_id, service, source=None, verify_checksum=True):
+def restore_backup(backup_id, instance_id, service, source=None, verify_checksum=True, customer_id=None):
     return _request(
         "POST",
         "/api/v1/backups/restore",
@@ -181,6 +181,7 @@ def restore_backup(backup_id, instance_id, service, source=None, verify_checksum
             "verify_checksum": verify_checksum,
             "restore_mode": "replace",
         },
+        customer_id=customer_id,
     )
 
 
