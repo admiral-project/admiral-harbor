@@ -555,7 +555,10 @@ def subscription_cancel(subscription_id):
             current_app.logger.error(
                 "Deprovision failed for cancelled subscription %s: %s", subscription.external_id, exc
             )
-            flash("Payment was cancelled, but application teardown could not be queued. Please contact support.", "error")
+            flash(
+                "Payment was cancelled, but application teardown could not be queued. Please contact support.",
+                "error",
+            )
             return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
         if response and response.get("operation_id"):
             current_app.logger.info(
