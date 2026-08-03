@@ -6,6 +6,13 @@
 
 {% block content %}
 
+{% if admirald and admirald.get("need_restarting") %}
+<div class="panel" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;margin-bottom:1rem;">
+ <strong>Actualización de imagen pendiente</strong>
+ <p>La definición de la aplicación cambió. La instancia debe reiniciarse para aplicar las imágenes nuevas.</p>
+</div>
+{% endif %}
+
 <div class="panel">
  <h2><i class="fas fa-chart-bar pf-u-mr-sm"></i> Instance Information</h2>
  

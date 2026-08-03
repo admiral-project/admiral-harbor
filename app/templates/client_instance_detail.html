@@ -66,6 +66,13 @@
 </div>
 {% endif %}
 
+{% if remote_state and remote_state.get("need_restarting") %}
+<div class="panel" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;margin:1rem 0;">
+  <strong>Hay una actualización de imagen pendiente</strong>
+  <p class="meta" style="color:#9a3412;">La definición de esta aplicación cambió. Reinicie la instancia para ejecutar los servicios con las imágenes nuevas.</p>
+</div>
+{% endif %}
+
 {% if instance.storage_status not in ["ok", "unknown"] %}
 <div class="storage-alert tone-{{ storage_tone }}">
   <div class="storage-alert__icon">{% if storage_tone == "danger" %}<span class="alert-icon">&#9888;</span>{% else %}<span class="alert-icon">&#9888;</span>{% endif %}</div>
