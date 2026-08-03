@@ -275,7 +275,10 @@ def ready():
         errors.append("database: unavailable")
 
     try:
-        admiral_client._request("GET", "/api/v1/status", timeout=10)
+        # Harbor authenticates with its scoped token.  The admin-only status
+        # endpoint rejects that token; harbor_ping is the scoped health
+        # contract intended for portal-to-control-plane checks.
+        admiral_client._request("GET", "/api/v1/harbor_ping", timeout=10)
     except Exception as exc:
         result["admirald"] = "error"
         current_app.logger.warning("readiness check: admirald error", extra={"error": str(exc)})
