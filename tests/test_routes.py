@@ -664,7 +664,10 @@ def test_api_download_uploaded_backup_success(client, app):
         db.session.add(ub)
         db.session.commit()
 
-    response = client.get("/api/v1/backups/uploads/bk_exists/download", headers={"X-Admiral-Token": "test-token"})
+    response = client.get(
+        "/api/v1/backups/uploads/bk_exists/download?customer_id=hcus_testuser",
+        headers={"X-Admiral-Token": "test-token"},
+    )
     assert response.status_code == 200
     assert response.data == b"backup-content"
 

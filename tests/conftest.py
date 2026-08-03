@@ -177,6 +177,7 @@ def client(app):
         "instance_id": "inst_provision",
         "status": "queued",
     }
+    admiral_client.get_operation = lambda operation_id: {"instance_id": "inst_provision", "status": "succeeded"}
     admiral_client.get_instance_inspect = lambda instance_id: {
         "containers": [
             {"name": "app", "image": "wordpress:latest", "state": "running"},
