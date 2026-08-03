@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from datetime import UTC, datetime, timedelta
+import json
 from types import SimpleNamespace
 
 from app import create_app
@@ -153,7 +154,7 @@ def test_paypal_create_subscription_live_payload(monkeypatch, app):
     assert "tax" not in captured["json"]
 
 
-def test_paypal_webhook_verification_sends_event_object(monkeypatch, app):
+def test_paypal_webhook_verification_preserves_raw_event(monkeypatch, app):
     app.config.update(
         HARBOR_PAYPAL_MODE="live",
         HARBOR_PAYPAL_BASE_URL="https://api-m.paypal.com",
@@ -163,6 +164,7 @@ def test_paypal_webhook_verification_sends_event_object(monkeypatch, app):
 
     def fake_post(url, headers=None, data=None, json=None, timeout=None):
         captured["url"] = url
+        captured["data"] = data
         captured["json"] = json
         return SimpleNamespace(
             raise_for_status=lambda: None,
@@ -184,7 +186,8 @@ def test_paypal_webhook_verification_sends_event_object(monkeypatch, app):
         assert verify_webhook_signature(headers, raw_body) is True
 
     assert captured["url"].endswith("/v1/notifications/verify-webhook-signature")
-    assert captured["json"]["webhook_event"] == {
+    assert captured["data"].endswith(',"webhook_event":' + raw_body + "}")
+    assert json.loads(captured["data"])["webhook_event"] == {
         "id": "evt_1",
         "resource": {"b": 2, "a": 1},
     }

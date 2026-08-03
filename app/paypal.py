@@ -353,8 +353,19 @@ def verify_webhook_signature(headers, body):
     if not webhook_id:
         logger.warning("PayPal webhook ID not configured")
         return False
+    if isinstance(body, bytes):
+        try:
+            raw_body = body.decode("utf-8")
+        except UnicodeDecodeError:
+            logger.warning("PayPal webhook rejected: body is not valid UTF-8")
+            return False
+    elif isinstance(body, str):
+        raw_body = body
+    else:
+        logger.warning("PayPal webhook rejected: body has an invalid type")
+        return False
     try:
-        webhook_event = json.loads(body)
+        webhook_event = json.loads(raw_body)
     except (TypeError, json.JSONDecodeError):
         logger.warning("PayPal webhook rejected: body is not valid JSON")
         return False
@@ -370,16 +381,21 @@ def verify_webhook_signature(headers, body):
         "transmission_sig": headers.get("PAYPAL-TRANSMISSION-SIG", ""),
         "transmission_time": headers.get("PAYPAL-TRANSMISSION-TIME", ""),
         "webhook_id": webhook_id,
-        # The PayPal postback API schema requires webhook_event to be a JSON
-        # object. Raw-body CRC32 preservation applies to local cryptographic
-        # verification, not to this postback request.
-        "webhook_event": webhook_event,
     }
+    # Keep PayPal's required object schema while embedding the exact event
+    # bytes received from the request. Using requests' ``json=`` parameter
+    # would decode and re-serialize the event, changing whitespace or key
+    # ordering and potentially invalidating PayPal's transmission signature.
+    verification_payload = json.dumps(verification, separators=(",", ":"))[:-1]
+    verification_payload += ',"webhook_event":' + raw_body + "}"
     try:
         resp = requests.post(
             f"{base_url}/v1/notifications/verify-webhook-signature",
-            headers={"Authorization": f"Bearer {token}"},
-            json=verification,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            data=verification_payload,
             timeout=30,
         )
         resp.raise_for_status()
