@@ -530,6 +530,9 @@ def subscription_cancel(subscription_id):
     if not confirm:
         flash("Please confirm cancellation", "error")
         return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
+    if subscription.status == "cancelled":
+        flash("This subscription is already cancelled.", "info")
+        return redirect(url_for("client.subscriptions_list"))
     if subscription.paypal_subscription_id:
         try:
             paypal_cancel_subscription(
