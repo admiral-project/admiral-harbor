@@ -1151,10 +1151,16 @@ def instance_action(instance_id):
                 response = admiral_client.action(instance.instance_id, "deprovision", customer_id=customer.public_id)
             except AdmiralAPIError as exc:
                 current_app.logger.error("Instance deprovision failed during cancellation: %s", exc)
-                flash("Payment was cancelled, but application teardown could not be queued. Please contact support.", "error")
+                flash(
+                    "Payment was cancelled, but application teardown could not be queued. Please contact support.",
+                    "error",
+                )
                 return redirect(url_for("client.instance_detail", instance_id=instance_id))
             if not isinstance(response, dict) or not response.get("operation_id"):
-                flash("Payment was cancelled, but application teardown could not be queued. Please contact support.", "error")
+                flash(
+                    "Payment was cancelled, but application teardown could not be queued. Please contact support.",
+                    "error",
+                )
                 return redirect(url_for("client.instance_detail", instance_id=instance_id))
             if subscription:
                 subscription.status = "cancelled"
