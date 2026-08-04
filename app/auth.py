@@ -29,6 +29,7 @@ from app.identity import (
     clear_user_session,
     create_user_session,
     current_customer,
+    invalidate_user_sessions,
     login_required,
 )
 from app.models import AuditLog, Customer
@@ -457,6 +458,8 @@ def profile():
             try:
                 ph.verify(customer.password_hash, current_password)
                 customer.password_hash = ph.hash(new_password)
+                invalidate_user_sessions("customer", customer.email)
+                clear_user_session()
             except VerifyMismatchError:
                 flash("Current password is incorrect.", "error")
                 return redirect(url_for("auth.profile"))

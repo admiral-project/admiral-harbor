@@ -104,6 +104,13 @@ def clear_user_session():
         db.session.commit()
 
 
+def invalidate_user_sessions(user_type, user_identifier):
+    """Revoke every active server-side session for an identity."""
+    db.session.query(UserSession).filter_by(
+        user_type=user_type, user_identifier=user_identifier
+    ).delete(synchronize_session=False)
+
+
 def check_session_idle_timeout():
     session_id = session.get("_session_id")
     if not session_id:

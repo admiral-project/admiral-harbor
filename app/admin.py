@@ -45,7 +45,12 @@ from app.branding import (
 )
 from app.countries import COUNTRIES, COUNTRY_NAMES
 from app.extensions import db
-from app.identity import admin_required, clear_user_session, create_user_session
+from app.identity import (
+    admin_required,
+    clear_user_session,
+    create_user_session,
+    invalidate_user_sessions,
+)
 from app.models import (
     AppCourse,
     AppCourseTierDiscount,
@@ -1509,6 +1514,7 @@ def edit_user(user_id):
                 flash("Current password is incorrect.", "error")
                 return redirect(url_for("admin.edit_user", user_id=user.id))
             user.password_hash = ph.hash(password)
+            invalidate_user_sessions("admin", user.username)
 
         db.session.add(
             AuditLog(

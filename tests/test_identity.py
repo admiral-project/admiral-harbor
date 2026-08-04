@@ -3,6 +3,8 @@
 
 """Tests for role decorators and identity helpers (customer_required, admin_required, login_required)."""
 
+from app.extensions import db
+
 # ---- current_customer ----
 
 
@@ -212,3 +214,34 @@ def test_logout_clears_admin_session(client):
     response = client.get("/admin/", follow_redirects=False)
     assert response.status_code == 302
     assert "/admin/login" in response.location
+
+
+def test_customer_password_change_revokes_all_sessions(client, app):
+    from datetime import UTC, datetime
+
+    from app.models import UserSession
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    with app.app_context():
+        db.session.add(
+            UserSession(
+                session_id="second-session",
+                user_type="customer",
+                user_identifier="user@example.com",
+                last_activity_at=datetime.now(UTC).replace(tzinfo=None),
+            )
+        )
+        db.session.commit()
+        assert db.session.query(UserSession).filter_by(user_identifier="user@example.com").count() == 2
+
+    response = client.post(
+        "/auth/profile",
+        data={
+            "current_password": "secret",
+            "new_password": "a_new_secure_password",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.query(UserSession).filter_by(user_identifier="user@example.com").count() == 0
