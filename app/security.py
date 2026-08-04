@@ -79,7 +79,11 @@ def validate_production_config(config):
     if _is_required_placeholder(harbor_token) or harbor_token.startswith("dev-"):
         errors.append("ADMIRAL_HARBOR_API_TOKEN must be replaced before production")
 
-    if _is_required_placeholder(encryption_key) or encryption_key.startswith("dev-") or encryption_key == "dev-encryption-key":
+    if (
+        _is_required_placeholder(encryption_key)
+        or encryption_key.startswith("dev-")
+        or encryption_key == "dev-encryption-key"
+    ):
         errors.append("HARBOR_ENCRYPTION_KEY must be replaced before production")
 
     if database_url.startswith("sqlite:///"):

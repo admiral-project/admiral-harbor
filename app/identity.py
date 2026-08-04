@@ -26,11 +26,16 @@ def current_customer():
     session_id = session.get("_session_id")
     if not email or not session_id:
         return None
-    if db.session.query(UserSession).filter_by(
-        session_id=session_id,
-        user_type="customer",
-        user_identifier=email,
-    ).one_or_none() is None:
+    if (
+        db.session.query(UserSession)
+        .filter_by(
+            session_id=session_id,
+            user_type="customer",
+            user_identifier=email,
+        )
+        .one_or_none()
+        is None
+    ):
         session.pop("_session_id", None)
         session.pop("customer_token", None)
         session.pop("customer_email", None)
@@ -117,9 +122,9 @@ def clear_user_session():
 
 def invalidate_user_sessions(user_type, user_identifier):
     """Revoke every active server-side session for an identity."""
-    db.session.query(UserSession).filter_by(
-        user_type=user_type, user_identifier=user_identifier
-    ).delete(synchronize_session=False)
+    db.session.query(UserSession).filter_by(user_type=user_type, user_identifier=user_identifier).delete(
+        synchronize_session=False
+    )
 
 
 def check_session_idle_timeout():
