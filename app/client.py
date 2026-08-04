@@ -56,6 +56,7 @@ from app.models import (
     UploadedBackup,
     compute_sha256,
 )
+from app.backup_links import build_backup_download_query
 from app.paypal import (
     PayPalError,
     create_subscription,
@@ -1324,9 +1325,8 @@ def request_restore(instance_id):
             flash("Uploaded backup not found.", "error")
             return redirect(url_for("client.instance_detail", instance_id=instance_id))
         external_url = current_app.config["HARBOR_EXTERNAL_URL"]
-        download_uri = (
-            f"{external_url}/api/v1/backups/uploads/" f"{uploaded.backup_id}/download?customer_id={customer.public_id}"
-        )
+        download_query = build_backup_download_query(uploaded.backup_id, customer.public_id)
+        download_uri = f"{external_url}/api/v1/backups/uploads/{uploaded.backup_id}/download?{download_query}"
         source = {
             "type": "https",
             "uri": download_uri,

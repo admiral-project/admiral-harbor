@@ -42,6 +42,7 @@ from app.models import (
     Subscription,
     UploadedBackup,
 )
+from app.backup_links import verify_backup_download_signature
 from app.paypal import is_mock_mode, verify_webhook_signature
 from app.rate_limit import RateLimiter
 
@@ -554,25 +555,34 @@ def mock_paypal_approve():
 
 @bp.route("/api/v1/backups/uploads/<backup_id>/download")
 def api_download_uploaded_backup(backup_id):
-    token = request.headers.get("X-Admiral-Token", "")
     ip = request.remote_addr or "unknown"
-    limiter_key = f"api-token:{ip}"
+    limiter_key = f"backup-download:{ip}"
     allowed, _remaining = api_token_limiter.is_allowed(limiter_key)
     if not allowed:
         return jsonify({"error": "too many authentication failures"}), 429
-    if token not in (
-        current_app.config.get("ADMIRAL_HARBOR_API_TOKEN", ""),
-        current_app.config.get("ADMIRAL_ADMIN_TOKEN", ""),
+    customer_id = request.args.get("customer_id", "").strip()
+    if not verify_backup_download_signature(
+        backup_id,
+        customer_id,
+        request.args.get("expires", ""),
+        request.args.get("signature", ""),
     ):
         current_app.logger.warning(
-            "uploaded backup download authentication failed",
-            extra={"status": 401, "ip": ip, "backup_id": backup_id},
+            "uploaded backup download signature rejected",
+            extra={"status": 401, "ip": ip, "backup_id": backup_id, "customer_id": customer_id},
         )
         return jsonify({"error": "unauthorized"}), 401
     api_token_limiter.reset(limiter_key)
-    customer_id = request.args.get("customer_id", "").strip()
     customer = db.session.query(Customer).filter_by(public_id=customer_id, is_active=True).one_or_none()
     backup = db.session.query(UploadedBackup).filter_by(backup_id=backup_id).one_or_none()
     if customer is None or backup is None or backup.customer_email != customer.email:
+        current_app.logger.warning(
+            "uploaded backup download scope rejected",
+            extra={"status": 404, "ip": ip, "backup_id": backup_id, "customer_id": customer_id},
+        )
         return jsonify({"error": "backup not found"}), 404
+    current_app.logger.info(
+        "uploaded backup downloaded",
+        extra={"status": 200, "ip": ip, "backup_id": backup_id, "customer_id": customer_id},
+    )
     return send_file(backup.stored_path, as_attachment=True, download_name=backup.original_filename)

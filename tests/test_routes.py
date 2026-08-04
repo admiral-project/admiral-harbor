@@ -637,7 +637,11 @@ def test_api_download_uploaded_backup_unauthorized(client):
 
 
 def test_api_download_uploaded_backup_not_found(client):
-    response = client.get("/api/v1/backups/uploads/bk_123/download", headers={"X-Admiral-Token": "test-token"})
+    from app.backup_links import build_backup_download_query
+
+    with client.application.app_context():
+        query = build_backup_download_query("bk_123", "hcus_testuser")
+    response = client.get(f"/api/v1/backups/uploads/bk_123/download?{query}")
     assert response.status_code == 404
 
 
@@ -664,10 +668,11 @@ def test_api_download_uploaded_backup_success(client, app):
         db.session.add(ub)
         db.session.commit()
 
-    response = client.get(
-        "/api/v1/backups/uploads/bk_exists/download?customer_id=hcus_testuser",
-        headers={"X-Admiral-Token": "test-token"},
-    )
+    from app.backup_links import build_backup_download_query
+
+    with app.app_context():
+        query = build_backup_download_query("bk_exists", "hcus_testuser")
+    response = client.get(f"/api/v1/backups/uploads/bk_exists/download?{query}")
     assert response.status_code == 200
     assert response.data == b"backup-content"
 
