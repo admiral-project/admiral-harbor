@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
-from uuid import uuid4
 
 from flask import (
     Blueprint,

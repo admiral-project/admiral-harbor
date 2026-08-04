@@ -6,7 +6,6 @@ import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
-from uuid import uuid4
 
 from flask import (
     Blueprint,
