@@ -7,10 +7,23 @@
 {% block content %}
 
 {% if admirald and admirald.get("need_restarting") %}
-<div class="panel" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;margin-bottom:1rem;">
- <strong>Actualización de imagen pendiente</strong>
- <p>La definición de la aplicación cambió. La instancia debe reiniciarse para aplicar las imágenes nuevas.</p>
-</div>
+  {% set ut = admirald.get("update_type", "") %}
+  {% if ut in ("security_critical", "security") %}
+  <div class="panel" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;margin-bottom:1rem;">
+   <strong>Actualización de seguridad pendiente</strong>
+   <p>Hay un parche de seguridad disponible. La instancia debe reiniciarse para aplicar la corrección.</p>
+  </div>
+  {% elif ut == "bugfix" %}
+  <div class="panel" style="background:#fefce8;border-color:#fde68a;color:#854d0e;margin-bottom:1rem;">
+   <strong>Corrección de error disponible</strong>
+   <p>Hay una corrección de error disponible. La instancia debe reiniciarse para aplicar la corrección.</p>
+  </div>
+  {% else %}
+  <div class="panel" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;margin-bottom:1rem;">
+   <strong>Mejora disponible</strong>
+   <p>Hay una mejora disponible. La instancia debe reiniciarse para aplicar la actualización.</p>
+  </div>
+  {% endif %}
 {% endif %}
 
 <div class="panel">

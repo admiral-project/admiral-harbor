@@ -67,10 +67,23 @@
 {% endif %}
 
 {% if remote_state and remote_state.get("need_restarting") %}
-<div class="panel" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;margin:1rem 0;">
-  <strong>Hay una actualización de imagen pendiente</strong>
-  <p class="meta" style="color:#9a3412;">La definición de esta aplicación cambió. Reinicie la instancia para ejecutar los servicios con las imágenes nuevas.</p>
-</div>
+  {% set ut = remote_state.get("update_type", "") %}
+  {% if ut in ("security_critical", "security") %}
+  <div class="panel" style="background:#fef2f2;border-color:#fca5a5;color:#991b1b;margin:1rem 0;">
+    <strong>Actualización de seguridad pendiente</strong>
+    <p class="meta" style="color:#991b1b;">Hay un parche de seguridad disponible. Reinicie la instancia lo antes posible para aplicar la corrección.</p>
+  </div>
+  {% elif ut == "bugfix" %}
+  <div class="panel" style="background:#fefce8;border-color:#fde68a;color:#854d0e;margin:1rem 0;">
+    <strong>Corrección de error disponible</strong>
+    <p class="meta" style="color:#854d0e;">Hay una corrección de error disponible. Reinicie la instancia para aplicar la corrección.</p>
+  </div>
+  {% else %}
+  <div class="panel" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;margin:1rem 0;">
+    <strong>Mejora disponible</strong>
+    <p class="meta" style="color:#1e40af;">Hay una mejora disponible para esta aplicación. Reinicie la instancia para aplicar la actualización.</p>
+  </div>
+  {% endif %}
 {% endif %}
 
 {% if instance.storage_status not in ["ok", "unknown"] %}
