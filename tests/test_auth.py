@@ -348,6 +348,10 @@ def test_profile_password_update(client, app):
     )
     assert b"Profile updated" in response.data
 
+    # Password changes revoke every existing session; authenticate again before
+    # checking the wrong-current-password path.
+    client.post("/auth/login", json={"email": "user@example.com", "password": "new-valid-password-123"})
+
     # Wrong current password
     response = client.post(
         "/auth/profile",
