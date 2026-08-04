@@ -102,6 +102,8 @@ def _generate_invoices(app):
             continue
 
         # For PayPal subscriptions, verify still active remotely
+        # and sync next_billing_time from the PayPal API response.
+        paypal_next_billing = None
         if sub.paypal_subscription_id:
             try:
                 remote = paypal_get_sub(sub.paypal_subscription_id)
@@ -116,6 +118,12 @@ def _generate_invoices(app):
                     )
                     actions += 1
                     continue
+                raw_next = remote.get("billing_info", {}).get("next_billing_time", "")
+                if raw_next:
+                    try:
+                        paypal_next_billing = datetime.fromisoformat(raw_next).date().isoformat()
+                    except (ValueError, TypeError):
+                        pass
             except PayPalError as exc:
                 log.warning("Subscription %s: PayPal check failed: %s", sub.external_id, exc)
                 errors += 1
@@ -128,9 +136,13 @@ def _generate_invoices(app):
             .one_or_none()
         )
         if existing is not None:
-            sub.next_billing_at = existing.period_end
+            if paypal_next_billing:
+                sub.next_billing_at = paypal_next_billing
+            else:
+                sub.next_billing_at = existing.period_end
             continue
 
+        period_end = paypal_next_billing or (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
         invoice = Invoice(
             subscription_external_id=sub.external_id,
             customer_email=sub.customer_email,
@@ -147,10 +159,10 @@ def _generate_invoices(app):
             # paid. The PayPal webhook/reconciliation path is authoritative.
             status="pending",
             period_start=period_start,
-            period_end=(datetime.now(UTC) + timedelta(days=30)).date().isoformat(),
+            period_end=period_end,
         )
         db.session.add(invoice)
-        sub.next_billing_at = (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
+        sub.next_billing_at = period_end
         actions += 1
         log.info(
             "Invoice %s generated for subscription %s",

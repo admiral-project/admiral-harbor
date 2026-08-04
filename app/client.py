@@ -644,6 +644,13 @@ def billing_return():
         flash(f"PayPal verification failed: {exc}", "error")
         return redirect(url_for("client.billing"))
 
+    raw_next_billing = paypal_sub.get("billing_info", {}).get("next_billing_time", "")
+    if raw_next_billing:
+        try:
+            order.next_billing_at = datetime.fromisoformat(raw_next_billing).date().isoformat()
+        except (ValueError, TypeError):
+            pass
+
     if paypal_sub.get("status") in ("ACTIVE", "APPROVED"):
         if is_mock_mode():
             try:

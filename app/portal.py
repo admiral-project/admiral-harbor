@@ -468,6 +468,12 @@ def paypal_webhook():
                 )
             )
         subscription.next_billing_at = (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
+        raw_next = resource.get("billing_info", {}).get("next_billing_time", "")
+        if raw_next:
+            try:
+                subscription.next_billing_at = datetime.fromisoformat(raw_next).date().isoformat()
+            except (ValueError, TypeError):
+                pass
         if order is not None:
             order.status = "paid"
             if not order.subscription_external_id:
