@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 
 from app import admiral_client
 from app.admiral_client import AdmiralAPIError
+from app.backup_links import verify_backup_download_signature
 from app.config import overdue_policy
 from app.extensions import db
 from app.fiscal import contract_snapshot
@@ -42,7 +43,6 @@ from app.models import (
     Subscription,
     UploadedBackup,
 )
-from app.backup_links import verify_backup_download_signature
 from app.paypal import is_mock_mode, verify_webhook_signature
 from app.rate_limit import RateLimiter
 

@@ -24,6 +24,7 @@ from werkzeug.utils import secure_filename
 
 from app import admiral_client
 from app.admiral_client import AdmiralAPIError
+from app.backup_links import build_backup_download_query
 from app.config import overdue_policy
 from app.extensions import db
 from app.fiscal import (
@@ -56,7 +57,6 @@ from app.models import (
     UploadedBackup,
     compute_sha256,
 )
-from app.backup_links import build_backup_download_query
 from app.paypal import (
     PayPalError,
     create_subscription,

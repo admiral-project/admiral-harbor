@@ -10,7 +10,7 @@ from flask import current_app
 
 
 def _canonical_payload(backup_id, customer_id, expires_at):
-    return f"{backup_id}|{customer_id}|{expires_at}".encode("utf-8")
+    return f"{backup_id}|{customer_id}|{expires_at}".encode()
 
 
 def _signing_key():
