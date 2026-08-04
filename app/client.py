@@ -1324,9 +1324,13 @@ def request_restore(instance_id):
             flash("Uploaded backup not found.", "error")
             return redirect(url_for("client.instance_detail", instance_id=instance_id))
         external_url = current_app.config["HARBOR_EXTERNAL_URL"]
+        download_uri = (
+            f"{external_url}/api/v1/backups/uploads/"
+            f"{uploaded.backup_id}/download?customer_id={customer.public_id}"
+        )
         source = {
             "type": "https",
-            "uri": f"{external_url}/api/v1/backups/uploads/{uploaded.backup_id}/download?customer_id={customer.public_id}",
+            "uri": download_uri,
             "checksum": uploaded.checksum_sha256,
             "size_bytes": uploaded.size_bytes,
         }
