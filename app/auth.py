@@ -427,7 +427,20 @@ def me():
 def terms():
     from app.settings import overdue_policy_dict
 
-    return jsonify(overdue_policy_dict())
+    try:
+        return jsonify(overdue_policy_dict())
+    except Exception:
+        return jsonify(
+            {
+                "policy_version": current_app.config.get("HARBOR_OVERDUE_POLICY_VERSION", "v1"),
+                "grace_before_suspend_days": current_app.config.get("HARBOR_OVERDUE_SUSPEND_AFTER_DAYS", 7),
+                "additional_grace_before_deprovision_days": current_app.config.get(
+                    "HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS", 14
+                ),
+                "last_backup_retention_days": current_app.config.get("HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS", 21),
+                "requires_acceptance_at_signup": True,
+            }
+        )
 
 
 @bp.route("/profile", methods=["GET", "POST"])
