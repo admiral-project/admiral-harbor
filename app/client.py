@@ -566,13 +566,19 @@ def subscription_cancel(subscription_id):
             action="subscription_cancelled",
             resource_type="Subscription",
             resource_id=subscription.id,
-            detail=f"Subscription cancelled; service remains active through {subscription.next_billing_at or 'the prepaid period'}. Reason: {reason}",
+            detail=(
+                f"Subscription cancelled; service remains active through "
+                f"{subscription.next_billing_at or 'the prepaid period'}. Reason: {reason}"
+            ),
             ip_address=request.remote_addr or "",
         )
     )
     db.session.commit()
     flash(
-        f"Subscription cancelled. No refund is issued; your service remains active through {subscription.next_billing_at or 'the prepaid period'} and future PayPal charges are stopped.",
+        (
+            "Subscription cancelled. No refund is issued; your service remains active through "
+            f"{subscription.next_billing_at or 'the prepaid period'} and future PayPal charges are stopped."
+        ),
         "success",
     )
     return redirect(url_for("client.subscriptions_list"))
@@ -1129,10 +1135,16 @@ def instance_action(instance_id):
                 instance.instance_id,
                 customer.email,
                 "cancel_requested",
-                f"Subscription cancelled; instance remains active through {subscription.next_billing_at if subscription else 'the prepaid period'}.",
+                (
+                    "Subscription cancelled; instance remains active through "
+                    f"{subscription.next_billing_at if subscription else 'the prepaid period'}."
+                ),
             )
             flash(
-                "Subscription cancelled. No refund is issued; the instance remains active through the prepaid period and future charges are stopped.",
+                (
+                    "Subscription cancelled. No refund is issued; the instance remains active through "
+                    "the prepaid period and future charges are stopped."
+                ),
                 "success",
             )
         else:
