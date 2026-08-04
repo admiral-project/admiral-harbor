@@ -294,6 +294,31 @@ def _reconcile_paypal_subscriptions(app):
                 "PayPal subscription %s cancelled, updating local",
                 sub.paypal_subscription_id,
             )
+            if sub.instance_id:
+                customer = db.session.query(Customer).filter_by(email=sub.customer_email).one_or_none()
+                if customer is None:
+                    log.error("Customer not found for cancelled subscription %s", sub.external_id)
+                    errors += 1
+                    continue
+                try:
+                    response = admiral_action(sub.instance_id, "deprovision", customer_id=customer.public_id)
+                except AdmiralAPIError as exc:
+                    log.error(
+                        "Deprovision retry failed for cancelled subscription %s: %s",
+                        sub.external_id,
+                        exc,
+                    )
+                    errors += 1
+                    continue
+                if not isinstance(response, dict) or not response.get("operation_id"):
+                    log.error("Deprovision retry returned no operation for cancelled subscription %s", sub.external_id)
+                    errors += 1
+                    continue
+                log.info(
+                    "Queued deprovision %s for cancelled subscription %s",
+                    response["operation_id"],
+                    sub.external_id,
+                )
             sub.status = "cancelled"
             actions += 1
         elif paypal_status in ("ACTIVE", "APPROVED") and sub.status == "past_due":
