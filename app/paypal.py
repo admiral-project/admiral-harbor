@@ -363,10 +363,11 @@ def refund_last_sale(subscription_id):
 def verify_webhook_signature(headers, body):
     if _is_mock():
         mock_token = os.environ.get("HARBOR_MOCK_WEBHOOK_TOKEN", "")
-        req_token = headers.get("X-Admiral-Webhook-Test", "")
-        if not mock_token or req_token != mock_token:
-            logger.warning("mock webhook rejected: missing or mismatched X-Admiral-Webhook-Test header")
-            return False
+        if mock_token:
+            req_token = headers.get("X-Admiral-Webhook-Test", "")
+            if req_token != mock_token:
+                logger.warning("mock webhook rejected: mismatched X-Admiral-Webhook-Test header")
+                return False
         return True
     webhook_id = _db_paypal_config()["webhook_id"]
     if not webhook_id:
