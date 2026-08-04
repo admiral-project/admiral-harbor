@@ -1131,7 +1131,10 @@ def instance_action(instance_id):
                 "cancel_requested",
                 f"Subscription cancelled; instance remains active through {subscription.next_billing_at if subscription else 'the prepaid period'}.",
             )
-            flash("Subscription cancelled. No refund is issued; the instance remains active through the prepaid period and future charges are stopped.", "success")
+            flash(
+                "Subscription cancelled. No refund is issued; the instance remains active through the prepaid period and future charges are stopped.",
+                "success",
+            )
         else:
             mapped = {"pause": "pause", "resume": "resume", "backup": "backup"}
             response = admiral_client.action(
