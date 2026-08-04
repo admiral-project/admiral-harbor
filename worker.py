@@ -632,6 +632,16 @@ def _reconcile_setup_failed(app):
                 exc,
             )
             errors += 1
+            db.session.add(
+                WorkerLog(
+                    started_at=datetime.now(UTC),
+                    completed_at=datetime.now(UTC),
+                    actions_taken=0,
+                    errors=1,
+                    summary=(f"setup_failed cancel pending for instance {local_app.instance_id} (refund={refund_id})"),
+                )
+            )
+            continue
 
         subscription.status = "cancelled"
         actions += 1
