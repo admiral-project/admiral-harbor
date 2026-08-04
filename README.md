@@ -73,6 +73,12 @@ Important variables:
 - `HARBOR_PAYPAL_CLIENT_ID` / `HARBOR_PAYPAL_CLIENT_SECRET` / `HARBOR_PAYPAL_WEBHOOK_ID` - PayPal integration
 - `HARBOR_SMTP_*` - outbound email settings
 
+PayPal mode and credentials are persisted in Harbor's
+`HarborPayPalConfig` database row. With `ENV=production`, the database row is
+authoritative and environment variables are not used as per-field fallbacks.
+Environment variables remain available for development and test bootstrap
+when no database configuration exists.
+
 The configuration defaults are intentionally safe for local development, but production must override the secret and database settings.
 
 ## Local Development

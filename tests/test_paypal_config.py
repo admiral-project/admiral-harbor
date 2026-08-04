@@ -67,3 +67,30 @@ def test_partial_database_credentials_fall_back_per_field(app):
             "client_secret": "env-secret",
             "webhook_id": "env-webhook",
         }
+
+
+def test_production_database_config_does_not_fall_back_to_environment(app, monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    app.config.update(
+        HARBOR_PAYPAL_MODE="live",
+        HARBOR_PAYPAL_CLIENT_ID="env-client",
+        HARBOR_PAYPAL_CLIENT_SECRET="env-secret",
+        HARBOR_PAYPAL_WEBHOOK_ID="env-webhook",
+    )
+
+    with app.app_context():
+        db.session.add(HarborPayPalConfig(mode="live", client_id="db-client"))
+        db.session.commit()
+
+        assert _db_paypal_config() == {
+            "mode": "live",
+            "client_id": "db-client",
+            "client_secret": "",
+            "webhook_id": "",
+        }
+
+
+def test_production_requires_database_paypal_config(app, monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    with app.app_context(), pytest.raises(PayPalError, match="database configuration"):
+        _db_paypal_config()

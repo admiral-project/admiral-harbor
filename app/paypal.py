@@ -36,7 +36,12 @@ def _resolve_secret(value):
 
 
 def _db_paypal_config():
-    """Return the persisted PayPal config, with env only as bootstrap fallback."""
+    """Return PayPal configuration with production-safe source precedence.
+
+    Environment variables are a development/test bootstrap mechanism. Once a
+    database row exists, production uses only its values so an administrator
+    does not need (and cannot be assumed) to control the service environment.
+    """
     from app.extensions import db
     from app.models import HarborPayPalConfig
 
@@ -48,6 +53,13 @@ def _db_paypal_config():
     }
     cfg = db.session.query(HarborPayPalConfig).first()
     if cfg is not None:
+        if os.environ.get("ENV", "development").strip().lower() == "production":
+            return {
+                "mode": cfg.mode or "",
+                "client_id": cfg.client_id or "",
+                "client_secret": _resolve_secret(cfg.client_secret) if cfg.client_secret else "",
+                "webhook_id": cfg.webhook_id or "",
+            }
         # The row may be a lazy bootstrap marker or a partially configured
         # operator override. Resolve each credential independently so a
         # missing DB field cannot hide a complete value from the environment.
@@ -58,6 +70,8 @@ def _db_paypal_config():
             "client_secret": (_resolve_secret(cfg.client_secret) if cfg.client_secret else env_config["client_secret"]),
             "webhook_id": cfg.webhook_id or env_config["webhook_id"],
         }
+    if os.environ.get("ENV", "development").strip().lower() == "production":
+        raise PayPalError("PayPal database configuration is required in production")
     return env_config
 
 

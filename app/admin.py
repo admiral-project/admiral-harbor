@@ -1482,6 +1482,7 @@ def edit_user(user_id):
     """Edit admin user."""
     user = db.session.query(HarborAdminUser).get_or_404(user_id)
     if request.method == "POST":
+        old_username = user.username
         username = request.form.get("username", "").strip()
         display_name = request.form.get("display_name", "").strip()
         password = request.form.get("password", "").strip()
@@ -1514,7 +1515,9 @@ def edit_user(user_id):
                 flash("Current password is incorrect.", "error")
                 return redirect(url_for("admin.edit_user", user_id=user.id))
             user.password_hash = ph.hash(password)
-            invalidate_user_sessions("admin", user.username)
+            invalidate_user_sessions("admin", old_username)
+            if username != old_username:
+                invalidate_user_sessions("admin", username)
 
         db.session.add(
             AuditLog(

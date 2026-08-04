@@ -301,6 +301,22 @@ def test_edit_user_route(client, app):
     )
     assert b"already exists" in response.data
 
+    response = client.post(
+        "/admin/users/1/edit",
+        data={
+            "username": "testadmin",
+            "display_name": "New",
+            "current_password": "secret",
+            "password": "a_new_secure_admin_password",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    with app.app_context():
+        from app.models import UserSession
+
+        assert db.session.query(UserSession).filter_by(user_type="admin", user_identifier="testadmin").count() == 0
+
     # Toggle active - self
     response = client.post("/admin/users/1/toggle-active", follow_redirects=True)
     assert b"cannot deactivate yourself" in response.data or response.status_code == 200
