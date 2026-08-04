@@ -3,7 +3,7 @@ from functools import wraps
 from secrets import token_urlsafe
 
 from flask import abort, flash, g, redirect, request, session, url_for
-from flask_login import current_user
+from flask_login import current_user, logout_user
 
 from app.extensions import db
 from app.models import Customer, UserSession
@@ -48,9 +48,26 @@ def current_customer():
 
 
 def current_admin():
-    if current_user.is_authenticated:
-        return current_user
-    return None
+    if not current_user.is_authenticated:
+        return None
+    session_id = session.get("_session_id")
+    if session_id is None:
+        logout_user()
+        return None
+    record = (
+        db.session.query(UserSession)
+        .filter_by(
+            session_id=session_id,
+            user_type="admin",
+            user_identifier=current_user.username,
+        )
+        .one_or_none()
+    )
+    if record is None:
+        logout_user()
+        session.pop("_session_id", None)
+        return None
+    return current_user
 
 
 def login_required(view):
@@ -137,6 +154,8 @@ def check_session_idle_timeout():
         session.pop("customer_token", None)
         session.pop("customer_email", None)
         session.pop("customer_public_id", None)
+        if current_user.is_authenticated:
+            logout_user()
         return None
     now = _now()
     idle_seconds = (now - record.last_activity_at).total_seconds()
