@@ -23,7 +23,18 @@ def _now():
 
 def current_customer():
     email = session.get("customer_email")
-    if not email:
+    session_id = session.get("_session_id")
+    if not email or not session_id:
+        return None
+    if db.session.query(UserSession).filter_by(
+        session_id=session_id,
+        user_type="customer",
+        user_identifier=email,
+    ).one_or_none() is None:
+        session.pop("_session_id", None)
+        session.pop("customer_token", None)
+        session.pop("customer_email", None)
+        session.pop("customer_public_id", None)
         return None
     customer = db.session.query(Customer).filter_by(email=email).one_or_none()
     if customer is None or not customer.can_access():
@@ -118,6 +129,9 @@ def check_session_idle_timeout():
     record = db.session.query(UserSession).filter_by(session_id=session_id).one_or_none()
     if record is None:
         session.pop("_session_id", None)
+        session.pop("customer_token", None)
+        session.pop("customer_email", None)
+        session.pop("customer_public_id", None)
         return None
     now = _now()
     idle_seconds = (now - record.last_activity_at).total_seconds()
