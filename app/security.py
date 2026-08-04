@@ -21,9 +21,13 @@ def _warn_default(name, value):
         logger.warning("%s is using a development default; set it explicitly for production", name)
 
 
+def _is_required_placeholder(value):
+    return not value or value.strip() == "__REQUIRED__"
+
+
 def get_required_env_var(name: str, default: str | None = None, prod_mode: bool = False) -> str:
     value = os.environ.get(name)
-    if not value:
+    if not value or value.strip() == "__REQUIRED__":
         is_production = os.environ.get("ENV", "").lower() == "production"
         if is_production and prod_mode:
             raise ValueError(
@@ -67,15 +71,15 @@ def validate_production_config(config):
 
     errors = []
 
-    if not secret_key or secret_key.startswith("dev-"):
+    if _is_required_placeholder(secret_key) or secret_key.startswith("dev-"):
         errors.append("SECRET_KEY must be replaced before production")
     if len(secret_key) < 32:
         errors.append("SECRET_KEY must be at least 32 characters in production")
 
-    if not harbor_token or harbor_token.startswith("dev-"):
+    if _is_required_placeholder(harbor_token) or harbor_token.startswith("dev-"):
         errors.append("ADMIRAL_HARBOR_API_TOKEN must be replaced before production")
 
-    if not encryption_key or encryption_key.startswith("dev-") or encryption_key == "dev-encryption-key":
+    if _is_required_placeholder(encryption_key) or encryption_key.startswith("dev-") or encryption_key == "dev-encryption-key":
         errors.append("HARBOR_ENCRYPTION_KEY must be replaced before production")
 
     if database_url.startswith("sqlite:///"):
