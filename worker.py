@@ -294,32 +294,11 @@ def _reconcile_paypal_subscriptions(app):
                 "PayPal subscription %s cancelled, updating local",
                 sub.paypal_subscription_id,
             )
-            if sub.instance_id:
-                customer = db.session.query(Customer).filter_by(email=sub.customer_email).one_or_none()
-                if customer is None:
-                    log.error("Customer not found for cancelled subscription %s", sub.external_id)
-                    errors += 1
-                    continue
-                try:
-                    response = admiral_action(sub.instance_id, "deprovision", customer_id=customer.public_id)
-                except AdmiralAPIError as exc:
-                    log.error(
-                        "Deprovision retry failed for cancelled subscription %s: %s",
-                        sub.external_id,
-                        exc,
-                    )
-                    errors += 1
-                    continue
-                if not isinstance(response, dict) or not response.get("operation_id"):
-                    log.error("Deprovision retry returned no operation for cancelled subscription %s", sub.external_id)
-                    errors += 1
-                    continue
-                log.info(
-                    "Queued deprovision %s for cancelled subscription %s",
-                    response["operation_id"],
-                    sub.external_id,
-                )
             sub.status = "cancelled"
+            if sub.instance_id:
+                customer_app = db.session.query(CustomerApp).filter_by(instance_id=sub.instance_id).one_or_none()
+                if customer_app is not None:
+                    customer_app.commercial_status = "cancelled"
             actions += 1
         elif paypal_status in ("ACTIVE", "APPROVED") and sub.status == "past_due":
             log.info(
@@ -347,6 +326,56 @@ def _reconcile_paypal_subscriptions(app):
                 sub.status = "active"
                 actions += 1
 
+    db.session.commit()
+    return actions, errors
+
+
+def _reconcile_cancelled_subscriptions(app):
+    """Deprovision voluntarily cancelled services after prepaid time ends."""
+    actions = 0
+    errors = 0
+    today = datetime.now(UTC).date()
+    cancelled = (
+        db.session.query(Subscription)
+        .filter(
+            Subscription.status == "cancelled",
+            Subscription.instance_id.isnot(None),
+            ~Subscription.is_test_app,
+        )
+        .all()
+    )
+    for sub in cancelled:
+        customer_app = db.session.query(CustomerApp).filter_by(instance_id=sub.instance_id).one_or_none()
+        if customer_app is None or customer_app.status in {"deprovisioning", "deprovisioned", "cancelled"}:
+            continue
+        prepaid_end = sub.next_billing_at or customer_app.next_billing_at
+        if not prepaid_end:
+            log.warning("Cancelled subscription %s has no prepaid period end", sub.external_id)
+            continue
+        try:
+            if datetime.fromisoformat(prepaid_end).date() > today:
+                continue
+        except (TypeError, ValueError):
+            log.warning("Cancelled subscription %s has invalid prepaid period end %r", sub.external_id, prepaid_end)
+            continue
+        customer = db.session.query(Customer).filter_by(email=sub.customer_email).one_or_none()
+        if customer is None:
+            log.error("Customer not found for cancelled subscription %s", sub.external_id)
+            errors += 1
+            continue
+        try:
+            response = admiral_action(sub.instance_id, "deprovision", customer_id=customer.public_id)
+        except AdmiralAPIError as exc:
+            log.error("Deprovision failed after prepaid period for %s: %s", sub.external_id, exc)
+            errors += 1
+            continue
+        if not isinstance(response, dict) or not response.get("operation_id"):
+            log.error("Deprovision returned no operation for %s", sub.external_id)
+            errors += 1
+            continue
+        customer_app.status = "deprovisioning"
+        actions += 1
+        log.info("Queued deprovision %s after prepaid period for %s", response["operation_id"], sub.external_id)
     db.session.commit()
     return actions, errors
 
@@ -673,6 +702,13 @@ def _run_worker(app):
     )
     total_actions += ra
     total_errors += re
+
+    ca, ce = _run_worker_step(
+        "reconcile_cancelled_subscriptions",
+        lambda: _reconcile_cancelled_subscriptions(app),
+    )
+    total_actions += ca
+    total_errors += ce
 
     oa, oe = _run_worker_step("reconcile_operations", lambda: _reconcile_operations(app))
     total_actions += oa

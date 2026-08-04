@@ -547,39 +547,11 @@ def subscription_cancel(subscription_id):
                 "error",
             )
             return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
-    if subscription.instance_id:
-        try:
-            response = admiral_client.action(
-                subscription.instance_id,
-                "deprovision",
-                customer_id=customer.public_id,
-            )
-        except AdmiralAPIError as exc:
-            current_app.logger.error(
-                "Deprovision failed for cancelled subscription %s: %s", subscription.external_id, exc
-            )
-            flash(
-                "Payment was cancelled, but application teardown could not be queued. Please contact support.",
-                "error",
-            )
-            return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
-        if not isinstance(response, dict) or not response.get("operation_id"):
-            current_app.logger.error(
-                "Deprovision response did not include an operation for cancelled subscription %s",
-                subscription.external_id,
-            )
-            flash(
-                "Payment was cancelled, but application teardown could not be queued. Please contact support.",
-                "error",
-            )
-            return redirect(url_for("client.subscription_cancel_page", subscription_id=subscription_id))
-        if response.get("operation_id"):
-            current_app.logger.info(
-                "Queued deprovision %s for cancelled subscription %s",
-                response["operation_id"],
-                subscription.external_id,
-            )
     subscription.status = "cancelled"
+    if subscription.instance_id:
+        customer_app = db.session.query(CustomerApp).filter_by(instance_id=subscription.instance_id).one_or_none()
+        if customer_app is not None:
+            customer_app.commercial_status = "cancelled"
     change = SubscriptionChange(
         subscription_id=subscription.id,
         change_type="cancellation",
@@ -594,12 +566,15 @@ def subscription_cancel(subscription_id):
             action="subscription_cancelled",
             resource_type="Subscription",
             resource_id=subscription.id,
-            detail=f"Subscription cancelled. Reason: {reason}",
+            detail=f"Subscription cancelled; service remains active through {subscription.next_billing_at or 'the prepaid period'}. Reason: {reason}",
             ip_address=request.remote_addr or "",
         )
     )
     db.session.commit()
-    flash("Subscription cancelled successfully.", "success")
+    flash(
+        f"Subscription cancelled. No refund is issued; your service remains active through {subscription.next_billing_at or 'the prepaid period'} and future PayPal charges are stopped.",
+        "success",
+    )
     return redirect(url_for("client.subscriptions_list"))
 
 
@@ -1147,33 +1122,16 @@ def instance_action(instance_id):
                         "error",
                     )
                     return redirect(url_for("client.instance_detail", instance_id=instance_id))
-            try:
-                response = admiral_client.action(instance.instance_id, "deprovision", customer_id=customer.public_id)
-            except AdmiralAPIError as exc:
-                current_app.logger.error("Instance deprovision failed during cancellation: %s", exc)
-                flash(
-                    "Payment was cancelled, but application teardown could not be queued. Please contact support.",
-                    "error",
-                )
-                return redirect(url_for("client.instance_detail", instance_id=instance_id))
-            if not isinstance(response, dict) or not response.get("operation_id"):
-                flash(
-                    "Payment was cancelled, but application teardown could not be queued. Please contact support.",
-                    "error",
-                )
-                return redirect(url_for("client.instance_detail", instance_id=instance_id))
             if subscription:
                 subscription.status = "cancelled"
+                instance.commercial_status = "cancelled"
             _event(
                 instance.instance_id,
                 customer.email,
                 "cancel_requested",
-                "Cancellation requested.",
+                f"Subscription cancelled; instance remains active through {subscription.next_billing_at if subscription else 'the prepaid period'}.",
             )
-            flash(
-                f"Cancellation queued with operation {response['operation_id']}.",
-                "success",
-            )
+            flash("Subscription cancelled. No refund is issued; the instance remains active through the prepaid period and future charges are stopped.", "success")
         else:
             mapped = {"pause": "pause", "resume": "resume", "backup": "backup"}
             response = admiral_client.action(

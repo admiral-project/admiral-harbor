@@ -9,6 +9,7 @@ from app import admiral_client
 from app.extensions import db
 from app.models import (
     Customer,
+    CustomerApp,
     CustomerFiscalRequest,
     FiscalTreatmentType,
     Order,
@@ -323,18 +324,11 @@ def test_subscription_cancel_marks_local_cancellation_after_paypal_success(clien
         assert subscription.status == "cancelled"
 
 
-def test_instance_cancel_blocks_deprovision_when_paypal_cancel_fails(client, monkeypatch):
-    deprovision_calls = []
-
+def test_instance_cancel_blocks_local_cancellation_when_paypal_cancel_fails(client, monkeypatch):
     def fail_cancel(subscription_id, reason):
         raise PayPalError("paypal unavailable")
 
-    def record_action(instance_id, action_name, tier=None, service=None, customer_id=None):
-        deprovision_calls.append((instance_id, action_name))
-        return {"operation_id": f"op_{action_name}", "status": "queued"}
-
     monkeypatch.setattr("app.client.paypal_cancel_subscription", fail_cancel)
-    monkeypatch.setattr(admiral_client, "action", record_action)
 
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.post(
@@ -345,26 +339,17 @@ def test_instance_cancel_blocks_deprovision_when_paypal_cancel_fails(client, mon
 
     assert response.status_code in (302, 303)
     assert response.headers["Location"].endswith("/client/instances/inst_123")
-    assert deprovision_calls == []
-
     with client.application.app_context():
         subscription = db.session.get(Subscription, 1)
         assert subscription is not None
         assert subscription.status == "active"
 
 
-def test_instance_cancel_deprovisions_after_paypal_success(client, monkeypatch):
-    deprovision_calls = []
-
+def test_instance_cancel_keeps_instance_until_prepaid_period_ends(client, monkeypatch):
     def ok_cancel(subscription_id, reason):
         return None
 
-    def record_action(instance_id, action_name, tier=None, service=None, customer_id=None):
-        deprovision_calls.append((instance_id, action_name))
-        return {"operation_id": f"op_{action_name}", "status": "queued"}
-
     monkeypatch.setattr("app.client.paypal_cancel_subscription", ok_cancel)
-    monkeypatch.setattr(admiral_client, "action", record_action)
 
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.post(
@@ -375,12 +360,13 @@ def test_instance_cancel_deprovisions_after_paypal_success(client, monkeypatch):
 
     assert response.status_code in (302, 303)
     assert response.headers["Location"].endswith("/client/instances/inst_123")
-    assert deprovision_calls == [("inst_123", "deprovision")]
-
     with client.application.app_context():
         subscription = db.session.get(Subscription, 1)
         assert subscription is not None
         assert subscription.status == "cancelled"
+        customer_app = db.session.query(CustomerApp).filter_by(instance_id="inst_123").one()
+        assert customer_app.commercial_status == "cancelled"
+        assert customer_app.status == "running"
 
 
 def test_client_blocks_anonymous_all_routes(client):

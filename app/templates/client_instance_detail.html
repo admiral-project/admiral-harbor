@@ -218,7 +218,7 @@
     {% if instance.status not in ["deprovisioning", "deprovisioned", "cancelled"] %}
     <section class="panel panel-danger">
       <h2>Cancel service</h2>
-      <p class="meta">Type <strong>{{ instance.app_slug }}</strong> to confirm cancellation.</p>
+      <p class="meta">Type <strong>{{ instance.app_slug }}</strong> to stop future billing. No partial refund is issued; the instance remains active through the prepaid period.</p>
       <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}" class="stack">
         <input type="hidden" name="action" value="cancel">
         <label>Confirm text <input name="confirm_text"></label>
