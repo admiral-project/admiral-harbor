@@ -48,17 +48,15 @@ def _db_paypal_config():
     }
     cfg = db.session.query(HarborPayPalConfig).first()
     if cfg is not None:
-        # An empty row is the lazy bootstrap marker created by visiting the
-        # admin page. It must not override a complete environment config.
-        if not (cfg.client_id or cfg.client_secret or cfg.webhook_id) and any(
-            env_config[key] for key in ("client_id", "client_secret", "webhook_id")
-        ):
-            return env_config
+        # The row may be a lazy bootstrap marker or a partially configured
+        # operator override. Resolve each credential independently so a
+        # missing DB field cannot hide a complete value from the environment.
+        # The persisted mode remains authoritative whenever it is present.
         return {
-            "mode": cfg.mode,
-            "client_id": cfg.client_id or "",
-            "client_secret": _resolve_secret(cfg.client_secret or ""),
-            "webhook_id": cfg.webhook_id or "",
+            "mode": cfg.mode or env_config["mode"],
+            "client_id": cfg.client_id or env_config["client_id"],
+            "client_secret": (_resolve_secret(cfg.client_secret) if cfg.client_secret else env_config["client_secret"]),
+            "webhook_id": cfg.webhook_id or env_config["webhook_id"],
         }
     return env_config
 

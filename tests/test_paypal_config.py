@@ -5,7 +5,7 @@ import pytest
 
 from app.extensions import db
 from app.models import HarborPayPalConfig
-from app.paypal import PayPalError, _base_url, _get_access_token, paypal_mode
+from app.paypal import PayPalError, _base_url, _db_paypal_config, _get_access_token, paypal_mode
 
 
 def test_base_url_uses_live_endpoint_even_with_stale_sandbox_config(app, monkeypatch):
@@ -47,3 +47,23 @@ def test_database_mode_overrides_process_default(app):
         db.session.commit()
 
         assert paypal_mode() == "live"
+
+
+def test_partial_database_credentials_fall_back_per_field(app):
+    app.config.update(
+        HARBOR_PAYPAL_MODE="live",
+        HARBOR_PAYPAL_CLIENT_ID="env-client",
+        HARBOR_PAYPAL_CLIENT_SECRET="env-secret",
+        HARBOR_PAYPAL_WEBHOOK_ID="env-webhook",
+    )
+
+    with app.app_context():
+        db.session.add(HarborPayPalConfig(mode="live", client_id="db-client"))
+        db.session.commit()
+
+        assert _db_paypal_config() == {
+            "mode": "live",
+            "client_id": "db-client",
+            "client_secret": "env-secret",
+            "webhook_id": "env-webhook",
+        }
