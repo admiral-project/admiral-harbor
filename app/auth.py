@@ -425,15 +425,9 @@ def me():
 
 @bp.route("/terms")
 def terms():
-    return jsonify(
-        {
-            "policy_version": current_app.config["HARBOR_OVERDUE_POLICY_VERSION"],
-            "grace_before_suspend_days": current_app.config["HARBOR_OVERDUE_SUSPEND_AFTER_DAYS"],
-            "additional_grace_before_deprovision_days": current_app.config["HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS"],
-            "last_backup_retention_days": current_app.config["HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS"],
-            "requires_acceptance_at_signup": True,
-        }
-    )
+    from app.settings import overdue_policy_dict
+
+    return jsonify(overdue_policy_dict())
 
 
 @bp.route("/profile", methods=["GET", "POST"])
