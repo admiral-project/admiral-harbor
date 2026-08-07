@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from app.admiral_client import AdmiralAPIError
@@ -75,6 +76,23 @@ def test_sync_catalog_already_in_progress(app):
         result = sync_catalog(origin="test", actor="tester")
         assert result["success"] is False
         assert "already in progress" in result["error"]
+
+
+def test_sync_catalog_recovers_abandoned_sync(app):
+    """An old interrupted sync must not block future timer executions."""
+    with app.app_context():
+        db.session.query(CatalogSyncAudit).delete()
+        abandoned = CatalogSyncAudit(origin="systemd_timer", status="in_progress")
+        abandoned.started_at = datetime.now(UTC) - timedelta(minutes=6)
+        db.session.add(abandoned)
+        db.session.commit()
+
+        with patch("app.admiral_client.list_apps", return_value=[]):
+            result = sync_catalog(origin="systemd_timer")
+
+        assert result["success"] is True
+        assert abandoned.status == "failure"
+        assert abandoned.error_message == "Catalog sync abandoned before completion"
 
 
 def test_is_app_publishable():

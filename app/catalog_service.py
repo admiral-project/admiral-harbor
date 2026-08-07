@@ -3,7 +3,7 @@
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app import admiral_client
 from app.extensions import db
@@ -14,6 +14,9 @@ logger = logging.getLogger("admiral-harbor")
 
 class SyncException(Exception):
     """Raised when catalog synchronization fails"""
+
+
+SYNC_STALE_AFTER = timedelta(minutes=5)
 
 
 def sync_catalog(origin="manual", actor=None):
@@ -43,7 +46,18 @@ def sync_catalog(origin="manual", actor=None):
             .first()
         )
         if running:
-            raise SyncException("Sync already in progress")
+            now = datetime.now(UTC)
+            started_at = running.started_at
+            if started_at and started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=UTC)
+            if started_at and started_at < now - SYNC_STALE_AFTER:
+                running.status = "failure"
+                running.error_message = "Catalog sync abandoned before completion"
+                running.completed_at = now
+                db.session.commit()
+                logger.warning("Marked abandoned catalog sync %s as failed", running.execution_id)
+            else:
+                raise SyncException("Sync already in progress")
 
         db.session.commit()
 
