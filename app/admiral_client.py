@@ -25,7 +25,7 @@ def _verify():
 
 
 def _headers(customer_id=None):
-    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_ADMIN_TOKEN"]
+    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_INTERNAL_TOKEN"]
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
