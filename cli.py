@@ -29,6 +29,9 @@ def cmd_sync():
         logger.info("Starting catalog synchronization...")
         result = sync_catalog(origin="systemd_timer", actor=None)
 
+        if result.get("skipped"):
+            logger.info("Catalog sync skipped: %s", result.get("error", "another sync is active"))
+            return 0
         if result["success"]:
             logger.info(
                 f"Sync completed: {result['synced']} new, {result['updated']} updated, "

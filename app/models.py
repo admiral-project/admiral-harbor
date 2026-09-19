@@ -239,7 +239,7 @@ class CatalogSyncAudit(db.Model):
     actor = db.Column(db.String(255), nullable=True)  # admin username if manual
 
     # Execution result
-    status = db.Column(db.String(20), nullable=False)  # success | failure
+    status = db.Column(db.String(20), nullable=False)  # success | failure | skipped | in_progress
     error_message = db.Column(db.Text, nullable=True)
 
     # Statistics

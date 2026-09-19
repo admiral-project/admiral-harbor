@@ -78,6 +78,50 @@ def test_sync_catalog_already_in_progress(app):
         assert "already in progress" in result["error"]
 
 
+def test_timer_sync_skips_when_catalog_lock_is_busy(app):
+    """A timer overlap is normal and must not leave its systemd unit failed."""
+    with app.app_context(), patch("app.catalog_service._try_acquire_catalog_lock", return_value=None):
+        result = sync_catalog(origin="systemd_timer")
+
+        assert result["success"] is True
+        assert result["skipped"] is True
+        assert result["total"] == 0
+        audit = CatalogSyncAudit.query.filter_by(execution_id=result["execution_id"]).one()
+        assert audit.status == "skipped"
+        assert audit.error_message == "Sync already in progress"
+
+
+def test_manual_sync_reports_when_catalog_lock_is_busy(app):
+    """Manual operators receive the conflict rather than a misleading success."""
+    with app.app_context(), patch("app.catalog_service._try_acquire_catalog_lock", return_value=None):
+        result = sync_catalog(origin="manual", actor="tester")
+
+        assert result["success"] is False
+        assert result["skipped"] is False
+        audit = CatalogSyncAudit.query.filter_by(execution_id=result["execution_id"]).one()
+        assert audit.status == "failure"
+
+
+def test_catalog_lock_is_released_after_sync(app):
+    with app.app_context(), patch("app.admiral_client.list_apps", return_value=[]), patch(
+        "app.catalog_service._release_catalog_lock"
+    ) as release_lock:
+        result = sync_catalog(origin="systemd_timer")
+
+        assert result["success"] is True
+        release_lock.assert_called_once()
+
+
+def test_catalog_lock_is_released_after_sync_failure(app):
+    with app.app_context(), patch(
+        "app.admiral_client.list_apps", side_effect=AdmiralAPIError("upstream unavailable")
+    ), patch("app.catalog_service._release_catalog_lock") as release_lock:
+        result = sync_catalog(origin="systemd_timer")
+
+        assert result["success"] is False
+        release_lock.assert_called_once()
+
+
 def test_sync_catalog_recovers_abandoned_sync(app):
     """An old interrupted sync must not block future timer executions."""
     with app.app_context():

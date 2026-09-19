@@ -5,6 +5,8 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import text
+
 from app import admiral_client
 from app.extensions import db
 from app.models import CatalogApp, CatalogAppTier, CatalogSyncAudit
@@ -17,6 +19,65 @@ class SyncException(Exception):
 
 
 SYNC_STALE_AFTER = timedelta(minutes=5)
+CATALOG_SYNC_LOCK = "admiral_harbor_catalog_sync"
+
+
+def _try_acquire_catalog_lock():
+    """Return a dedicated PostgreSQL connection holding the sync lock."""
+    if db.engine.dialect.name != "postgresql":
+        return True
+
+    connection = db.engine.connect()
+    try:
+        acquired = bool(
+            connection.execute(
+                text("SELECT pg_try_advisory_lock(hashtext(:lock_name))"),
+                {"lock_name": CATALOG_SYNC_LOCK},
+            ).scalar()
+        )
+    except Exception:
+        connection.close()
+        raise
+    if not acquired:
+        connection.close()
+        return None
+    return connection
+
+
+def _release_catalog_lock(lock_connection):
+    """Release the timer lock; PostgreSQL also releases it if the process dies."""
+    if lock_connection is True:
+        return
+    try:
+        lock_connection.execute(
+            text("SELECT pg_advisory_unlock(hashtext(:lock_name))"),
+            {"lock_name": CATALOG_SYNC_LOCK},
+        )
+    except Exception:
+        logger.exception("Failed to release catalog synchronization lock")
+    finally:
+        lock_connection.close()
+
+
+def _record_blocked_sync(origin, actor, status):
+    """Persist a non-running sync attempt without changing catalog state."""
+    message = "Sync already in progress"
+    audit = CatalogSyncAudit(origin=origin, actor=actor, status=status)
+    audit.started_at = datetime.now(UTC)
+    audit.completed_at = audit.started_at
+    audit.error_message = message
+    db.session.add(audit)
+    db.session.commit()
+    return {
+        "success": status == "skipped",
+        "skipped": status == "skipped",
+        "execution_id": audit.execution_id,
+        "synced": 0,
+        "updated": 0,
+        "marked_missing": 0,
+        "total": 0,
+        "error": message,
+    }
 
 
 def sync_catalog(origin="manual", actor=None):
@@ -30,6 +91,11 @@ def sync_catalog(origin="manual", actor=None):
     Returns:
         dict with sync results and audit record
     """
+    lock_connection = _try_acquire_catalog_lock()
+    if lock_connection is None:
+        status = "skipped" if origin == "systemd_timer" else "failure"
+        return _record_blocked_sync(origin, actor, status)
+
     audit = CatalogSyncAudit(origin=origin, actor=actor, status="in_progress")
     audit.started_at = datetime.now(UTC)
     db.session.add(audit)
@@ -57,6 +123,21 @@ def sync_catalog(origin="manual", actor=None):
                 db.session.commit()
                 logger.warning("Marked abandoned catalog sync %s as failed", running.execution_id)
             else:
+                if origin == "systemd_timer":
+                    audit.status = "skipped"
+                    audit.error_message = "Sync already in progress"
+                    audit.completed_at = now
+                    db.session.commit()
+                    return {
+                        "success": True,
+                        "skipped": True,
+                        "execution_id": audit.execution_id,
+                        "synced": 0,
+                        "updated": 0,
+                        "marked_missing": 0,
+                        "total": 0,
+                        "error": "Sync already in progress",
+                    }
                 raise SyncException("Sync already in progress")
 
         db.session.commit()
@@ -224,6 +305,8 @@ def sync_catalog(origin="manual", actor=None):
             "execution_id": audit.execution_id,
             "error": error_msg,
         }
+    finally:
+        _release_catalog_lock(lock_connection)
 
 
 def get_last_sync():

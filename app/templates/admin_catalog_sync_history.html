@@ -39,6 +39,8 @@
    <span class="status-badge error"><i class="fas fa-exclamation-circle"></i> fallo</span>
    {% elif sync.status == 'in_progress' %}
    <span class="status-badge warning"><i class="fas fa-spinner pf-u-mr-sm"></i> en progreso</span>
+   {% elif sync.status == 'skipped' %}
+   <span class="status-badge info"><i class="fas fa-forward"></i> omitido</span>
    {% else %}
    <span class="status-badge info">{{ sync.status }}</span>
    {% endif %}
@@ -72,6 +74,8 @@
     <summary style="cursor:pointer;color:var(--pf-global--danger-color--100);">Ver error</summary>
     <pre style="margin-top:0.5rem;padding:0.75rem;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--admiral-radius);font-size:0.8rem;white-space:pre-wrap;max-width:400px;">{{ sync.error_message }}</pre>
    </details>
+   {% elif sync.status == 'skipped' and sync.error_message %}
+   <small style="color:var(--admiral-text-secondary);">{{ sync.error_message }}</small>
    {% endif %}
   </td>
  </tr>
