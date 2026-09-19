@@ -17,7 +17,7 @@ from app.admiral_client import (
 
 def test_headers(app):
     with app.app_context():
-        current_app.config["ADMIRAL_ADMIN_TOKEN"] = "test-token"
+        current_app.config["ADMIRAL_INTERNAL_TOKEN"] = "test-token"
         headers = _headers()
         assert headers["Authorization"] == "Bearer test-token"
         assert headers["Content-Type"] == "application/json"

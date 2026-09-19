@@ -63,7 +63,7 @@ Important variables:
 - `HARBOR_ENCRYPTION_KEY` - master key for encrypted secrets, required in production
 - `ADMIRAL_API_URL` - `admirald` API endpoint
 - `ADMIRAL_HARBOR_API_TOKEN` - scoped token for harbor-to-admirald API calls (required)
-- `ADMIRAL_ADMIN_TOKEN` - admin token, fallback for local development only
+- `ADMIRAL_INTERNAL_TOKEN` - internal service token for Admirald
 - `ADMIRAL_CA_FILE` - CA bundle for TLS verification
 - `ADMIRAL_INSECURE_SKIP_VERIFY` - test-only TLS bypass
 - `HARBOR_BOOTSTRAP_ADMIN_USER` / `HARBOR_BOOTSTRAP_ADMIN_PASSWORD` - initial admin account

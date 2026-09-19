@@ -31,7 +31,7 @@ MOCK_PORT = int(os.environ.get("ADMIRAL_MOCK_PORT", "9090"))
 HARBOR_HOST = os.environ.get("HARBOR_HTTP_ADDR", "127.0.0.1")
 HARBOR_PORT = int(os.environ.get("HARBOR_HTTP_PORT", "5001"))
 DEBUG = os.environ.get("DEV_RUN_DEBUG", "0") == "1"
-SHARED_TOKEN = os.environ.get("ADMIRAL_ADMIN_TOKEN", "dev-token")
+SHARED_TOKEN = os.environ.get("ADMIRAL_INTERNAL_TOKEN", "dev-token")
 
 logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,
@@ -858,7 +858,7 @@ def _worker_loop():
 
 def main():
     os.environ["ADMIRAL_API_URL"] = f"http://{HOST}:{MOCK_PORT}"
-    os.environ.setdefault("ADMIRAL_ADMIN_TOKEN", SHARED_TOKEN)
+    os.environ.setdefault("ADMIRAL_INTERNAL_TOKEN", SHARED_TOKEN)
     os.environ.setdefault("ADMIRAL_HARBOR_API_TOKEN", SHARED_TOKEN)
     os.environ.setdefault("HARBOR_SECRET_KEY", "dev-secret-key-change-in-production")
     os.environ.setdefault("HARBOR_DATABASE_URL", "sqlite:///harbor.db")

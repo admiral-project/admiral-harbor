@@ -91,7 +91,7 @@ def test_terms_policy_override():
         SECRET_KEY="test-secret",
         SQLALCHEMY_DATABASE_URI="sqlite://",
         ADMIRAL_API_URL="https://admirald.test:8443",
-        ADMIRAL_ADMIN_TOKEN="test-token",
+        ADMIRAL_INTERNAL_TOKEN="test-token",
         ADMIRAL_CA_FILE="",
         HARBOR_OVERDUE_SUSPEND_AFTER_DAYS=7,
         HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS=14,
