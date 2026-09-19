@@ -103,9 +103,11 @@ def test_manual_sync_reports_when_catalog_lock_is_busy(app):
 
 
 def test_catalog_lock_is_released_after_sync(app):
-    with app.app_context(), patch("app.admiral_client.list_apps", return_value=[]), patch(
-        "app.catalog_service._release_catalog_lock"
-    ) as release_lock:
+    with (
+        app.app_context(),
+        patch("app.admiral_client.list_apps", return_value=[]),
+        patch("app.catalog_service._release_catalog_lock") as release_lock,
+    ):
         result = sync_catalog(origin="systemd_timer")
 
         assert result["success"] is True
@@ -113,9 +115,11 @@ def test_catalog_lock_is_released_after_sync(app):
 
 
 def test_catalog_lock_is_released_after_sync_failure(app):
-    with app.app_context(), patch(
-        "app.admiral_client.list_apps", side_effect=AdmiralAPIError("upstream unavailable")
-    ), patch("app.catalog_service._release_catalog_lock") as release_lock:
+    with (
+        app.app_context(),
+        patch("app.admiral_client.list_apps", side_effect=AdmiralAPIError("upstream unavailable")),
+        patch("app.catalog_service._release_catalog_lock") as release_lock,
+    ):
         result = sync_catalog(origin="systemd_timer")
 
         assert result["success"] is False
