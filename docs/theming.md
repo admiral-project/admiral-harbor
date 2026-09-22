@@ -10,19 +10,24 @@ Set `HARBOR_CUSTOM_THEME_DIR` to use another location.
 
 ## Theme layout
 
+Templates and static assets live in two separate directories: `theme/` holds
+the Jinja templates and `assets/` holds the files published to browsers.
+
 ```text
 custom-theme/
 ├── theme.yml
-├── layout.html
-├── index.html
-├── app_detail.html
-├── theme.css
-├── theme.js
+├── theme/
+│   ├── layout.html
+│   ├── index.html
+│   └── app_detail.html
 └── assets/
+    ├── theme.css
+    ├── theme.js
     └── logo.svg
 ```
 
-`theme.yml` must declare the main stylesheet and customer-facing layout:
+`theme.yml` must declare the main stylesheet, the customer-facing layout, the
+templates to override and the static assets:
 
 ```yaml
 theme: theme.css
@@ -38,24 +43,27 @@ assets:
   js:
     - theme.js
   files:
-    - assets/logo.svg
+    - logo.svg
 ```
 
-The declared files must exist, be readable regular files, and remain inside
-the theme directory. Absolute paths, `..`, and links outside the theme are
-rejected.
+Paths are relative to their owning directory: `layout` and `templates` resolve
+inside `theme/`; the theme CSS and the `assets` lists resolve inside `assets/`.
+Declared files must exist, be readable regular files, and stay inside their
+directory. Absolute paths and `..` are rejected.
 
 ## Overrides and assets
 
 Theme templates take precedence over the built-in templates by filename. A
 template that is not included in the theme continues to use Harbor's built-in
-version. The first release supports the public/catalog templates, customer
-authentication templates, and all `client_*.html` templates. Administrative
-templates are intentionally not overridden.
+version. Only customer-facing templates can be overridden: the catalog and app
+detail pages, customer authentication templates, all `client_*.html` templates,
+the shared `layout.html`, `confirm_email.html` and the mock PayPal page.
+Declaring any other template — including any administrative template — fails at
+startup, so the operator interface can never be branded from the theme
+directory. This applies to both the `layout` and the `templates` declarations.
 
-Only templates listed under `templates` (plus the declared `layout`) are
-eligible for override. Other files in the theme directory are not loaded as
-Jinja templates.
+Only templates listed under `templates` (plus the declared `layout`) are loaded
+from `theme/`. Jinja templates are never served over HTTP.
 
 Declared assets are read-only and served at:
 
@@ -79,7 +87,10 @@ Harbor fails fast when an existing theme has any of these problems:
 
 - missing or unreadable `theme.yml`;
 - invalid YAML or a non-mapping configuration;
+- a theme directory that is a broken symbolic link;
+- missing `theme/` or `assets/` directories;
 - missing `theme` or `layout` declarations;
+- a layout or template that is not a customer-facing template;
 - missing or unreadable declared files;
 - invalid asset list types;
 - unsafe paths or links outside the theme directory;
@@ -87,6 +98,17 @@ Harbor fails fast when an existing theme has any of these problems:
 
 The startup error identifies the theme path and the invalid declaration. Fix
 the theme or remove the directory to return to the built-in theme.
+
+The schema migrator and the batch worker never render portal pages. They ignore
+the custom theme entirely, so an invalid theme cannot prevent migrations or
+worker runs. Set `HARBOR_SKIP_CUSTOM_THEME=1` to skip theme loading in any
+process that should not validate it.
+
+## Applying changes
+
+The `theme.yml` declarations and the file sets are validated once at startup.
+Changing the directory contents or `theme.yml` requires a Harbor restart; the
+running process does not re-read the declarations.
 
 ## Testing locally
 

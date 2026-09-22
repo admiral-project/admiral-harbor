@@ -32,6 +32,19 @@ from app.theming import configure_theme
 logger = logging.getLogger("admiral-harbor")
 
 
+def _serves_web_branding() -> bool:
+    """Theme validation only applies to web serving.
+
+    The schema migrator and the batch worker never render portal pages, so a
+    broken theme must not prevent them from running.
+    """
+    if os.environ.get("HARBOR_MIGRATE") == "1":
+        return False
+    if os.environ.get("HARBOR_SKIP_CUSTOM_THEME") == "1":
+        return False
+    return True
+
+
 def _database_has_tables() -> bool:
     try:
         tables = inspect(db.engine).get_table_names()
@@ -56,7 +69,8 @@ def create_app(config_object="app.config.Config"):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     Path(app.config["HARBOR_UPLOAD_DIR"]).mkdir(parents=True, exist_ok=True)
     validate_production_config(app.config)
-    configure_theme(app)
+    if _serves_web_branding():
+        configure_theme(app)
 
     db.init_app(app)
     alembic.init_app(app)

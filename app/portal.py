@@ -53,11 +53,11 @@ api_token_limiter = RateLimiter(max_attempts=10, window_seconds=300)
 @bp.route("/custom-theme/<path:filename>")
 def custom_theme_asset(filename):
     theme = current_app.extensions.get("harbor_theme")
-    if theme is None or filename not in theme["declared"]:
+    if theme is None or filename not in theme["assets"]:
         return jsonify({"error": "theme asset not found"}), 404
-    candidate = (theme["root"] / filename).resolve()
+    candidate = (theme["assets_root"] / filename).resolve()
     try:
-        candidate.relative_to(theme["root"])
+        candidate.relative_to(theme["assets_root"])
     except ValueError:
         return jsonify({"error": "theme asset not found"}), 404
     return send_file(candidate, conditional=True)

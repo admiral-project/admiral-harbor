@@ -94,10 +94,14 @@ python cli.py list
 ## Custom Themes
 
 Customer-facing white labeling is supported from
-`/opt/admiral/harbor/custom-theme`. Configure the theme with `theme.yml` and
-declare its templates and assets. Harbor validates an existing theme during
-startup and fails fast when it is invalid. See [docs/theming.md](docs/theming.md)
-for the complete format and deployment guidance.
+`/opt/admiral/harbor/custom-theme`. The theme is split into a `theme/`
+directory holding the Jinja templates and an `assets/` directory holding the
+files published to browsers; `theme.yml` at the root declares both and is
+validated during startup, and Harbor fails fast when the theme is invalid. Only
+customer-facing templates can be overridden; administrative templates are never
+touched, and templates are never served over HTTP (only declared assets are).
+See [docs/theming.md](docs/theming.md) for the complete format and deployment
+guidance.
 
 ## Security Notes
 

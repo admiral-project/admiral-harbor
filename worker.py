@@ -14,6 +14,7 @@ Usage:
 """
 
 import logging
+import os
 import smtplib
 import ssl
 from datetime import UTC, datetime, timedelta
@@ -683,6 +684,7 @@ def _last_worker_run_at():
 
 
 def main():
+    os.environ.setdefault("HARBOR_SKIP_CUSTOM_THEME", "1")
     app = create_app()
     with app.app_context():
         if not _try_acquire_worker_lock():
