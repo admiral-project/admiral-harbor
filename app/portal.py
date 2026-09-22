@@ -50,6 +50,19 @@ bp = Blueprint("main", __name__)
 api_token_limiter = RateLimiter(max_attempts=10, window_seconds=300)
 
 
+@bp.route("/custom-theme/<path:filename>")
+def custom_theme_asset(filename):
+    theme = current_app.extensions.get("harbor_theme")
+    if theme is None or filename not in theme["declared"]:
+        return jsonify({"error": "theme asset not found"}), 404
+    candidate = (theme["root"] / filename).resolve()
+    try:
+        candidate.relative_to(theme["root"])
+    except ValueError:
+        return jsonify({"error": "theme asset not found"}), 404
+    return send_file(candidate, conditional=True)
+
+
 def _webhook_transmission_is_fresh(headers):
     """Reject stale PayPal deliveries while retaining event-id idempotence."""
     if is_mock_mode():

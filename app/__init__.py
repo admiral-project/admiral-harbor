@@ -27,6 +27,7 @@ from app.models import HarborAdminUser
 from app.portal import bp as main_bp
 from app.secrets_manager import SecretsManager
 from app.security import init_security_headers, validate_production_config
+from app.theming import configure_theme
 
 logger = logging.getLogger("admiral-harbor")
 
@@ -55,6 +56,7 @@ def create_app(config_object="app.config.Config"):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     Path(app.config["HARBOR_UPLOAD_DIR"]).mkdir(parents=True, exist_ok=True)
     validate_production_config(app.config)
+    configure_theme(app)
 
     db.init_app(app)
     alembic.init_app(app)

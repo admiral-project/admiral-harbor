@@ -31,6 +31,7 @@ class Config:
     ADMIRAL_CA_FILE = os.environ.get("ADMIRAL_CA_FILE", "")
     ADMIRAL_INSECURE_SKIP_VERIFY = os.environ.get("ADMIRAL_INSECURE_SKIP_VERIFY", "0") == "1"
     HARBOR_UPLOAD_DIR = os.environ.get("HARBOR_UPLOAD_DIR", "instance/uploads")
+    HARBOR_CUSTOM_THEME_DIR = os.environ.get("HARBOR_CUSTOM_THEME_DIR", "/opt/admiral/harbor/custom-theme")
     HARBOR_MAX_BACKUP_UPLOAD_BYTES = int(os.environ.get("HARBOR_MAX_BACKUP_UPLOAD_BYTES", str(512 * 1024 * 1024)))
     HARBOR_BACKUP_DOWNLOAD_TTL_SECONDS = int(os.environ.get("HARBOR_BACKUP_DOWNLOAD_TTL_SECONDS", "600"))
     HARBOR_MAX_FISCAL_EVIDENCE_BYTES = int(os.environ.get("HARBOR_MAX_FISCAL_EVIDENCE_BYTES", str(10 * 1024 * 1024)))

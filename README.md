@@ -91,6 +91,14 @@ python cli.py sync
 python cli.py list
 ```
 
+## Custom Themes
+
+Customer-facing white labeling is supported from
+`/opt/admiral/harbor/custom-theme`. Configure the theme with `theme.yml` and
+declare its templates and assets. Harbor validates an existing theme during
+startup and fails fast when it is invalid. See [docs/theming.md](docs/theming.md)
+for the complete format and deployment guidance.
+
 ## Security Notes
 
 - Customer and admin authentication are separated.
