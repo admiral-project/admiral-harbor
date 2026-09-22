@@ -16,6 +16,11 @@ from app.models import (
     Subscription,
 )
 from app.paypal import create_subscription, verify_webhook_signature
+from app.settings import (
+    set_overdue_deprovision_after_days,
+    set_overdue_last_backup_retention_days,
+    set_overdue_suspend_after_days,
+)
 
 
 def test_health(client):
@@ -84,25 +89,16 @@ def test_terms_policy(client):
     assert response.json["last_backup_retention_days"] == 15
 
 
-def test_terms_policy_override():
-    app = create_app()
-    app.config.update(
-        TESTING=True,
-        SECRET_KEY="test-secret",
-        SQLALCHEMY_DATABASE_URI="sqlite://",
-        ADMIRAL_API_URL="https://admirald.test:8443",
-        ADMIRAL_INTERNAL_TOKEN="test-token",
-        ADMIRAL_CA_FILE="",
-        HARBOR_OVERDUE_SUSPEND_AFTER_DAYS=7,
-        HARBOR_OVERDUE_DEPROVISION_AFTER_DAYS=14,
-        HARBOR_OVERDUE_LAST_BACKUP_RETENTION_DAYS=21,
-    )
-    with app.test_client() as test_client:
-        response = test_client.get("/auth/terms")
-        assert response.status_code == 200
-        assert response.json["grace_before_suspend_days"] == 7
-        assert response.json["additional_grace_before_deprovision_days"] == 14
-        assert response.json["last_backup_retention_days"] == 21
+def test_terms_policy_override(client):
+    with client.application.app_context():
+        set_overdue_suspend_after_days(7)
+        set_overdue_deprovision_after_days(14)
+        set_overdue_last_backup_retention_days(21)
+    response = client.get("/auth/terms")
+    assert response.status_code == 200
+    assert response.json["grace_before_suspend_days"] == 7
+    assert response.json["additional_grace_before_deprovision_days"] == 14
+    assert response.json["last_backup_retention_days"] == 21
 
 
 def test_client_billing_page(client):

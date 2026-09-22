@@ -18,6 +18,33 @@ from app.extensions import db
 from app.models import CatalogApp, Customer, CustomerApp, HarborAdminUser, Subscription
 
 
+# One in-memory SQLite database (HARBOR_DATABASE_URL="sqlite://") is shared by
+# every create_app() call within a process, so schema and rows persist across
+# tests. The auto-use fixture below resets it before every test so fixtures may
+# run in any order (and in parallel, one process per worker).
+_maintenance_app = create_app()
+_maintenance_app.config.update(
+    TESTING=True,
+    SECRET_KEY="test-secret",
+    HARBOR_ENCRYPTION_KEY="test-encryption-key-for-testing",
+)
+
+
+@pytest.fixture(autouse=True)
+def _reset_database():
+    """Start every test from an empty shared in-memory database.
+
+    The shared in-memory SQLite database keeps state for the lifetime of the
+    process; without a reset, each test inherits the rows left behind by the
+    previous one and the suite only passes in one specific order. Dropping all
+    tables before each test makes tests hermetic and ordering independent:
+    create_app() and the app fixture recreate the schema from scratch.
+    """
+    with _maintenance_app.app_context():
+        db.drop_all()
+    yield
+
+
 @pytest.fixture
 def app():
     app = create_app()
