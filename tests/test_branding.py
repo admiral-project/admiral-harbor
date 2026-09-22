@@ -42,6 +42,8 @@ def test_get_tax_rates_defaults(app):
 def test_get_tax_rates_invalid_json(app):
     with app.test_request_context():
         # Invalid JSON
+        db.session.query(HarborMeta).filter_by(key=TAX_RATES_KEY).delete()
+        db.session.commit()
         meta = HarborMeta(key=TAX_RATES_KEY, value="not-json")
         db.session.add(meta)
         db.session.commit()
@@ -56,6 +58,8 @@ def test_get_tax_rates_invalid_json(app):
 def test_get_tax_rates_conversion_robustness(app):
     with app.test_request_context():
         # Partially invalid structure
+        db.session.query(HarborMeta).filter_by(key=TAX_RATES_KEY).delete()
+        db.session.commit()
         meta = HarborMeta(key=TAX_RATES_KEY, value=json.dumps({"ni": "15", "invalid": "abc", "us": 0, "  ": 10}))
         db.session.add(meta)
         db.session.commit()
