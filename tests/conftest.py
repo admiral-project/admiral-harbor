@@ -17,7 +17,6 @@ from app import admiral_client, create_app
 from app.extensions import db
 from app.models import CatalogApp, Customer, CustomerApp, HarborAdminUser, Subscription
 
-
 # One in-memory SQLite database (HARBOR_DATABASE_URL="sqlite://") is shared by
 # every create_app() call within a process, so schema and rows persist across
 # tests. The auto-use fixture below resets it before every test so fixtures may
