@@ -5,7 +5,6 @@ import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
-from app import create_app
 from app.extensions import db
 from app.models import (
     CustomerApp,
