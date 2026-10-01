@@ -452,7 +452,12 @@ def test_client_support_detail_not_found_and_replies(client, app):
 
     with app.app_context():
         ticket = SupportIncident(
-            customer_email="user@example.com", instance_id="inst_123", subject="T3", description="D3", status="open"
+            customer_email="user@example.com",
+            instance_id="inst_123",
+            subject="T3",
+            description="D3",
+            status="open",
+            internal_notes="Private staff note",
         )
         db.session.add(ticket)
         db.session.commit()
@@ -462,6 +467,10 @@ def test_client_support_detail_not_found_and_replies(client, app):
     response = client.get(f"/client/support/{ticket_id}")
     assert response.status_code == 200
     assert b"T3" in response.data
+    assert f'action="/client/support/{ticket_id}/reply"'.encode() in response.data
+    assert b'name="message"' in response.data
+    assert b'name="csrf_token"' in response.data
+    assert b"Private staff note" not in response.data
 
     # Empty reply
     response = client.post(f"/client/support/{ticket_id}/reply", data={"message": ""}, follow_redirects=True)
@@ -472,6 +481,16 @@ def test_client_support_detail_not_found_and_replies(client, app):
         f"/client/support/{ticket_id}/reply", data={"message": "A fine reply"}, follow_redirects=True
     )
     assert b"Reply sent successfully" in response.data
+    assert b"A fine reply" in response.data
+    assert b"Private staff note" not in response.data
+
+    response = client.post(
+        f"/client/support/{ticket_id}/reply",
+        data={"message": "<script>alert(1)</script>"},
+        follow_redirects=True,
+    )
+    assert b"&lt;script&gt;alert(1)&lt;/script&gt;" in response.data
+    assert b"<script>alert(1)</script>" not in response.data
 
 
 def test_client_profile_edit(client, app):

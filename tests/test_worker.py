@@ -2,8 +2,48 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from app.extensions import db
-from app.models import Customer, CustomerApp, Subscription
-from worker import _reconcile_cancelled_subscriptions, _reconcile_paypal_subscriptions, _run_worker_step
+from app.models import Customer, CustomerApp, RestoreRequest, Subscription
+from worker import (
+    _reconcile_cancelled_subscriptions,
+    _reconcile_operations,
+    _reconcile_paypal_subscriptions,
+    _run_worker_step,
+)
+
+
+def test_restore_reconciliation_reads_customer_owned_operation(app, monkeypatch):
+    with app.app_context():
+        customer = Customer(
+            email="restore-owner@example.invalid",
+            public_id="hcus_restore_owner",
+            display_name="Restore Owner",
+            password_hash="unused",
+            signup_status="active",
+        )
+        request = RestoreRequest(
+            customer_email=customer.email,
+            instance_id="inst_restore_owner",
+            source_backup_id="bk_restore_owner",
+            source_kind="remote",
+            service_name="db",
+            confirm_text="wordpress",
+            operation_id="op_restore_owner",
+            status="queued",
+        )
+        db.session.add_all([customer, request])
+        db.session.commit()
+        calls = []
+
+        def operation(operation_id, **identity):
+            calls.append((operation_id, identity))
+            return {"status": "succeeded"}
+
+        monkeypatch.setattr("worker.get_operation", operation)
+        assert _reconcile_operations(app) == (1, 0)
+        assert request.status == "completed"
+        assert calls == [
+            ("op_restore_owner", {"instance_id": "inst_restore_owner", "customer_id": "hcus_restore_owner"})
+        ]
 
 
 def test_worker_step_failure_is_reported_without_raising(caplog):

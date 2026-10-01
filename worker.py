@@ -531,8 +531,13 @@ def _reconcile_operations(app):
     )
 
     for req in pending:
+        customer = db.session.query(Customer).filter_by(email=req.customer_email).one_or_none()
+        if customer is None:
+            log.warning("Restore customer unavailable for request %s", req.request_id)
+            errors += 1
+            continue
         try:
-            op = get_operation(req.operation_id)
+            op = get_operation(req.operation_id, instance_id=req.instance_id, customer_id=customer.public_id)
         except AdmiralAPIError as exc:
             log.warning("Operation fetch failed for %s: %s", req.operation_id, exc)
             errors += 1

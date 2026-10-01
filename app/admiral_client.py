@@ -165,8 +165,13 @@ def get_backup(backup_id):
     return _request("GET", f"/api/v1/backups/{backup_id}", timeout=30)
 
 
-def get_operation(operation_id):
-    return _request("GET", "/api/v1/operations", params={"id": operation_id}, timeout=30)
+def get_operation(operation_id, *, instance_id, customer_id):
+    return _request(
+        "GET",
+        f"/api/v1/customer-apps/{instance_id}/operations/{operation_id}",
+        timeout=30,
+        customer_id=customer_id,
+    )
 
 
 def restore_backup(backup_id, instance_id, service, source=None, verify_checksum=True, customer_id=None):

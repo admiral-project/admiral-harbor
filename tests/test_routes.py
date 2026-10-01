@@ -288,10 +288,14 @@ def test_provision_from_order_is_idempotent(client, app, monkeypatch):
 
     def provision(app_slug, tier_name, customer_id):
         calls.append((app_slug, tier_name, customer_id))
-        return {"credentials": [], "operation_id": "op_once"}
+        return {"credentials": [], "operation_id": "op_once", "instance_id": "inst_once"}
 
     monkeypatch.setattr("app.client.admiral_client.provision_app", provision)
-    monkeypatch.setattr("app.client.admiral_client.get_operation", lambda operation_id: {"instance_id": "inst_once"})
+
+    def forbidden_admin_operation(operation_id):
+        raise AssertionError("Harbor must not call the administrative operations API")
+
+    monkeypatch.setattr("app.client.admiral_client.get_operation", forbidden_admin_operation)
     with app.app_context():
         order = Order(
             customer_email="user@example.com",

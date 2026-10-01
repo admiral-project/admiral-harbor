@@ -41,13 +41,19 @@
 <div style="margin-top: 40px; background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
  <h2 style="margin-bottom: 20px; color: #2c3e50;">Conversation</h2>
  
- <div style="border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
- <div style="margin-bottom: 15px;">
- <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">You</div>
- <div style="color: #666; font-size: 12px; margin-bottom: 10px;">{{ ticket.created_at.strftime('%B %d, %Y %H:%M') if ticket.created_at else 'N/A' }}</div>
- <div style="line-height: 1.5;">{{ ticket.description }}</div>
- </div>
- </div>
+ {% for entry in conversation if not entry.is_internal %}
+ <article class="panel" style="margin-bottom: 1rem;">
+   <strong>{{ entry.author }}</strong>
+   <time>{{ entry.timestamp.strftime('%B %d, %Y %H:%M') if entry.timestamp else 'N/A' }}</time>
+   <p style="white-space: pre-wrap;">{{ entry.message }}</p>
+ </article>
+ {% endfor %}
+ <form method="post" action="{{ url_for('client.support_reply', ticket_id=ticket.id) }}" class="stack">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <label for="reply-message">Reply</label>
+   <textarea id="reply-message" name="message" required></textarea>
+   <button type="submit" class="btn btn-primary">Send reply</button>
+ </form>
  
  {% if ticket.assigned_to %}
  <div style="margin-top: 20px; border-left: 4px solid #3498db; padding-left: 15px; color: #666; font-size: 14px;">

@@ -9,6 +9,7 @@ from app.admiral_client import (
     _headers,
     _request,
     get_app,
+    get_operation,
     normalize_tiers,
     parse_tiers_from_yaml,
     provision_app,
@@ -48,6 +49,26 @@ def test_provision_app_sends_customer_identity(app):
             provision_app("test-app", "starter", "customer_001")
 
     assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "customer_001"
+
+
+def test_get_operation_uses_customer_owned_route(app):
+    with patch("requests.request") as mock_req:
+        response = MagicMock()
+        response.ok = True
+        response.content = b'{"status": "succeeded"}'
+        response.json.return_value = {"status": "succeeded"}
+        mock_req.return_value = response
+        with app.app_context():
+            current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-harbor-token"
+            assert get_operation("op_owner", instance_id="inst_owner", customer_id="hcus_owner") == {
+                "status": "succeeded"
+            }
+    assert mock_req.call_args.args[:2] == (
+        "GET",
+        "https://admirald.test:8443/api/v1/customer-apps/inst_owner/operations/op_owner",
+    )
+    assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "hcus_owner"
+    assert mock_req.call_args.kwargs["headers"]["Authorization"] == "Bearer scoped-harbor-token"
 
 
 def test_request_http_error(app):

@@ -290,14 +290,7 @@ def _provision_from_order(order):
     response = admiral_client.provision_app(order.app_slug, order.tier_name, customer.public_id)
     credentials = response.get("credentials", [])
     hostname = response.get("hostname", "")
-    operation_id = response.get("operation_id", "")
-    instance_id = ""
-    if operation_id:
-        try:
-            op = admiral_client.get_operation(operation_id)
-            instance_id = op.get("instance_id", "")
-        except AdmiralAPIError:
-            pass
+    instance_id = response.get("instance_id", "")
     if not instance_id:
         raise AdmiralAPIError("Admiral did not return a provisioned instance ID")
     if not hostname:

@@ -29,7 +29,6 @@ from app.admiral_client import (
     get_backup,
     get_customer_app,
     get_instance_inspect,
-    get_operation,
     list_apps,
     list_backups,
     provision_app,
@@ -1226,10 +1225,9 @@ def create_test_instance():
             operation_id = result.get("operation_id", "")
             if not operation_id:
                 raise AdmiralAPIError("No operation_id in provision response")
-            op = get_operation(operation_id)
-            instance_id = op.get("instance_id", "")
+            instance_id = result.get("instance_id", "")
             if not instance_id:
-                raise AdmiralAPIError("No instance_id in operation response")
+                raise AdmiralAPIError("No instance_id in provision response")
         except AdmiralAPIError as exc:
             db.session.rollback()
             flash(f"Provisioning failed: {exc}", "error")
