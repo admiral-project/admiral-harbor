@@ -7,6 +7,8 @@ All settings not required for deployment should live here with admin UI forms,
 so the portal admin never needs shell access.
 """
 
+from flask import current_app, has_app_context
+
 from app.models import HarborMeta
 
 # ── Key constants ──────────────────────────────────────────────────────────
@@ -40,6 +42,10 @@ def get_setting(key, default=None):
     value = HarborMeta.get(key)
     if value is not None:
         return value
+    if key == EXTERNAL_URL_KEY and has_app_context():
+        configured_url = current_app.config.get("HARBOR_EXTERNAL_URL")
+        if configured_url:
+            return str(configured_url).strip()
     if key in _DEFAULTS:
         return _DEFAULTS[key]
     return default

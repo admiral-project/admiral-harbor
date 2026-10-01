@@ -4,6 +4,7 @@
 """Tests for customer-protected routes under /client/ blueprint."""
 
 from io import BytesIO
+from urllib.parse import urlsplit
 
 from app.extensions import db
 from app.models import (
@@ -11,6 +12,7 @@ from app.models import (
     CustomerApp,
     CustomerFiscalRequest,
     FiscalTreatmentType,
+    HarborMeta,
     Order,
     Subscription,
 )
@@ -89,6 +91,44 @@ def test_client_deploy_as_customer(client):
         follow_redirects=False,
     )
     assert response.status_code in (302, 303)
+
+
+def test_clean_install_mock_checkout_uses_configured_harbor_url(client, monkeypatch):
+    app = client.application
+    base_url = "https://portal.example.test"
+    with app.app_context():
+        app.config["HARBOR_EXTERNAL_URL"] = base_url
+        db.session.query(HarborMeta).filter_by(key="harbor_external_url").delete()
+        db.session.commit()
+
+    monkeypatch.setattr(
+        "app.paypal._db_paypal_config",
+        lambda: {"mode": "mock", "client_id": "", "client_secret": "", "webhook_id": ""},
+    )
+    client.post(
+        "/auth/login",
+        json={"email": "user@example.com", "password": "secret"},
+        base_url=base_url,
+    )
+    response = client.post(
+        "/client/apps/wordpress/deploy",
+        data={"tier_name": "starter"},
+        base_url=base_url,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    approval_url = urlsplit(response.headers["Location"])
+    assert f"{approval_url.scheme}://{approval_url.netloc}" == base_url
+    assert approval_url.path == "/mock-paypal/approve"
+    approval = client.get(
+        approval_url.path + "?" + approval_url.query,
+        base_url=base_url,
+        follow_redirects=False,
+    )
+    assert approval.status_code == 200
+    assert b"subscription_id" in approval.data
+    assert b"return_url" in approval.data
 
 
 def test_client_deploy_blocks_until_mandatory_fiscal_terms_are_accepted(client):
