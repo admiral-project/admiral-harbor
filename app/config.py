@@ -24,9 +24,6 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     ADMIRAL_API_URL = os.environ.get("ADMIRAL_API_URL", "https://127.0.0.1:8443")
-    # Harbor must use its scoped token. The admin token remains supported only
-    # for local development and older deployments during migration.
-    ADMIRAL_INTERNAL_TOKEN = os.environ.get("ADMIRAL_INTERNAL_TOKEN", "")
     ADMIRAL_HARBOR_API_TOKEN = os.environ.get("ADMIRAL_HARBOR_API_TOKEN", "")
     ADMIRAL_CA_FILE = os.environ.get("ADMIRAL_CA_FILE", "")
     ADMIRAL_INSECURE_SKIP_VERIFY = os.environ.get("ADMIRAL_INSECURE_SKIP_VERIFY", "0") == "1"

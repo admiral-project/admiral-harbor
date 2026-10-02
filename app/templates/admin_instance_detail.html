@@ -101,7 +101,7 @@
 
 {% if admirald %}
  <div class="panel">
- <h2><i class="fas fa-tools pf-u-mr-sm"></i> Estado en admirald</h2>
+ <h2><i class="fas fa-tools pf-u-mr-sm"></i> Estado de la aplicación</h2>
  
  <div class="grid">
  <div class="card">
@@ -110,13 +110,6 @@
     {{ admirald.get('technical_status', 'unknown') }}
  </span>
  </div>
- 
- {% if admirald.get('pod_name') %}
- <div class="card">
- <p class="metric-label">Pod</p>
- <code>{{ admirald.get('pod_name') }}</code>
- </div>
- {% endif %}
  
  {% if admirald.get('health_status') %}
  <div class="card">
@@ -127,24 +120,10 @@
  </div>
  {% endif %}
  
-  {% if admirald.get('last_check_at') %}
+  {% if admirald.get('last_health_checked_at') %}
   <div class="card">
   <p class="metric-label">Última revisión</p>
-  {{ admirald.get('last_check_at') }}
-  </div>
-  {% endif %}
-
-  {% if admirald.get('node_id') %}
-  <div class="card">
-  <p class="metric-label">Nodo</p>
-  <code>{{ admirald.get('node_id') }}</code>
-  </div>
-  {% endif %}
-
-  {% if admirald.get('logical_instance_id') %}
-  <div class="card">
-  <p class="metric-label">Logical Instance ID</p>
-  <code>{{ admirald.get('logical_instance_id') }}</code>
+  {{ admirald.get('last_health_checked_at') }}
   </div>
   {% endif %}
   </div>
@@ -173,7 +152,7 @@
  </td>
  <td>{{ backup.get('service', '-') }}</td>
  <td>
- <span class="status-badge {% if backup.get('status') == 'completed' %}success{% elif backup.get('status') == 'failed' %}danger{% else %}info{% endif %}">
+ <span class="status-badge {% if backup.get('status') in ['completed', 'succeeded'] %}success{% elif backup.get('status') == 'failed' %}danger{% else %}info{% endif %}">
  {{ backup.get('status', 'unknown') }}
  </span>
  </td>

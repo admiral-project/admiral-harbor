@@ -26,9 +26,8 @@ from sqlalchemy import func
 
 from app.admiral_client import (
     AdmiralAPIError,
-    get_backup,
     get_customer_app,
-    get_instance_inspect,
+    get_customer_backup,
     list_apps,
     list_backups,
     provision_app,
@@ -75,6 +74,19 @@ from app.rate_limit import RateLimiter
 from app.security import validate_password_strength
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+
+def _harbor_customer_id(customer_email):
+    if not customer_email:
+        raise AdmiralAPIError("Harbor customer identity is unavailable")
+    customer_id = (
+        db.session.query(Customer.public_id)
+        .filter(func.lower(Customer.email) == customer_email.lower())
+        .scalar()
+    )
+    if not customer_id:
+        raise AdmiralAPIError("Harbor customer identity is unavailable")
+    return customer_id
 
 
 def escape_like_pattern(value):
@@ -1824,7 +1836,8 @@ def instances_list():
         instances_data = []
         for sub in subscriptions:
             try:
-                admirald_data = get_customer_app(sub.instance_id)
+                customer_id = _harbor_customer_id(sub.customer_email)
+                admirald_data = get_customer_app(sub.instance_id, customer_id=customer_id)
                 instances_data.append({"subscription": sub, "admirald": admirald_data, "error": None})
             except AdmiralAPIError as e:
                 instances_data.append({"subscription": sub, "admirald": None, "error": str(e)})
@@ -1839,20 +1852,18 @@ def instances_list():
         return render_template("admin_instances.html", instances=[], total=0)
 
 
-@bp.route("/instances/<instance_id>/pod-status")
+@bp.route("/instances/<instance_id>/status")
 @admin_required
-def instance_pod_status(instance_id):
-    """JSON endpoint returning pod status, services, and disk usage."""
-    try:
-        instance = get_customer_app(instance_id)
-    except AdmiralAPIError:
+def instance_status(instance_id):
+    """Return customer-visible application status without infrastructure details."""
+    customer_app = db.session.query(CustomerApp).filter_by(instance_id=instance_id).one_or_none()
+    if not customer_app:
         return jsonify({"error": "Instance not found"}), 404
-
-    inspect_data = None
     try:
-        inspect_data = get_instance_inspect(instance_id)
-    except AdmiralAPIError:
-        pass
+        customer_id = _harbor_customer_id(customer_app.customer_email)
+        instance = get_customer_app(instance_id, customer_id=customer_id)
+    except AdmiralAPIError as exc:
+        return jsonify({"error": str(exc)}), 502
 
     status = instance.get("technical_status", "unknown")
     storage_state = instance.get("storage_state", "unknown")
@@ -1860,11 +1871,9 @@ def instance_pod_status(instance_id):
     storage_limit = instance.get("storage_limit_bytes", 0)
     storage_pct = instance.get("storage_used_percent", 0.0)
 
-    pod_info = {
+    instance_info = {
         "instance_id": instance_id,
         "status": status,
-        "node_id": instance.get("node_id", ""),
-        "hostname": instance.get("hostname", ""),
         "health_status": instance.get("health_status", "unknown"),
         "storage": {
             "state": storage_state,
@@ -1874,10 +1883,7 @@ def instance_pod_status(instance_id):
         },
     }
 
-    if inspect_data:
-        pod_info["inspect"] = inspect_data
-
-    return jsonify(pod_info)
+    return jsonify(instance_info)
 
 
 @bp.route("/instances/<instance_id>")
@@ -1892,7 +1898,8 @@ def instance_detail(instance_id):
             return redirect(url_for("admin.instances_list"))
 
         # Get from admirald
-        admirald_data = get_customer_app(instance_id)
+        customer_id = _harbor_customer_id(customer_app.customer_email)
+        admirald_data = get_customer_app(instance_id, customer_id=customer_id)
 
         # Get associated subscription
         subscription = db.session.query(Subscription).filter_by(id=customer_app.subscription_id).one_or_none()
@@ -1900,7 +1907,7 @@ def instance_detail(instance_id):
         # Get backups
         backups = []
         try:
-            backups_response = list_backups(instance_id)
+            backups_response = list_backups(instance_id, customer_id=customer_id)
             if isinstance(backups_response, list):
                 backups = backups_response
         except AdmiralAPIError:
@@ -1930,7 +1937,8 @@ def backups_list():
         all_backups = []
         for sub in subscriptions:
             try:
-                backups = list_backups(sub.instance_id)
+                customer_id = _harbor_customer_id(sub.customer_email)
+                backups = list_backups(sub.instance_id, customer_id=customer_id)
                 if isinstance(backups, list):
                     for backup in backups:
                         backup["subscription"] = sub
@@ -1960,16 +1968,23 @@ def backups_list():
 @bp.route("/backups/<backup_id>")
 @admin_required
 def backup_detail(backup_id):
-    """View details of a single backup."""
+    """View customer-safe details of a backup belonging to a Harbor instance."""
     try:
-        backup = get_backup(backup_id)
+        instance_id = request.args.get("instance_id", "").strip()
+        if not instance_id:
+            flash("Backup instance is required.", "error")
+            return redirect(url_for("admin.backups_list"))
+
+        customer_app = db.session.query(CustomerApp).filter_by(instance_id=instance_id).one_or_none()
+        if not customer_app:
+            flash("Backup instance not found.", "error")
+            return redirect(url_for("admin.backups_list"))
+        customer_id = _harbor_customer_id(customer_app.customer_email)
+        backup = get_customer_backup(instance_id, backup_id, customer_id=customer_id)
 
         # Find associated subscription
         subscription = None
-        if "instance_id" in backup:
-            capp = db.session.query(CustomerApp).filter_by(instance_id=backup["instance_id"]).one_or_none()
-            if capp:
-                subscription = db.session.query(Subscription).filter_by(id=capp.subscription_id).one_or_none()
+        subscription = db.session.query(Subscription).filter_by(id=customer_app.subscription_id).one_or_none()
 
         return render_template(
             "admin_backup_detail.html",

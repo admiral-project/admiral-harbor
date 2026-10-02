@@ -19,7 +19,7 @@
  
  <div class="card">
  <p class="metric-label">Estado</p>
- <span class="status-badge {% if backup.get('status') == 'completed' %}success{% elif backup.get('status') == 'failed' %}danger{% else %}info{% endif %}">
+ <span class="status-badge {% if backup.get('status') in ['completed', 'succeeded'] %}success{% elif backup.get('status') == 'failed' %}danger{% else %}info{% endif %}">
  {{ backup.get('status', 'unknown') }}
  </span>
  </div>
@@ -46,7 +46,7 @@
  <div class="card">
  <p class="metric-label">Checksum</p>
  <code style="font-size: 0.8rem; word-break: break-all;">
- {{ backup.get('checksum', 'N/A')[:32] }}...
+ {{ backup.get('checksum_sha256', 'N/A')[:32] }}...
  </code>
  </div>
  </div>

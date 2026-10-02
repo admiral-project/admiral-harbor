@@ -9,6 +9,7 @@ from app.admiral_client import (
     _headers,
     _request,
     get_app,
+    get_customer_backup,
     get_operation,
     list_backups,
     normalize_tiers,
@@ -20,9 +21,9 @@ from app.admiral_client import (
 
 def test_headers(app):
     with app.app_context():
-        current_app.config["ADMIRAL_INTERNAL_TOKEN"] = "test-token"
+        current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-token"
         headers = _headers()
-        assert headers["Authorization"] == "Bearer test-token"
+        assert headers["Authorization"] == "Bearer scoped-token"
         assert headers["Content-Type"] == "application/json"
 
 
@@ -91,6 +92,24 @@ def test_customer_backup_list_uses_scoped_instance_route(app):
     assert mock_req.call_args.kwargs["headers"]["Authorization"] == "Bearer scoped-harbor-token"
 
 
+def test_customer_backup_read_uses_scoped_instance_route(app):
+    with patch("requests.request") as mock_req:
+        response = MagicMock()
+        response.ok = True
+        response.content = b'{"id":"bk_owner"}'
+        response.json.return_value = {"id": "bk_owner"}
+        mock_req.return_value = response
+        with app.app_context():
+            current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-harbor-token"
+            assert get_customer_backup("inst_owner", "bk_owner", customer_id="hcus_owner") == {"id": "bk_owner"}
+    assert mock_req.call_args.args[:2] == (
+        "GET",
+        "https://admirald.test:8443/api/v1/customer-apps/inst_owner/backups/bk_owner",
+    )
+    assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "hcus_owner"
+    assert mock_req.call_args.kwargs["headers"]["Authorization"] == "Bearer scoped-harbor-token"
+
+
 def test_customer_backup_restore_uses_scoped_instance_route(app):
     with patch("requests.request") as mock_req:
         response = MagicMock()
@@ -111,12 +130,11 @@ def test_customer_backup_restore_uses_scoped_instance_route(app):
     assert mock_req.call_args.kwargs["json"]["target_app_id"] == "inst_owner"
 
 
-def test_internal_only_backup_reads_use_internal_token(app):
+def test_harbor_client_requires_scoped_token(app):
     with app.app_context():
-        current_app.config["ADMIRAL_INTERNAL_TOKEN"] = "internal-token"
-        current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-harbor-token"
-        headers = _headers(use_internal_token=True)
-    assert headers["Authorization"] == "Bearer internal-token"
+        current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = ""
+        with pytest.raises(AdmiralAPIError, match="ADMIRAL_HARBOR_API_TOKEN"):
+            _headers()
 
 
 def test_request_http_error(app):

@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 import app.admin as admin_module
 from app.admin import escape_like_pattern
-from app.admiral_client import AdmiralAPIError
 from app.extensions import db
 from app.models import HarborPayPalConfig, Subscription
 
@@ -134,9 +133,9 @@ def test_calculate_mrr_uses_subscription_monthly_price(client, app):
     assert mrr["current_mrr_dollars"] == 25
 
 
-def test_instance_pod_status_requires_auth(client):
-    """Pod-status endpoint returns 302 without admin login."""
-    response = client.get("/admin/instances/inst_123/pod-status")
+def test_instance_status_requires_auth(client):
+    """Customer-safe status endpoint returns 302 without admin login."""
+    response = client.get("/admin/instances/inst_123/status")
     assert response.status_code == 302
 
 
@@ -165,7 +164,7 @@ def test_admin_instance_detail_renders_iso_billing_date(client, app):
     assert b"2026-12-31" in response.data
 
 
-def test_instance_pod_status_returns_json(client):
+def test_instance_status_returns_customer_safe_json(client):
     with (
         patch.object(
             admin_module,
@@ -177,18 +176,9 @@ def test_instance_pod_status_returns_json(client):
                 "storage_used_bytes": 500,
                 "storage_limit_bytes": 10000,
                 "storage_used_percent": 5.0,
-            },
-        ),
-        patch.object(
-            admin_module,
-            "get_instance_inspect",
-            return_value={
-                "containers": [
-                    {"name": "app", "image": "wordpress:latest", "state": "running"},
-                    {"name": "db", "image": "mariadb:10", "state": "running"},
-                ],
-                "volumes": [{"name": "wp-data", "mountpoint": "/vol/wp-data"}],
-                "inspected_at": "2026-06-17T00:00:00Z",
+                "node_id": "private-node-1",
+                "hostname": "worker.internal",
+                "inspect_data": "private inspect data",
             },
         ),
     ):
@@ -197,7 +187,7 @@ def test_instance_pod_status_returns_json(client):
             data={"username": "testadmin", "password": "secret"},
             follow_redirects=True,
         )
-        response = client.get("/admin/instances/inst_123/pod-status")
+        response = client.get("/admin/instances/inst_123/status")
         assert response.status_code == 200
         data = response.get_json()
         assert data is not None
@@ -205,12 +195,13 @@ def test_instance_pod_status_returns_json(client):
         assert data["status"] == "running"
         assert "storage" in data
         assert data["storage"]["state"] == "ok"
-        assert "inspect" in data
-        assert len(data["inspect"]["containers"]) == 2
+        assert "node_id" not in data
+        assert "hostname" not in data
+        assert "inspect" not in data
 
 
-def test_instance_pod_status_without_inspect(client):
-    """Pod-status works even when inspect data is unavailable."""
+def test_instance_status_does_not_request_runtime_inspection(client):
+    """Harbor status uses customer-visible state without runtime inspection."""
     with (
         patch.object(
             admin_module,
@@ -221,22 +212,35 @@ def test_instance_pod_status_without_inspect(client):
                 "storage_state": "ok",
             },
         ),
-        patch.object(
-            admin_module,
-            "get_instance_inspect",
-            side_effect=AdmiralAPIError("not found"),
-        ),
     ):
         client.post(
             "/admin/login",
             data={"username": "testadmin", "password": "secret"},
             follow_redirects=True,
         )
-        response = client.get("/admin/instances/inst_123/pod-status")
+        response = client.get("/admin/instances/inst_123/status")
         assert response.status_code == 200
         data = response.get_json()
         assert data is not None
         assert "inspect" not in data
+
+
+def test_admin_backup_detail_uses_customer_scoped_backup_read(client):
+    client.post(
+        "/admin/login",
+        data={"username": "testadmin", "password": "secret"},
+        follow_redirects=True,
+    )
+    with patch.object(
+        admin_module,
+        "get_customer_backup",
+        return_value={"id": "bk_123", "status": "succeeded", "checksum_sha256": "abc123"},
+    ) as get_backup:
+        response = client.get("/admin/backups/bk_123?instance_id=inst_123")
+
+    assert response.status_code == 200
+    assert b"abc123" in response.data
+    get_backup.assert_called_once_with("inst_123", "bk_123", customer_id="hcus_testuser")
 
 
 def test_paypal_webhook_idempotent(client):
@@ -646,9 +650,11 @@ def test_additional_admin_routes(client, app, monkeypatch):
 
     # Patch imported functions to avoid 302 redirect
     monkeypatch.setattr(
-        admin_module, "get_customer_app", lambda instance_id: {"id": instance_id, "technical_status": "running"}
+        admin_module,
+        "get_customer_app",
+        lambda instance_id, customer_id: {"id": instance_id, "technical_status": "running"},
     )
-    monkeypatch.setattr(admin_module, "list_backups", lambda instance_id: [])
+    monkeypatch.setattr(admin_module, "list_backups", lambda instance_id, customer_id: [])
 
     response = client.get("/admin/instances/inst_123")
     assert response.status_code == 200

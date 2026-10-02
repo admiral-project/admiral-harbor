@@ -24,11 +24,10 @@ def _verify():
     return True  # system CA bundle by default
 
 
-def _headers(customer_id=None, *, use_internal_token=False):
-    if use_internal_token:
-        token = current_app.config["ADMIRAL_INTERNAL_TOKEN"]
-    else:
-        token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_INTERNAL_TOKEN"]
+def _headers(customer_id=None):
+    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN", "").strip()
+    if not token:
+        raise AdmiralAPIError("ADMIRAL_HARBOR_API_TOKEN is not configured")
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -39,13 +38,13 @@ def _headers(customer_id=None, *, use_internal_token=False):
     return headers
 
 
-def _request(method, path, payload=None, params=None, timeout=60, customer_id=None, use_internal_token=False):
+def _request(method, path, payload=None, params=None, timeout=60, customer_id=None):
     url = current_app.config["ADMIRAL_API_URL"] + path
     try:
         response = requests.request(
             method,
             url,
-            headers=_headers(customer_id, use_internal_token=use_internal_token),
+            headers=_headers(customer_id),
             json=payload,
             params=params,
             timeout=timeout,
@@ -126,21 +125,18 @@ def list_customer_apps(customer_id):
     return result
 
 
-def get_customer_app(instance_id, customer_id=None):
+def get_customer_app(instance_id, customer_id):
     return _request(
         "GET",
         f"/api/v1/customer-apps/{instance_id}",
         timeout=30,
         customer_id=customer_id,
-        use_internal_token=customer_id is None,
     )
 
 
-def get_instance_inspect(instance_id):
-    return _request("GET", f"/api/admin/instances/{instance_id}/inspect", timeout=30, use_internal_token=True)
-
-
 def get_instance_credentials(instance_id, customer_id=None):
+    if not customer_id:
+        raise AdmiralAPIError("Customer identity is required to read instance credentials")
     result = _request("GET", f"/api/v1/customer-apps/{instance_id}/credentials", timeout=30, customer_id=customer_id)
     if result is None:
         return []
@@ -161,6 +157,8 @@ def provision_app(app_slug, tier_name, customer_id):
 
 
 def action(instance_id, action_name, tier=None, service=None, customer_id=None):
+    if not customer_id:
+        raise AdmiralAPIError("Customer identity is required to operate an instance")
     payload = {"instance_id": instance_id, "action": action_name}
     if tier:
         payload["tier"] = tier
@@ -170,24 +168,20 @@ def action(instance_id, action_name, tier=None, service=None, customer_id=None):
 
 
 def list_backups(instance_id, customer_id=None):
-    if customer_id:
-        path = f"/api/v1/customer-apps/{instance_id}/backups"
-        response = _request("GET", path, timeout=30, customer_id=customer_id)
-    else:
-        response = _request(
-            "GET",
-            "/api/v1/backups",
-            params={"instance_id": instance_id},
-            timeout=30,
-            use_internal_token=True,
-        )
+    if not customer_id:
+        raise AdmiralAPIError("Customer identity is required to list instance backups")
+    path = f"/api/v1/customer-apps/{instance_id}/backups"
+    response = _request("GET", path, timeout=30, customer_id=customer_id)
     if isinstance(response, dict) and "items" in response:
         return response["items"] or []
     return response or []
 
 
-def get_backup(backup_id):
-    return _request("GET", f"/api/v1/backups/{backup_id}", timeout=30, use_internal_token=True)
+def get_customer_backup(instance_id, backup_id, customer_id):
+    if not customer_id:
+        raise AdmiralAPIError("Customer identity is required to read a backup")
+    path = f"/api/v1/customer-apps/{instance_id}/backups/{backup_id}"
+    return _request("GET", path, timeout=30, customer_id=customer_id)
 
 
 def get_operation(operation_id, *, instance_id, customer_id):
@@ -199,8 +193,10 @@ def get_operation(operation_id, *, instance_id, customer_id):
     )
 
 
-def restore_backup(backup_id, instance_id, service, source=None, verify_checksum=True, customer_id=None):
-    path = f"/api/v1/customer-apps/{instance_id}/backups/restore" if customer_id else "/api/v1/backups/restore"
+def restore_backup(backup_id, instance_id, service, customer_id, source=None, verify_checksum=True):
+    if not customer_id:
+        raise AdmiralAPIError("Customer identity is required to restore a backup")
+    path = f"/api/v1/customer-apps/{instance_id}/backups/restore"
     return _request(
         "POST",
         path,
@@ -213,7 +209,6 @@ def restore_backup(backup_id, instance_id, service, source=None, verify_checksum
             "restore_mode": "replace",
         },
         customer_id=customer_id,
-        use_internal_token=customer_id is None,
     )
 
 

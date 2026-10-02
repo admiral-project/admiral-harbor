@@ -40,6 +40,7 @@ The packaged and source entry points are:
 - CSRF protection and security headers are enabled by default.
 - Login throttling is enforced through the Flask rate limit layer.
 - Catalog sync runs through the `admiral-harbor-catalog-sync.service` timer, not during web startup.
+- Calls for customer apps and backups use `ADMIRAL_HARBOR_API_TOKEN` with customer-scoped API routes. Harbor does not inspect pods or expose node placement and runtime inspection data.
 
 ## Installation
 
@@ -63,7 +64,6 @@ Important variables:
 - `HARBOR_ENCRYPTION_KEY` - master key for encrypted secrets, required in production
 - `ADMIRAL_API_URL` - `admirald` API endpoint
 - `ADMIRAL_HARBOR_API_TOKEN` - scoped token for harbor-to-admirald API calls (required)
-- `ADMIRAL_INTERNAL_TOKEN` - internal service token for Admirald
 - `ADMIRAL_CA_FILE` - CA bundle for TLS verification
 - `ADMIRAL_INSECURE_SKIP_VERIFY` - test-only TLS bypass
 - `HARBOR_BOOTSTRAP_ADMIN_USER` / `HARBOR_BOOTSTRAP_ADMIN_PASSWORD` - initial admin account

@@ -51,7 +51,7 @@ def app():
         TESTING=True,
         SECRET_KEY="test-secret",
         ADMIRAL_API_URL="https://admirald.test:8443",
-        ADMIRAL_INTERNAL_TOKEN="test-token",
+        ADMIRAL_HARBOR_API_TOKEN="test-token",
         ADMIRAL_CA_FILE="",
         HARBOR_UPLOAD_DIR=tempfile.mkdtemp(prefix="admiral-harbor-tests-"),
         HARBOR_BOOTSTRAP_ADMIN_USER="testadmin",
@@ -206,18 +206,5 @@ def client(app):
     admiral_client.get_operation = lambda operation_id, **kwargs: {
         "instance_id": "inst_provision",
         "status": "succeeded",
-    }
-    admiral_client.get_instance_inspect = lambda instance_id: {
-        "containers": [
-            {"name": "app", "image": "wordpress:latest", "state": "running"},
-            {"name": "db", "image": "mariadb:10", "state": "running"},
-        ],
-        "volumes": [
-            {
-                "name": "wp-data",
-                "mountpoint": "/var/lib/containers/storage/volumes/wp-data",
-            }
-        ],
-        "inspected_at": "2026-06-17T00:00:00Z",
     }
     return app.test_client()
