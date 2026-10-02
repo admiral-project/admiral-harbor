@@ -140,6 +140,31 @@ def test_instance_pod_status_requires_auth(client):
     assert response.status_code == 302
 
 
+def test_admin_instance_detail_renders_iso_billing_date(client, app):
+    with app.app_context():
+        subscription = db.session.get(Subscription, 1)
+        subscription.next_billing_at = "2026-12-31"
+        db.session.commit()
+
+    with (
+        patch.object(
+            admin_module,
+            "get_customer_app",
+            return_value={"id": "inst_123", "technical_status": "running"},
+        ),
+        patch.object(admin_module, "list_backups", return_value=[]),
+    ):
+        client.post(
+            "/admin/login",
+            data={"username": "testadmin", "password": "secret"},
+            follow_redirects=True,
+        )
+        response = client.get("/admin/instances/inst_123")
+
+    assert response.status_code == 200
+    assert b"2026-12-31" in response.data
+
+
 def test_instance_pod_status_returns_json(client):
     with (
         patch.object(

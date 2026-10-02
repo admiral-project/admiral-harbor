@@ -89,7 +89,7 @@
  </tr>
  <tr>
  <td style="font-weight: bold; padding: 0.5rem;">Próxima facturación</td>
- <td>{{ subscription.next_billing_at.strftime("%Y-%m-%d") if subscription.next_billing_at else "-" }}</td>
+ <td>{{ subscription.next_billing_at or "-" }}</td>
  </tr>
  <tr>
  <td style="font-weight: bold; padding: 0.5rem;">Creada</td>

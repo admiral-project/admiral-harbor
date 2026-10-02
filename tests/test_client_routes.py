@@ -33,6 +33,19 @@ def test_client_subscriptions(client):
     assert response.status_code == 200
 
 
+def test_client_subscription_views_render_iso_billing_date(client, app):
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    with app.app_context():
+        subscription = db.session.get(Subscription, 1)
+        subscription.next_billing_at = "2026-12-31"
+        db.session.commit()
+
+    for path in ("/client/subscriptions", "/client/subscriptions/1"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert b"2026-12-31" in response.data
+
+
 def test_client_subscription_detail(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.get("/client/subscriptions/1")

@@ -25,7 +25,7 @@
  
  <div class="metric-card">
  <h3>Renewal Date</h3>
- <div style="font-size: 18px; margin-top: 10px;">{{ subscription.next_billing_at.strftime('%B %d, %Y') if subscription.next_billing_at else 'N/A' }}</div>
+ <div style="font-size: 18px; margin-top: 10px;">{{ subscription.next_billing_at or 'N/A' }}</div>
  </div>
  
  <div class="metric-card">

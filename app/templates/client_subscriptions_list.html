@@ -42,7 +42,7 @@
  {{ sub.status }}
  </span>
  </td>
- <td>{{ sub.next_billing_at.strftime('%Y-%m-%d') if sub.next_billing_at else 'N/A' }}</td>
+ <td>{{ sub.next_billing_at or 'N/A' }}</td>
  <td>${{ "%.2f"|format(sub.monthly_price_cents / 100) if sub.monthly_price_cents else '0.00' }}</td>
  <td>
  <a href="{{ url_for('client.subscription_detail', subscription_id=sub.id) }}" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">Details</a>
