@@ -10,9 +10,11 @@ from app.admiral_client import (
     _request,
     get_app,
     get_operation,
+    list_backups,
     normalize_tiers,
     parse_tiers_from_yaml,
     provision_app,
+    restore_backup,
 )
 
 
@@ -69,6 +71,52 @@ def test_get_operation_uses_customer_owned_route(app):
     )
     assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "hcus_owner"
     assert mock_req.call_args.kwargs["headers"]["Authorization"] == "Bearer scoped-harbor-token"
+
+
+def test_customer_backup_list_uses_scoped_instance_route(app):
+    with patch("requests.request") as mock_req:
+        response = MagicMock()
+        response.ok = True
+        response.content = b'[]'
+        response.json.return_value = []
+        mock_req.return_value = response
+        with app.app_context():
+            current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-harbor-token"
+            assert list_backups("inst_owner", customer_id="hcus_owner") == []
+    assert mock_req.call_args.args[:2] == (
+        "GET",
+        "https://admirald.test:8443/api/v1/customer-apps/inst_owner/backups",
+    )
+    assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "hcus_owner"
+    assert mock_req.call_args.kwargs["headers"]["Authorization"] == "Bearer scoped-harbor-token"
+
+
+def test_customer_backup_restore_uses_scoped_instance_route(app):
+    with patch("requests.request") as mock_req:
+        response = MagicMock()
+        response.ok = True
+        response.content = b'{"operation_id":"op_restore"}'
+        response.json.return_value = {"operation_id": "op_restore"}
+        mock_req.return_value = response
+        with app.app_context():
+            current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-harbor-token"
+            assert restore_backup("bk_owner", "inst_owner", "db", customer_id="hcus_owner") == {
+                "operation_id": "op_restore"
+            }
+    assert mock_req.call_args.args[:2] == (
+        "POST",
+        "https://admirald.test:8443/api/v1/customer-apps/inst_owner/backups/restore",
+    )
+    assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "hcus_owner"
+    assert mock_req.call_args.kwargs["json"]["target_app_id"] == "inst_owner"
+
+
+def test_internal_only_backup_reads_use_internal_token(app):
+    with app.app_context():
+        current_app.config["ADMIRAL_INTERNAL_TOKEN"] = "internal-token"
+        current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-harbor-token"
+        headers = _headers(use_internal_token=True)
+    assert headers["Authorization"] == "Bearer internal-token"
 
 
 def test_request_http_error(app):

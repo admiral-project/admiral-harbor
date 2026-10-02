@@ -971,7 +971,7 @@ def instance_detail(instance_id):
     app = _local_app(instance.app_slug)
     backups = []
     try:
-        backups = admiral_client.list_backups(instance.instance_id)
+        backups = admiral_client.list_backups(instance.instance_id, customer_id=customer.public_id)
     except AdmiralAPIError:
         backups = []
     uploaded = (

@@ -177,7 +177,7 @@ def client(app):
         ],
         "requires_billing": True,
     }
-    admiral_client.list_backups = lambda instance_id: [
+    admiral_client.list_backups = lambda instance_id, customer_id=None: [
         {
             "id": "bk_123",
             "status": "succeeded",
@@ -194,7 +194,7 @@ def client(app):
         "operation_id": f"op_{action_name}",
         "status": "queued",
     }
-    admiral_client.restore_backup = lambda backup_id, instance_id, service, source=None, verify_checksum=True: {
+    admiral_client.restore_backup = lambda backup_id, instance_id, service, source=None, verify_checksum=True, customer_id=None: {
         "operation_id": "op_restore",
         "status": "queued",
     }

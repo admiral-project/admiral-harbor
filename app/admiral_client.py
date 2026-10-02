@@ -24,8 +24,11 @@ def _verify():
     return True  # system CA bundle by default
 
 
-def _headers(customer_id=None):
-    token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_INTERNAL_TOKEN"]
+def _headers(customer_id=None, *, use_internal_token=False):
+    if use_internal_token:
+        token = current_app.config["ADMIRAL_INTERNAL_TOKEN"]
+    else:
+        token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN") or current_app.config["ADMIRAL_INTERNAL_TOKEN"]
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
@@ -36,13 +39,13 @@ def _headers(customer_id=None):
     return headers
 
 
-def _request(method, path, payload=None, params=None, timeout=60, customer_id=None):
+def _request(method, path, payload=None, params=None, timeout=60, customer_id=None, use_internal_token=False):
     url = current_app.config["ADMIRAL_API_URL"] + path
     try:
         response = requests.request(
             method,
             url,
-            headers=_headers(customer_id),
+            headers=_headers(customer_id, use_internal_token=use_internal_token),
             json=payload,
             params=params,
             timeout=timeout,
@@ -111,18 +114,30 @@ def parse_tiers_from_yaml(raw_yaml):
 
 
 def list_customer_apps(customer_id):
-    result = _request("GET", "/api/v1/customer-apps", params={"customer_id": customer_id}, timeout=30)
+    result = _request(
+        "GET",
+        "/api/v1/customer-apps",
+        params={"customer_id": customer_id},
+        timeout=30,
+        customer_id=customer_id,
+    )
     if result is None:
         return []
     return result
 
 
 def get_customer_app(instance_id, customer_id=None):
-    return _request("GET", f"/api/v1/customer-apps/{instance_id}", timeout=30, customer_id=customer_id)
+    return _request(
+        "GET",
+        f"/api/v1/customer-apps/{instance_id}",
+        timeout=30,
+        customer_id=customer_id,
+        use_internal_token=customer_id is None,
+    )
 
 
 def get_instance_inspect(instance_id):
-    return _request("GET", f"/api/admin/instances/{instance_id}/inspect", timeout=30)
+    return _request("GET", f"/api/admin/instances/{instance_id}/inspect", timeout=30, use_internal_token=True)
 
 
 def get_instance_credentials(instance_id, customer_id=None):
@@ -154,15 +169,25 @@ def action(instance_id, action_name, tier=None, service=None, customer_id=None):
     return _request("POST", "/api/v1/customer-apps/action", payload=payload, customer_id=customer_id)
 
 
-def list_backups(instance_id):
-    response = _request("GET", "/api/v1/backups", params={"instance_id": instance_id}, timeout=30)
+def list_backups(instance_id, customer_id=None):
+    if customer_id:
+        path = f"/api/v1/customer-apps/{instance_id}/backups"
+        response = _request("GET", path, timeout=30, customer_id=customer_id)
+    else:
+        response = _request(
+            "GET",
+            "/api/v1/backups",
+            params={"instance_id": instance_id},
+            timeout=30,
+            use_internal_token=True,
+        )
     if isinstance(response, dict) and "items" in response:
         return response["items"] or []
     return response or []
 
 
 def get_backup(backup_id):
-    return _request("GET", f"/api/v1/backups/{backup_id}", timeout=30)
+    return _request("GET", f"/api/v1/backups/{backup_id}", timeout=30, use_internal_token=True)
 
 
 def get_operation(operation_id, *, instance_id, customer_id):
@@ -175,9 +200,10 @@ def get_operation(operation_id, *, instance_id, customer_id):
 
 
 def restore_backup(backup_id, instance_id, service, source=None, verify_checksum=True, customer_id=None):
+    path = f"/api/v1/customer-apps/{instance_id}/backups/restore" if customer_id else "/api/v1/backups/restore"
     return _request(
         "POST",
-        "/api/v1/backups/restore",
+        path,
         payload={
             "backup_id": backup_id,
             "target_app_id": instance_id,
@@ -187,6 +213,7 @@ def restore_backup(backup_id, instance_id, service, source=None, verify_checksum
             "restore_mode": "replace",
         },
         customer_id=customer_id,
+        use_internal_token=customer_id is None,
     )
 
 
