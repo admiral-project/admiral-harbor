@@ -618,12 +618,33 @@ def billing_return():
         flash("Order not found.", "error")
         return redirect(url_for("client.billing"))
     if order.status == "paid":
-        return redirect(
-            url_for(
-                "client.billing_receipt",
-                invoice_id=order.subscription_external_id or "",
+        invoice = (
+            db.session.query(Invoice)
+            .join(Payment, Payment.provider_reference == Invoice.paypal_transaction_id)
+            .filter(
+                Payment.order_id == order.order_id,
+                Payment.subscription_external_id == order.subscription_external_id,
+                Payment.customer_email == customer.email,
+                Payment.provider == "paypal",
+                Payment.status == "completed",
+                Invoice.subscription_external_id == order.subscription_external_id,
+                Invoice.customer_email == customer.email,
+                Invoice.status == "paid",
             )
+            .order_by(Invoice.created_at.desc())
+            .first()
         )
+        if invoice is None:
+            current_app.logger.error(
+                "Paid order %s has no matching paid PayPal invoice",
+                order.order_id,
+            )
+            flash(
+                "Your payment was confirmed, but its invoice is still being prepared. Please check billing shortly.",
+                "info",
+            )
+            return redirect(url_for("client.billing"))
+        return redirect(url_for("client.billing_receipt", invoice_id=invoice.invoice_id))
     if order.paypal_subscription_id and token and token != order.paypal_subscription_id:
         flash("PayPal return token does not match the order.", "error")
         return redirect(url_for("client.billing"))

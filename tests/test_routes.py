@@ -274,6 +274,42 @@ def test_paypal_return_uses_live_database_mode_without_provision(client, monkeyp
         assert db.session.query(Payment).count() == 0
 
 
+def test_webhook_paid_order_without_invoice_returns_to_billing(client, app, monkeypatch):
+    with app.app_context():
+        order = Order(
+            customer_email="user@example.com",
+            app_slug="wordpress",
+            tier_name="starter",
+            monthly_price_cents=2500,
+            total_cents=2500,
+            requires_billing=True,
+            status="paid",
+            subscription_external_id="sub_invoice_pending",
+            paypal_subscription_id="MOCK-SUB-invoice-pending",
+        )
+        db.session.add(order)
+        db.session.commit()
+        order_id = order.order_id
+
+    def unexpected_paypal_lookup(_subscription_id):
+        raise AssertionError("already-paid order return must not call PayPal")
+
+    monkeypatch.setattr("app.client.get_subscription", unexpected_paypal_lookup)
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/client/billing/return",
+        data={"order_id": order_id, "token": "MOCK-SUB-invoice-pending"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"its invoice is still being prepared" in response.data
+    assert b"Invoice not found" not in response.data
+    with app.app_context():
+        assert db.session.query(Invoice).count() == 0
+        assert db.session.query(Payment).filter_by(order_id=order_id).count() == 0
+
+
 def test_billing_state_changes_reject_get(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
 
@@ -444,6 +480,7 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
         stored_subscription = db.session.query(Subscription).filter_by(paypal_subscription_id="sub_123").one()
         invoice = db.session.query(Invoice).filter_by(paypal_event_id="evt_123").one()
         payment = db.session.query(Payment).filter_by(order_id=order_id).one()
+        invoice_id = invoice.invoice_id
         assert stored_order.status == "paid"
         assert stored_subscription.instance_id is not None
         assert invoice.paypal_transaction_id == "sale_123"
@@ -452,6 +489,19 @@ def test_paypal_webhook_sale_completed_uses_billing_agreement_id(client):
         assert invoice.total_cents == 2825
         assert payment.provider_reference == "sale_123"
         assert payment.amount_cents == 2825
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    return_response = client.post(
+        "/client/billing/return",
+        data={"order_id": order_id, "token": "sub_123"},
+        follow_redirects=False,
+    )
+    assert return_response.status_code in {302, 303}
+    assert return_response.headers["Location"].endswith(f"/client/billing/receipt/{invoice_id}")
+
+    with client.application.app_context():
+        assert db.session.query(Invoice).filter_by(paypal_event_id="evt_123").count() == 1
+        assert db.session.query(Payment).filter_by(order_id=order_id, status="completed").count() == 1
 
 
 def test_paypal_webhook_materializes_subscription_from_order(client):
