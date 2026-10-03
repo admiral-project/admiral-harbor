@@ -118,6 +118,16 @@ def _is_mock():
     return is_mock_mode()
 
 
+def _mock_subscription_dates():
+    now = datetime.now(UTC)
+    return {
+        "start_time": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "next_billing_time": (now + timedelta(days=30))
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z"),
+    }
+
+
 def _get_access_token():
     pp = _db_paypal_config()
     client_id = pp["client_id"]
@@ -204,12 +214,13 @@ def create_subscription(
 
 def capture_subscription(subscription_id):
     if _is_mock():
+        dates = _mock_subscription_dates()
         return {
             "id": subscription_id,
             "status": "ACTIVE",
-            "start_time": "2026-06-08T00:00:00Z",
+            "start_time": dates["start_time"],
             "billing_info": {
-                "next_billing_time": "2026-07-08T00:00:00Z",
+                "next_billing_time": dates["next_billing_time"],
             },
         }
     token = _get_access_token()
@@ -229,12 +240,13 @@ def capture_subscription(subscription_id):
 
 def get_subscription(subscription_id):
     if _is_mock():
+        dates = _mock_subscription_dates()
         return {
             "id": subscription_id,
             "status": "ACTIVE",
-            "start_time": "2026-06-08T00:00:00Z",
+            "start_time": dates["start_time"],
             "billing_info": {
-                "next_billing_time": "2026-07-08T00:00:00Z",
+                "next_billing_time": dates["next_billing_time"],
             },
         }
     token = _get_access_token()

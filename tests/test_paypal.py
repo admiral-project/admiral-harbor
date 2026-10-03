@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -133,6 +134,25 @@ def test_capture_subscription_non_mock_success(app):
         with patch("requests.post", return_value=mock_response):
             res = capture_subscription("sub_id")
             assert res["status"] == "ACTIVE"
+
+
+def test_mock_subscription_dates_are_relative_to_current_time(app):
+    with app.app_context(), patch(
+        "app.paypal._db_paypal_config",
+        return_value={"mode": "mock", "client_id": "", "client_secret": ""},
+    ):
+        before = datetime.now(UTC).replace(microsecond=0)
+        captured = capture_subscription("sub_id")
+        fetched = get_subscription("sub_id")
+        after = datetime.now(UTC)
+
+    for response in (captured, fetched):
+        start = datetime.fromisoformat(response["start_time"].replace("Z", "+00:00"))
+        next_billing = datetime.fromisoformat(
+            response["billing_info"]["next_billing_time"].replace("Z", "+00:00")
+        )
+        assert before <= start <= after
+        assert next_billing - start == timedelta(days=30)
 
 
 def test_capture_subscription_request_exception(app):

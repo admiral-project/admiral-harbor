@@ -104,11 +104,13 @@
           <h2>Backups & Restore</h2>
           <p class="meta">Create backups, upload external archives and request restore operations.</p>
         </div>
+        {% if remote_state and remote_state.get('manual_backups_allowed') %}
         <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}">
           <input type="hidden" name="action" value="backup">
           <input type="hidden" name="service" value="db">
           <button class="btn btn-primary" type="submit">Request backup</button>
         </form>
+        {% endif %}
       </div>
 
       <h3 class="subsection-title">Remote backups</h3>
@@ -153,6 +155,7 @@
         <div class="detail-sub">
           <h3>Request restore</h3>
           <p class="meta">Type the application slug to confirm a destructive restore request.</p>
+          {% if remote_state and remote_state.get('restore_allowed') %}
           <form method="post" action="{{ url_for('client.request_restore', instance_id=instance.instance_id) }}" class="stack">
             <label>Source kind
               <select name="source_kind">
@@ -165,6 +168,9 @@
             <label>Confirm text <input name="confirm_text"></label>
             <button class="btn" type="submit">Request restore</button>
           </form>
+          {% else %}
+          <p class="meta">Restore is not included in this service tier.</p>
+          {% endif %}
         </div>
       </div>
     </section>
