@@ -150,8 +150,8 @@ def test_mock_subscription_dates_are_relative_to_current_time(app):
         after = datetime.now(UTC)
 
     for response in (captured, fetched):
-        start = datetime.fromisoformat(response["start_time"].replace("Z", "+00:00"))
-        next_billing = datetime.fromisoformat(response["billing_info"]["next_billing_time"].replace("Z", "+00:00"))
+        start = datetime.fromisoformat(response["start_time"])
+        next_billing = datetime.fromisoformat(response["billing_info"]["next_billing_time"])
         assert before <= start <= after
         assert next_billing - start == timedelta(days=30)
 
