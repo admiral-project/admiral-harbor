@@ -8,6 +8,7 @@ from worker import (
     _reconcile_operations,
     _reconcile_paypal_subscriptions,
     _run_worker_step,
+    _sync_remote_instances,
 )
 
 
@@ -137,3 +138,55 @@ def test_cancelled_subscription_deprovisions_after_prepaid_end(app, monkeypatch)
             (("inst_cancel_due", "deprovision"), {"customer_id": "hcus_cancel_due"}),
         ]
         assert db.session.query(CustomerApp).filter_by(instance_id="inst_cancel_due").one().status == "deprovisioning"
+
+
+def test_remote_instance_sync_preserves_cancelled_commercial_state(app, monkeypatch):
+    with app.app_context():
+        customer = Customer(
+            email="cancelled-sync@example.com",
+            public_id="hcus_cancelled_sync",
+            display_name="Cancelled Sync",
+            password_hash="unused",
+            signup_status="active",
+        )
+        subscription = Subscription(
+            customer_email=customer.email,
+            app_slug="wordpress",
+            status="cancelled",
+            instance_id="inst_cancelled_sync",
+            tier_name="starter",
+            total_cents=2500,
+            next_billing_at="2099-01-01",
+        )
+        db.session.add_all([customer, subscription])
+        db.session.commit()
+        local = CustomerApp(
+            subscription_id=subscription.id,
+            customer_email=customer.email,
+            instance_id=subscription.instance_id,
+            app_slug="wordpress",
+            domain="wordpress.cancelled-sync.example.com",
+            status="running",
+            commercial_status="cancelled",
+            next_billing_at=subscription.next_billing_at,
+        )
+        db.session.add(local)
+        db.session.commit()
+
+        monkeypatch.setattr(
+            "worker.list_customer_apps",
+            lambda _customer_id: [
+                {
+                    "id": subscription.instance_id,
+                    "technical_status": "running",
+                    "commercial_status": "active",
+                    "storage_state": "ok",
+                }
+            ],
+        )
+
+        actions, errors = _sync_remote_instances(app)
+
+        assert (actions, errors) == (1, 0)
+        assert local.status == "running"
+        assert local.commercial_status == "cancelled"

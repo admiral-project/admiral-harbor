@@ -499,7 +499,16 @@ def _sync_remote_instances(app):
             old_storage = local.storage_status
             new_storage = item.get("storage_state", old_storage)
             local.status = item.get("technical_status", local.status)
-            local.commercial_status = item.get("commercial_status", local.commercial_status)
+            latest_subscription_status = (
+                db.session.query(Subscription.status)
+                .filter_by(instance_id=item["id"])
+                .order_by(Subscription.id.desc())
+                .scalar()
+            )
+            if latest_subscription_status == "cancelled":
+                local.commercial_status = "cancelled"
+            else:
+                local.commercial_status = item.get("commercial_status", local.commercial_status)
             local.storage_status = new_storage
             local.setup_timeout_seconds = item.get("setup_timeout_seconds", local.setup_timeout_seconds)
             actions += 1
