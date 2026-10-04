@@ -137,9 +137,12 @@ def test_capture_subscription_non_mock_success(app):
 
 
 def test_mock_subscription_dates_are_relative_to_current_time(app):
-    with app.app_context(), patch(
-        "app.paypal._db_paypal_config",
-        return_value={"mode": "mock", "client_id": "", "client_secret": ""},
+    with (
+        app.app_context(),
+        patch(
+            "app.paypal._db_paypal_config",
+            return_value={"mode": "mock", "client_id": "", "client_secret": ""},
+        ),
     ):
         before = datetime.now(UTC).replace(microsecond=0)
         captured = capture_subscription("sub_id")
@@ -148,9 +151,7 @@ def test_mock_subscription_dates_are_relative_to_current_time(app):
 
     for response in (captured, fetched):
         start = datetime.fromisoformat(response["start_time"].replace("Z", "+00:00"))
-        next_billing = datetime.fromisoformat(
-            response["billing_info"]["next_billing_time"].replace("Z", "+00:00")
-        )
+        next_billing = datetime.fromisoformat(response["billing_info"]["next_billing_time"].replace("Z", "+00:00"))
         assert before <= start <= after
         assert next_billing - start == timedelta(days=30)
 

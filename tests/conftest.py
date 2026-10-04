@@ -194,10 +194,12 @@ def client(app):
         "operation_id": f"op_{action_name}",
         "status": "queued",
     }
-    admiral_client.restore_backup = lambda backup_id, instance_id, service, source=None, verify_checksum=True, customer_id=None: {
-        "operation_id": "op_restore",
-        "status": "queued",
-    }
+    admiral_client.restore_backup = (
+        lambda backup_id, instance_id, service, source=None, verify_checksum=True, customer_id=None: {
+            "operation_id": "op_restore",
+            "status": "queued",
+        }
+    )
     admiral_client.provision_app = lambda app_slug, tier_name, customer_id: {
         "operation_id": "op_provision",
         "instance_id": "inst_provision",

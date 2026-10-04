@@ -122,9 +122,7 @@ def _mock_subscription_dates():
     now = datetime.now(UTC)
     return {
         "start_time": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
-        "next_billing_time": (now + timedelta(days=30))
-        .isoformat(timespec="seconds")
-        .replace("+00:00", "Z"),
+        "next_billing_time": (now + timedelta(days=30)).isoformat(timespec="seconds").replace("+00:00", "Z"),
     }
 
 

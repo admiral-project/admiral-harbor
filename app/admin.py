@@ -80,9 +80,7 @@ def _harbor_customer_id(customer_email):
     if not customer_email:
         raise AdmiralAPIError("Harbor customer identity is unavailable")
     customer_id = (
-        db.session.query(Customer.public_id)
-        .filter(func.lower(Customer.email) == customer_email.lower())
-        .scalar()
+        db.session.query(Customer.public_id).filter(func.lower(Customer.email) == customer_email.lower()).scalar()
     )
     if not customer_id:
         raise AdmiralAPIError("Harbor customer identity is unavailable")

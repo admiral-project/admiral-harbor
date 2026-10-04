@@ -78,7 +78,7 @@ def test_customer_backup_list_uses_scoped_instance_route(app):
     with patch("requests.request") as mock_req:
         response = MagicMock()
         response.ok = True
-        response.content = b'[]'
+        response.content = b"[]"
         response.json.return_value = []
         mock_req.return_value = response
         with app.app_context():
