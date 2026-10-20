@@ -495,7 +495,9 @@ def _sync_remote_instances(app):
         for item in items:
             instance_id = item.get("id") if isinstance(item, dict) else None
             if not isinstance(instance_id, str) or not instance_id.strip():
-                log.error("Skipping malformed remote instance for customer %s without an instance id", customer.public_id)
+                log.error(
+                    "Skipping malformed remote instance for customer %s without an instance id", customer.public_id
+                )
                 errors += 1
                 continue
             local = db.session.query(CustomerApp).filter_by(instance_id=instance_id).one_or_none()

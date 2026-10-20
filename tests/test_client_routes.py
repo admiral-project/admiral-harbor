@@ -604,7 +604,12 @@ def test_uploaded_restore_uses_effective_portal_external_url(client, app, monkey
     monkeypatch.setattr("app.client.admiral_client.restore_backup", restore_backup)
     response = client.post(
         "/client/instances/inst_123/restore",
-        data={"source_kind": "uploaded", "source_backup_id": "upbk_test", "service_name": "db", "confirm_text": "wordpress"},
+        data={
+            "source_kind": "uploaded",
+            "source_backup_id": "upbk_test",
+            "service_name": "db",
+            "confirm_text": "wordpress",
+        },
     )
 
     assert response.status_code in {302, 303}
