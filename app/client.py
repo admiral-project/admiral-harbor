@@ -52,10 +52,10 @@ from app.models import (
     Order,
     Payment,
     RestoreRequest,
+    StaffReply,
     Subscription,
     SubscriptionChange,
     SupportIncident,
-    StaffReply,
     UploadedBackup,
     compute_sha256,
 )
@@ -69,8 +69,8 @@ from app.paypal import (
     cancel_subscription as paypal_cancel_subscription,
 )
 from app.presentation import conversation_timestamp_key
-from app.validation import is_valid_email
 from app.settings import get_external_url
+from app.validation import is_valid_email
 
 bp = Blueprint("client", __name__, url_prefix="/client")
 logger = logging.getLogger("admiral-harbor")

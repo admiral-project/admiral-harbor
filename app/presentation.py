@@ -20,7 +20,8 @@ def format_billing_date(value, fallback="N/A"):
         return date.fromisoformat(rendered).isoformat()
     except ValueError:
         try:
-            return datetime.fromisoformat(rendered.replace("Z", "+00:00")).date().isoformat()
+            iso_datetime = f"{rendered[:-1]}+00:00" if rendered.endswith("Z") else rendered
+            return datetime.fromisoformat(iso_datetime).date().isoformat()
         except ValueError:
             return rendered
 
