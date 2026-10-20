@@ -184,23 +184,23 @@ def update_portal_branding(name, description, logo_file=None, favicon_file=None)
 
 
 def ensure_default_portal_settings():
-    if HarborMeta.get(PORTAL_NAME_KEY) in (None, ""):
-        _upsert_meta(PORTAL_NAME_KEY, DEFAULT_PORTAL_NAME)
-    if HarborMeta.get(PORTAL_DESCRIPTION_KEY) in (None, ""):
-        _upsert_meta(PORTAL_DESCRIPTION_KEY, DEFAULT_PORTAL_DESCRIPTION)
-    if HarborMeta.get(TAX_RATES_KEY) in (None, ""):
-        _upsert_meta(TAX_RATES_KEY, json.dumps(DEFAULT_TAX_RATES, sort_keys=True))
-    if HarborMeta.get(PORTAL_CURRENCY_KEY) in (None, ""):
-        _upsert_meta(PORTAL_CURRENCY_KEY, DEFAULT_CURRENCY)
+    defaults = {
+        PORTAL_NAME_KEY: DEFAULT_PORTAL_NAME,
+        PORTAL_DESCRIPTION_KEY: DEFAULT_PORTAL_DESCRIPTION,
+        TAX_RATES_KEY: json.dumps(DEFAULT_TAX_RATES, sort_keys=True),
+        PORTAL_CURRENCY_KEY: DEFAULT_CURRENCY,
+    }
     try:
+        # Avoid flushing a newly queued default during the next lookup. A
+        # second Gunicorn worker may have inserted that key after this worker's
+        # first lookup; the collision should be reported by the explicit
+        # commit below, where the concurrent-insert recovery can handle it.
+        with db.session.no_autoflush:
+            for key, value in defaults.items():
+                if HarborMeta.get(key) in (None, ""):
+                    _upsert_meta(key, value)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        default_keys = (
-            PORTAL_NAME_KEY,
-            PORTAL_DESCRIPTION_KEY,
-            TAX_RATES_KEY,
-            PORTAL_CURRENCY_KEY,
-        )
-        if any(HarborMeta.get(key) in (None, "") for key in default_keys):
+        if any(HarborMeta.get(key) in (None, "") for key in defaults):
             raise

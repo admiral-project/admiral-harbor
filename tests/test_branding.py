@@ -246,6 +246,46 @@ def test_ensure_default_portal_settings_ignores_duplicate_race(app, monkeypatch)
         assert get_tax_rates() == DEFAULT_TAX_RATES
 
 
+def test_ensure_default_portal_settings_recovers_from_lookup_autoflush_race(app, monkeypatch):
+    with app.test_request_context():
+        db.session.query(HarborMeta).delete()
+        db.session.commit()
+        original_get = HarborMeta.get.__func__
+        commit = db.session.commit
+        raced = False
+        defaults = [
+            HarborMeta(key="portal_name", value=DEFAULT_PORTAL_NAME),
+            HarborMeta(key="portal_description", value=DEFAULT_PORTAL_DESCRIPTION),
+            HarborMeta(key="tax_rates_json", value=json.dumps(DEFAULT_TAX_RATES, sort_keys=True)),
+            HarborMeta(key="portal_currency", value=DEFAULT_CURRENCY),
+        ]
+
+        def competing_worker_commits_before_next_lookup(cls, key, default=None):
+            nonlocal raced
+            if key == "portal_description" and not raced:
+                raced = True
+                assert any(row.key == "portal_name" for row in db.session.new)
+                db.session.rollback()
+                db.session.add_all(defaults)
+                commit()
+                raise IntegrityError(
+                    "SELECT",
+                    {},
+                    Exception("duplicate key during query autoflush"),
+                )
+            return original_get(cls, key, default)
+
+        monkeypatch.setattr(HarborMeta, "get", classmethod(competing_worker_commits_before_next_lookup))
+
+        ensure_default_portal_settings()
+
+        assert raced
+        assert HarborMeta.get("portal_name") == DEFAULT_PORTAL_NAME
+        assert HarborMeta.get("portal_description") == DEFAULT_PORTAL_DESCRIPTION
+        assert HarborMeta.get("portal_currency") == DEFAULT_CURRENCY
+        assert get_tax_rates() == DEFAULT_TAX_RATES
+
+
 def test_ensure_default_portal_settings_reraises_unresolved_integrity_error(app, monkeypatch):
     with app.test_request_context():
         db.session.query(HarborMeta).delete()
