@@ -12,8 +12,8 @@ if config.config_file_name is not None:
 
 sys.path.insert(0, ".")
 
-import app.models  # noqa: E402, F401
-from app.extensions import db  # noqa: E402
+import app.models  # noqa
+from app.extensions import db  # noqa
 
 target_metadata = db.metadata
 
