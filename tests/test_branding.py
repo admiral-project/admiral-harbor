@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 from werkzeug.datastructures import FileStorage
 
 from app.branding import (
@@ -214,3 +215,46 @@ def test_ensure_default_portal_settings(app):
         assert HarborMeta.get("portal_description") == DEFAULT_PORTAL_DESCRIPTION
         assert HarborMeta.get("portal_currency") == DEFAULT_CURRENCY
         assert get_tax_rates() == DEFAULT_TAX_RATES
+
+
+def test_ensure_default_portal_settings_ignores_duplicate_race(app, monkeypatch):
+    with app.test_request_context():
+        db.session.query(HarborMeta).delete()
+        db.session.commit()
+        commit = db.session.commit
+
+        def competing_worker_commits_defaults():
+            db.session.rollback()
+            db.session.add_all(
+                [
+                    HarborMeta(key="portal_name", value=DEFAULT_PORTAL_NAME),
+                    HarborMeta(key="portal_description", value=DEFAULT_PORTAL_DESCRIPTION),
+                    HarborMeta(key="tax_rates_json", value=json.dumps(DEFAULT_TAX_RATES, sort_keys=True)),
+                    HarborMeta(key="portal_currency", value=DEFAULT_CURRENCY),
+                ]
+            )
+            commit()
+            raise IntegrityError("INSERT", {}, Exception("duplicate key"))
+
+        monkeypatch.setattr(db.session, "commit", competing_worker_commits_defaults)
+
+        ensure_default_portal_settings()
+
+        assert HarborMeta.get("portal_name") == DEFAULT_PORTAL_NAME
+        assert HarborMeta.get("portal_description") == DEFAULT_PORTAL_DESCRIPTION
+        assert HarborMeta.get("portal_currency") == DEFAULT_CURRENCY
+        assert get_tax_rates() == DEFAULT_TAX_RATES
+
+
+def test_ensure_default_portal_settings_reraises_unresolved_integrity_error(app, monkeypatch):
+    with app.test_request_context():
+        db.session.query(HarborMeta).delete()
+        db.session.commit()
+
+        def fail_commit():
+            raise IntegrityError("INSERT", {}, Exception("unrelated constraint violation"))
+
+        monkeypatch.setattr(db.session, "commit", fail_commit)
+
+        with pytest.raises(IntegrityError, match="unrelated constraint violation"):
+            ensure_default_portal_settings()

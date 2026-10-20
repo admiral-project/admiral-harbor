@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from flask import current_app, url_for
+from sqlalchemy.exc import IntegrityError
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
@@ -191,4 +192,15 @@ def ensure_default_portal_settings():
         _upsert_meta(TAX_RATES_KEY, json.dumps(DEFAULT_TAX_RATES, sort_keys=True))
     if HarborMeta.get(PORTAL_CURRENCY_KEY) in (None, ""):
         _upsert_meta(PORTAL_CURRENCY_KEY, DEFAULT_CURRENCY)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        default_keys = (
+            PORTAL_NAME_KEY,
+            PORTAL_DESCRIPTION_KEY,
+            TAX_RATES_KEY,
+            PORTAL_CURRENCY_KEY,
+        )
+        if any(HarborMeta.get(key) in (None, "") for key in default_keys):
+            raise
