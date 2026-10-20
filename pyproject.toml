@@ -33,4 +33,5 @@ line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
+extend-select = ["E402"]
 ignore = ["BLE001", "SIM117", "G201", "S110", "DTZ001", "RUF012", "EXE001", "SIM102", "SIM103", "SIM115", "RUF059"]
