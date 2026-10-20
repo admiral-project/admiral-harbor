@@ -8,8 +8,10 @@ from app.admiral_client import (
     AdmiralAPIError,
     _headers,
     _request,
+    action,
     get_app,
     get_customer_backup,
+    get_instance_credentials,
     get_operation,
     list_backups,
     normalize_tiers,
@@ -90,6 +92,15 @@ def test_customer_backup_list_uses_scoped_instance_route(app):
     )
     assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "hcus_owner"
     assert mock_req.call_args.kwargs["headers"]["Authorization"] == "Bearer scoped-harbor-token"
+
+
+def test_customer_scoped_client_methods_require_identity():
+    with pytest.raises(TypeError):
+        get_instance_credentials("inst_owner")
+    with pytest.raises(TypeError):
+        action("inst_owner", "pause")
+    with pytest.raises(TypeError):
+        list_backups("inst_owner")
 
 
 def test_customer_backup_read_uses_scoped_instance_route(app):

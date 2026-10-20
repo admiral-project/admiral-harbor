@@ -32,6 +32,7 @@ def test_alembic_discovers_complete_revision_chain(app):
         revisions = [revision.revision for revision in alembic.script_directory.walk_revisions()]
 
     assert revisions == [
+        "b4ab1c3d4e5f",
         "4c9a7d1e2b3f",
         "9f2d1f4c8a11",
         "c7d2e8f1a4b9",

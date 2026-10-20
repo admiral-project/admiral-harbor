@@ -134,7 +134,7 @@ def get_customer_app(instance_id, customer_id):
     )
 
 
-def get_instance_credentials(instance_id, customer_id=None):
+def get_instance_credentials(instance_id, customer_id):
     if not customer_id:
         raise AdmiralAPIError("Customer identity is required to read instance credentials")
     result = _request("GET", f"/api/v1/customer-apps/{instance_id}/credentials", timeout=30, customer_id=customer_id)
@@ -156,7 +156,7 @@ def provision_app(app_slug, tier_name, customer_id):
     )
 
 
-def action(instance_id, action_name, tier=None, service=None, customer_id=None):
+def action(instance_id, action_name, tier=None, service=None, *, customer_id):
     if not customer_id:
         raise AdmiralAPIError("Customer identity is required to operate an instance")
     payload = {"instance_id": instance_id, "action": action_name}
@@ -167,7 +167,7 @@ def action(instance_id, action_name, tier=None, service=None, customer_id=None):
     return _request("POST", "/api/v1/customer-apps/action", payload=payload, customer_id=customer_id)
 
 
-def list_backups(instance_id, customer_id=None):
+def list_backups(instance_id, customer_id):
     if not customer_id:
         raise AdmiralAPIError("Customer identity is required to list instance backups")
     path = f"/api/v1/customer-apps/{instance_id}/backups"

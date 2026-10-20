@@ -64,6 +64,7 @@ def test_get_all_settings(app):
 
 def test_external_url_get_set(app):
     with app.app_context():
+        app.config["HARBOR_EXTERNAL_URL"] = "https://config.harbor.test"
         set_external_url("https://harbor.test")
         assert get_external_url() == "https://harbor.test"
 

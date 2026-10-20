@@ -389,7 +389,7 @@ def test_customers_and_tickets_routes(client, app):
     assert b"updated" in response.data or b"desactivado" in response.data or response.status_code == 200
 
     # List tickets
-    from app.models import SupportIncident
+    from app.models import StaffReply, SupportIncident
 
     with app.app_context():
         ticket = SupportIncident(
@@ -402,6 +402,7 @@ def test_customers_and_tickets_routes(client, app):
         )
         db.session.add(ticket)
         db.session.commit()
+        ticket_id = ticket.id
 
     response = client.get("/admin/tickets")
     assert response.status_code == 200
@@ -423,6 +424,17 @@ def test_customers_and_tickets_routes(client, app):
     # Ticket add notes
     response = client.post("/admin/tickets/inc_xyz/notes", data={"note": "Some internal note"}, follow_redirects=True)
     assert response.status_code == 200
+
+    # A public staff response is visible on the ticket and stored separately from internal notes.
+    response = client.post(
+        "/admin/tickets/inc_xyz/reply", data={"message": "Public reply from support"}, follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert b"Public reply from support" in response.data
+    with app.app_context():
+        reply = db.session.query(StaffReply).filter_by(ticket_id=ticket_id).one()
+        assert reply.staff_username == "testadmin"
+        assert reply.message == "Public reply from support"
 
 
 def test_review_user_routes(client, app):

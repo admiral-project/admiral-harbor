@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: William Moreno Reyes <williamjmorenor@gmail.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 import os
 import tempfile
 from datetime import UTC, datetime, timedelta
@@ -54,6 +55,7 @@ from app.models import (
     Subscription,
     SubscriptionChange,
     SupportIncident,
+    StaffReply,
     UploadedBackup,
     compute_sha256,
 )
@@ -66,9 +68,12 @@ from app.paypal import (
 from app.paypal import (
     cancel_subscription as paypal_cancel_subscription,
 )
+from app.presentation import conversation_timestamp_key
 from app.validation import is_valid_email
+from app.settings import get_external_url
 
 bp = Blueprint("client", __name__, url_prefix="/client")
+logger = logging.getLogger("admiral-harbor")
 
 OPERATIONAL_STATUSES = {
     "pending_provision": "Provisioning",
@@ -167,17 +172,25 @@ def _sync_remote_instances(customer):
         return []
     synced = []
     for item in items:
-        subscription = db.session.query(Subscription).filter_by(instance_id=item["id"]).one_or_none()
+        if not isinstance(item, dict):
+            logger.warning("Skipping malformed remote customer app without an instance id")
+            continue
+        instance_id = item.get("id")
+        app_slug = item.get("app_definition_name")
+        if not isinstance(instance_id, str) or not instance_id.strip() or not isinstance(app_slug, str) or not app_slug:
+            logger.warning("Skipping malformed remote customer app without an instance id or app name")
+            continue
+        subscription = db.session.query(Subscription).filter_by(instance_id=instance_id).one_or_none()
         if subscription is None:
             continue
-        app = db.session.query(CustomerApp).filter_by(instance_id=item["id"]).one_or_none()
+        app = db.session.query(CustomerApp).filter_by(instance_id=instance_id).one_or_none()
         if app is None:
             app = CustomerApp(
                 subscription_id=subscription.id,
                 customer_email=customer.email,
-                instance_id=item["id"],
-                app_slug=item["app_definition_name"],
-                domain=item.get("hostname", item["id"]),
+                instance_id=instance_id,
+                app_slug=app_slug,
+                domain=item.get("hostname", instance_id),
             )
             db.session.add(app)
         app.status = item.get("technical_status", app.status)
@@ -186,7 +199,7 @@ def _sync_remote_instances(customer):
         app.tier_name = item.get("tier_name", app.tier_name)
         app.domain = item.get("hostname", app.domain)
         app.setup_timeout_seconds = item.get("setup_timeout_seconds", app.setup_timeout_seconds)
-        subscription.instance_id = item["id"]
+        subscription.instance_id = instance_id
         synced.append(item)
     db.session.commit()
     return synced
@@ -1321,7 +1334,7 @@ def request_restore(instance_id):
         if uploaded is None:
             flash("Uploaded backup not found.", "error")
             return redirect(url_for("client.instance_detail", instance_id=instance_id))
-        external_url = current_app.config["HARBOR_EXTERNAL_URL"]
+        external_url = get_external_url().rstrip("/")
         download_query = build_backup_download_query(uploaded.backup_id, customer.public_id)
         download_uri = f"{external_url}/api/v1/backups/uploads/{uploaded.backup_id}/download?{download_query}"
         source = {
@@ -1504,6 +1517,20 @@ def support_detail(ticket_id):
                 "is_customer": True,
             }
         )
+    staff_replies = (
+        db.session.query(StaffReply).filter_by(ticket_id=ticket.id).order_by(StaffReply.created_at.asc()).all()
+    )
+    for reply in staff_replies:
+        conversation.append(
+            {
+                "author": "Support",
+                "message": reply.message,
+                "timestamp": reply.created_at,
+                "is_internal": False,
+                "is_customer": False,
+            }
+        )
+    conversation.sort(key=lambda entry: conversation_timestamp_key(entry["timestamp"]))
     sla_status = None
     if ticket.response_deadline or ticket.resolution_deadline:
         now = datetime.now(UTC)

@@ -380,18 +380,27 @@ def test_mock_paypal_approve_rejects_cross_origin_return_url(client, app):
 
 def test_mock_paypal_approve_redirects_same_origin_return_url(client, app):
     app.config.update(HARBOR_PAYPAL_MODE="mock")
+    from app.settings import set_external_url
+
+    with app.app_context():
+        app.config["HARBOR_EXTERNAL_URL"] = "https://config.harbor.test"
+        set_external_url("https://db.harbor.test")
 
     response = client.get(
-        "/mock-paypal/approve?subscription_id=sub_123&return_url=https://localhost:5000/billing/return"
+        "/mock-paypal/approve?subscription_id=sub_123&return_url=https://db.harbor.test/billing/return"
     )
 
     assert response.status_code == 200
+    response = client.get(
+        "/mock-paypal/approve?subscription_id=sub_123&return_url=https://config.harbor.test/billing/return"
+    )
+    assert response.status_code == 400
     response = client.post(
         "/mock-paypal/approve",
-        data={"subscription_id": "sub_123", "return_url": "https://localhost:5000/billing/return"},
+        data={"subscription_id": "sub_123", "return_url": "https://db.harbor.test/billing/return"},
     )
     assert response.status_code in {302, 303}
-    assert response.headers["Location"] == "https://localhost:5000/billing/return?token=sub_123"
+    assert response.headers["Location"] == "https://db.harbor.test/billing/return?token=sub_123"
 
 
 def test_uploaded_backup_download_temporarily_blocks_repeated_invalid_token(client):

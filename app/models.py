@@ -793,6 +793,16 @@ class CustomerReply(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
 
 
+class StaffReply(db.Model):
+    """Public staff replies in a customer support conversation."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey("support_incident.id"), nullable=False, index=True)
+    staff_username = db.Column(db.String(255), nullable=False, index=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC), nullable=False, index=True)
+
+
 class RateLimit(db.Model):
     """Rate limiting state backed by PostgreSQL for multi-worker support."""
 

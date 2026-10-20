@@ -116,6 +116,25 @@
 </div>
 
 <div class="panel">
+ <h2>Conversación visible al cliente</h2>
+ {% for entry in conversation %}
+ <article style="margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+  <strong>{% if entry.is_staff %}Soporte — {{ entry.author }}{% else %}{{ entry.author }}{% endif %}</strong>
+  <time>{{ entry.timestamp.strftime("%Y-%m-%d %H:%M") if entry.timestamp else "N/A" }}</time>
+  <p style="white-space: pre-wrap;">{{ entry.message }}</p>
+ </article>
+ {% endfor %}
+ <form method="post" action="{{ url_for('admin.ticket_add_public_reply', ticket_id=ticket.incident_id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-group">
+   <label for="public-reply">Responder al cliente</label>
+   <textarea id="public-reply" name="message" rows="4" required></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Enviar respuesta pública</button>
+ </form>
+</div>
+
+<div class="panel">
  <h2><i class="fas fa-cog pf-u-mr-sm"></i> Acciones</h2>
  
  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">

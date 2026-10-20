@@ -190,3 +190,46 @@ def test_remote_instance_sync_preserves_cancelled_commercial_state(app, monkeypa
         assert (actions, errors) == (1, 0)
         assert local.status == "running"
         assert local.commercial_status == "cancelled"
+
+
+def test_remote_instance_sync_skips_items_without_ids(app, monkeypatch):
+    with app.app_context():
+        customer = Customer(
+            email="malformed-sync@example.com",
+            public_id="hcus_malformed_sync",
+            display_name="Malformed Sync",
+            password_hash="unused",
+            signup_status="active",
+        )
+        subscription = Subscription(
+            customer_email=customer.email,
+            app_slug="wordpress",
+            status="active",
+            instance_id="inst_malformed_sync",
+            tier_name="starter",
+            total_cents=2500,
+        )
+        db.session.add_all([customer, subscription])
+        db.session.commit()
+        local = CustomerApp(
+            subscription_id=subscription.id,
+            customer_email=customer.email,
+            instance_id=subscription.instance_id,
+            app_slug="wordpress",
+            domain="wordpress.malformed-sync.example.com",
+        )
+        db.session.add(local)
+        db.session.commit()
+
+        monkeypatch.setattr(
+            "worker.list_customer_apps",
+            lambda _customer_id: [
+                {"app_definition_name": "malformed"},
+                {"id": subscription.instance_id, "technical_status": "running"},
+            ],
+        )
+
+        actions, errors = _sync_remote_instances(app)
+
+        assert (actions, errors) == (1, 1)
+        assert local.status == "running"

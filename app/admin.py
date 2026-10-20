@@ -60,6 +60,7 @@ from app.models import (
     Customer,
     CustomerApp,
     CustomerFiscalRequest,
+    CustomerReply,
     FiscalTreatmentType,
     HarborAdminUser,
     HarborMeta,
@@ -68,8 +69,10 @@ from app.models import (
     LMSSettings,
     Payment,
     Subscription,
+    StaffReply,
     SupportIncident,
 )
+from app.presentation import conversation_timestamp_key
 from app.rate_limit import RateLimiter
 from app.security import validate_password_strength
 
@@ -1981,7 +1984,6 @@ def backup_detail(backup_id):
         backup = get_customer_backup(instance_id, backup_id, customer_id=customer_id)
 
         # Find associated subscription
-        subscription = None
         subscription = db.session.query(Subscription).filter_by(id=customer_app.subscription_id).one_or_none()
 
         return render_template(
@@ -2045,12 +2047,40 @@ def ticket_detail(ticket_id):
     # Calculate SLA status
     sla_status = _get_sla_status(ticket)
     time_remaining_formatted = _format_timedelta(sla_status["time_remaining"])
+    conversation = [
+        {
+            "author": ticket.customer_email,
+            "message": ticket.description,
+            "timestamp": ticket.created_at,
+            "is_staff": False,
+        }
+    ]
+    for reply in db.session.query(CustomerReply).filter_by(ticket_id=ticket.id).all():
+        conversation.append(
+            {
+                "author": ticket.customer_email,
+                "message": reply.message,
+                "timestamp": reply.created_at,
+                "is_staff": False,
+            }
+        )
+    for reply in db.session.query(StaffReply).filter_by(ticket_id=ticket.id).all():
+        conversation.append(
+            {
+                "author": reply.staff_username,
+                "message": reply.message,
+                "timestamp": reply.created_at,
+                "is_staff": True,
+            }
+        )
+    conversation.sort(key=lambda entry: conversation_timestamp_key(entry["timestamp"]))
 
     return render_template(
         "admin_ticket_detail.html",
         ticket=ticket,
         sla_status=sla_status,
         time_remaining_formatted=time_remaining_formatted,
+        conversation=conversation,
     )
 
 
@@ -2157,6 +2187,38 @@ def ticket_add_note(ticket_id):
 
         flash("Note added.", "success")
 
+    return redirect(url_for("admin.ticket_detail", ticket_id=ticket_id))
+
+
+@bp.route("/tickets/<ticket_id>/reply", methods=["POST"])
+@admin_required
+def ticket_add_public_reply(ticket_id):
+    """Send a public support response to the ticket's customer."""
+    ticket = db.session.query(SupportIncident).filter_by(incident_id=ticket_id).one_or_none()
+    if not ticket:
+        flash("Ticket not found.", "error")
+        return redirect(url_for("admin.tickets_list"))
+
+    message = request.form.get("message", "").strip()
+    if not message:
+        flash("Reply cannot be empty.", "error")
+        return redirect(url_for("admin.ticket_detail", ticket_id=ticket_id))
+
+    staff_username = session.get("admin_username", "admin")
+    db.session.add(StaffReply(ticket_id=ticket.id, staff_username=staff_username, message=message))
+    ticket.updated_at = datetime.now(UTC)
+    db.session.add(
+        AuditLog(
+            actor=staff_username,
+            action="ticket_staff_reply",
+            resource_type="ticket",
+            resource_id=ticket_id,
+            detail="Added public staff reply",
+            ip_address=request.remote_addr or "",
+        )
+    )
+    db.session.commit()
+    flash("Public reply sent.", "success")
     return redirect(url_for("admin.ticket_detail", ticket_id=ticket_id))
 
 

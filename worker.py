@@ -493,7 +493,12 @@ def _sync_remote_instances(app):
             continue
 
         for item in items:
-            local = db.session.query(CustomerApp).filter_by(instance_id=item["id"]).one_or_none()
+            instance_id = item.get("id") if isinstance(item, dict) else None
+            if not isinstance(instance_id, str) or not instance_id.strip():
+                log.error("Skipping malformed remote instance for customer %s without an instance id", customer.public_id)
+                errors += 1
+                continue
+            local = db.session.query(CustomerApp).filter_by(instance_id=instance_id).one_or_none()
             if local is None:
                 continue
             old_storage = local.storage_status
@@ -501,7 +506,7 @@ def _sync_remote_instances(app):
             local.status = item.get("technical_status", local.status)
             latest_subscription_status = (
                 db.session.query(Subscription.status)
-                .filter_by(instance_id=item["id"])
+                .filter_by(instance_id=instance_id)
                 .order_by(Subscription.id.desc())
                 .scalar()
             )
@@ -513,11 +518,11 @@ def _sync_remote_instances(app):
             local.setup_timeout_seconds = item.get("setup_timeout_seconds", local.setup_timeout_seconds)
             actions += 1
 
-            if new_storage != old_storage and _needs_storage_alert(customer.email, item["id"], new_storage):
+            if new_storage != old_storage and _needs_storage_alert(customer.email, instance_id, new_storage):
                 _send_storage_alert(
                     app,
                     customer.email,
-                    item["id"],
+                    instance_id,
                     new_storage,
                     customer_name=customer.display_name,
                 )

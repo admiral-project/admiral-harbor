@@ -45,6 +45,7 @@ from app.models import (
 )
 from app.paypal import is_mock_mode, verify_webhook_signature
 from app.rate_limit import RateLimiter
+from app.settings import get_external_url
 
 bp = Blueprint("main", __name__)
 api_token_limiter = RateLimiter(max_attempts=10, window_seconds=300)
@@ -547,7 +548,7 @@ def mock_paypal_approve():
     if not return_url or not subscription_id:
         return jsonify({"error": "missing subscription_id or return_url"}), 400
 
-    external_url = current_app.config.get("HARBOR_EXTERNAL_URL", "")
+    external_url = get_external_url().rstrip("/")
     if not external_url or not _same_origin(return_url, external_url):
         return jsonify({"error": "invalid return_url"}), 400
 

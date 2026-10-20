@@ -501,7 +501,7 @@ def test_client_support_detail_not_found_and_replies(client, app):
     response = client.get("/client/support/999", follow_redirects=True)
     assert b"Ticket not found" in response.data
 
-    from app.models import SupportIncident
+    from app.models import StaffReply, SupportIncident
 
     with app.app_context():
         ticket = SupportIncident(
@@ -514,6 +514,8 @@ def test_client_support_detail_not_found_and_replies(client, app):
         )
         db.session.add(ticket)
         db.session.commit()
+        db.session.add(StaffReply(ticket_id=ticket.id, staff_username="support", message="Staff public reply"))
+        db.session.commit()
         ticket_id = ticket.id
 
     # Get details
@@ -524,6 +526,7 @@ def test_client_support_detail_not_found_and_replies(client, app):
     assert b'name="message"' in response.data
     assert b'name="csrf_token"' in response.data
     assert b"Private staff note" not in response.data
+    assert b"Staff public reply" in response.data
 
     # Empty reply
     response = client.post(f"/client/support/{ticket_id}/reply", data={"message": ""}, follow_redirects=True)
@@ -544,6 +547,68 @@ def test_client_support_detail_not_found_and_replies(client, app):
     )
     assert b"&lt;script&gt;alert(1)&lt;/script&gt;" in response.data
     assert b"<script>alert(1)</script>" not in response.data
+
+
+def test_remote_customer_sync_skips_malformed_items(client, app, monkeypatch):
+    from app.client import _sync_remote_instances
+    from app.models import Customer
+
+    with app.app_context():
+        customer = db.session.query(Customer).filter_by(email="user@example.com").one()
+        monkeypatch.setattr(
+            "app.client.admiral_client.list_customer_apps",
+            lambda customer_id: [
+                {"app_definition_name": "missing-id"},
+                {
+                    "id": "inst_123",
+                    "app_definition_name": "wordpress",
+                    "technical_status": "running",
+                    "storage_state": "ok",
+                },
+            ],
+        )
+        synced = _sync_remote_instances(customer)
+
+    assert len(synced) == 1
+    assert synced[0]["id"] == "inst_123"
+
+
+def test_uploaded_restore_uses_effective_portal_external_url(client, app, monkeypatch):
+    from app.models import UploadedBackup
+    from app.settings import set_external_url
+
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    captured = {}
+    with app.app_context():
+        app.config["HARBOR_EXTERNAL_URL"] = "https://config.harbor.test"
+        set_external_url("https://db.harbor.test/")
+        instance = db.session.query(CustomerApp).filter_by(instance_id="inst_123").one()
+        instance.status = "paused"
+        db.session.add(
+            UploadedBackup(
+                backup_id="upbk_test",
+                customer_email="user@example.com",
+                app_slug="wordpress",
+                original_filename="backup.tar",
+                stored_path="/tmp/backup.tar",
+                size_bytes=12,
+                checksum_sha256="a" * 64,
+            )
+        )
+        db.session.commit()
+
+    def restore_backup(backup_id, instance_id, service, customer_id, source=None, verify_checksum=True):
+        captured["source"] = source
+        return {"operation_id": "op_restore"}
+
+    monkeypatch.setattr("app.client.admiral_client.restore_backup", restore_backup)
+    response = client.post(
+        "/client/instances/inst_123/restore",
+        data={"source_kind": "uploaded", "source_backup_id": "upbk_test", "service_name": "db", "confirm_text": "wordpress"},
+    )
+
+    assert response.status_code in {302, 303}
+    assert captured["source"]["uri"].startswith("https://db.harbor.test/api/v1/backups/uploads/upbk_test/download?")
 
 
 def test_client_profile_edit(client, app):
@@ -611,7 +676,7 @@ def test_client_instance_credentials(client, monkeypatch):
 
     # Found
     monkeypatch.setattr(
-        "app.admiral_client.get_instance_credentials", lambda i, customer_id=None: {"user": "admin", "pass": "123"}
+        "app.admiral_client.get_instance_credentials", lambda i, customer_id: {"user": "admin", "pass": "123"}
     )
     response = client.get("/client/instances/inst_123/credentials.json")
     assert response.status_code == 200
