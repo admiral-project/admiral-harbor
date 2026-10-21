@@ -23,12 +23,18 @@ def test_render_markdown_rejects_encoded_and_mixed_case_executable_urls():
         "javascript%3Aalert%281%29",
         "JaVaScRiPt:alert(1)",
         "java%73cript%3Aalert%281%29",
+        "javascript%253Aalert%25281%2529",
+        "java%0ascript%3Aalert(1)",
+        "javascript&colon;alert(1)",
+        "//untrusted.example/path",
     ):
         res = render_markdown(f"[probe]({bad_url})")
         assert "javascript" not in res.lower()
         assert 'href="#harmful-link"' in res
 
     assert '<a href="https://example.com">ok</a>' in render_markdown("[ok](https://example.com)")
+    assert '<a href="/apps/example">relative</a>' in render_markdown("[relative](/apps/example)")
+    assert '<a href="mailto:support@example.com">email</a>' in render_markdown("[email](mailto:support@example.com)")
 
 
 def test_render_markdown_empty_and_none():
