@@ -34,8 +34,8 @@ from app.identity import (
 )
 from app.models import AuditLog, Customer
 from app.rate_limit import RateLimiter
-from app.settings import get_external_url
 from app.security import validate_password_strength
+from app.settings import get_external_url
 from app.validation import is_valid_email
 
 ph = PasswordHasher()
