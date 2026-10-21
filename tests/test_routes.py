@@ -66,8 +66,7 @@ def test_app_detail_neutralizes_unsafe_markdown_links(client, app):
     with app.app_context():
         catalog_app = db.session.query(CatalogApp).filter_by(upstream_app_id="wordpress").one()
         catalog_app.description_md = (
-            "[encoded](javascript%3Aalert%281%29) "
-            "[mixed](JaVaScRiPt:alert(1)) [safe](https://example.com)"
+            "[encoded](javascript%3Aalert%281%29) " "[mixed](JaVaScRiPt:alert(1)) [safe](https://example.com)"
         )
         db.session.commit()
 
