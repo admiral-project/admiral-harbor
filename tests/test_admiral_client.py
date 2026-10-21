@@ -24,7 +24,7 @@ from app.admiral_client import (
 def test_headers(app):
     with app.app_context():
         current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = "scoped-token"
-        headers = _headers()
+        headers = _headers(None)
         assert headers["Authorization"] == "Bearer scoped-token"
         assert headers["Content-Type"] == "application/json"
 
@@ -38,7 +38,7 @@ def test_request_success(app):
         mock_req.return_value = mock_resp
 
         with app.app_context():
-            result = _request("GET", "/test")
+            result = _request("GET", "/test", customer_id=None)
             assert result == {"status": "ok"}
 
 
@@ -51,9 +51,10 @@ def test_provision_app_sends_customer_identity(app):
         mock_req.return_value = mock_resp
 
         with app.app_context():
-            provision_app("test-app", "starter", "customer_001")
+            provision_app("test-app", "starter", "customer_001", idempotency_key="checkout-123")
 
     assert mock_req.call_args.kwargs["headers"]["X-Admiral-Customer-ID"] == "customer_001"
+    assert mock_req.call_args.kwargs["headers"]["Idempotency-Key"] == "checkout-123"
 
 
 def test_get_operation_uses_customer_owned_route(app):
@@ -145,7 +146,7 @@ def test_harbor_client_requires_scoped_token(app):
     with app.app_context():
         current_app.config["ADMIRAL_HARBOR_API_TOKEN"] = ""
         with pytest.raises(AdmiralAPIError, match="ADMIRAL_HARBOR_API_TOKEN"):
-            _headers()
+            _headers(None)
 
 
 def test_request_http_error(app):
@@ -158,15 +159,22 @@ def test_request_http_error(app):
 
         with app.app_context():
             with pytest.raises(AdmiralAPIError) as excinfo:
-                _request("GET", "/error")
+                _request("GET", "/error", customer_id=None)
             assert "Error message" in str(excinfo.value)
 
 
 def test_request_exception(app):
     with patch("requests.request", side_effect=requests.RequestException("Conn error")), app.app_context():
         with pytest.raises(AdmiralAPIError) as excinfo:
-            _request("GET", "/fail")
+            _request("GET", "/fail", customer_id=None)
         assert "Conn error" in str(excinfo.value)
+
+
+def test_internal_request_helpers_require_explicit_customer_scope():
+    with pytest.raises(TypeError):
+        _headers()
+    with pytest.raises(TypeError):
+        _request("GET", "/api/v1/customer-apps")
 
 
 def test_parse_tiers_from_yaml():

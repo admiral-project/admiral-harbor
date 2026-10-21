@@ -300,7 +300,9 @@ def _provision_from_order(order):
         db.session.add(subscription)
         db.session.flush()
 
-    response = admiral_client.provision_app(order.app_slug, order.tier_name, customer.public_id)
+    response = admiral_client.provision_app(
+        order.app_slug, order.tier_name, customer.public_id, idempotency_key=f"harbor-order-{order.id}"
+    )
     credentials = response.get("credentials", [])
     hostname = response.get("hostname", "")
     instance_id = response.get("instance_id", "")
@@ -345,9 +347,14 @@ def _provision_from_order(order):
 @customer_required
 def dashboard():
     customer = current_customer()
-    _sync_remote_instances(customer)
+    remote_instances = _sync_remote_instances(customer)
+    availability_by_instance = {item["id"]: item for item in remote_instances if item.get("id")}
     subscriptions = [sub.as_dict() for sub in _customer_subscriptions(customer)]
     customer_apps = [item.as_dict() for item in _customer_instances(customer)]
+    for instance in customer_apps:
+        remote = availability_by_instance.get(instance["instance_id"])
+        instance["effective_availability"] = (remote or {}).get("effective_availability", "unknown")
+        instance["availability_reason"] = (remote or {}).get("availability_reason", "")
     monthly_total = sum(sub["monthly_price_cents"] for sub in subscriptions if sub["status"] != "cancelled")
     open_tickets = (
         db.session.query(SupportIncident)
@@ -1051,6 +1058,9 @@ def instance_detail(instance_id):
         storage_tone=STATUS_TONES.get(instance.storage_status, "attention"),
         backup_tone=STATUS_TONES.get(instance.backup_status, "attention"),
         remote_tone=STATUS_TONES.get((remote_state or {}).get("technical_status", ""), "attention"),
+        availability_tone={"available": "success", "unavailable": "danger"}.get(
+            (remote_state or {}).get("effective_availability", ""), "attention"
+        ),
     )
 
 

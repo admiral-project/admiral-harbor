@@ -143,7 +143,12 @@ def _same_origin(url_a, url_b):
 
 def _provision_subscription(subscription):
     customer = db.session.query(Customer).filter_by(email=subscription.customer_email).one()
-    response = admiral_client.provision_app(subscription.app_slug, subscription.tier_name, customer.public_id)
+    response = admiral_client.provision_app(
+        subscription.app_slug,
+        subscription.tier_name,
+        customer.public_id,
+        idempotency_key=f"harbor-subscription-{subscription.id}",
+    )
     credentials = response.get("credentials", [])
     hostname = response.get("hostname", "")
     instance_id = response.get("instance_id", "")
@@ -285,7 +290,7 @@ def ready():
         # Harbor authenticates with its scoped token.  The admin-only status
         # endpoint rejects that token; harbor_ping is the scoped health
         # contract intended for portal-to-control-plane checks.
-        admiral_client._request("GET", "/api/v1/harbor_ping", timeout=10)
+        admiral_client._request("GET", "/api/v1/harbor_ping", timeout=10, customer_id=None)
     except Exception as exc:
         result["admirald"] = "error"
         current_app.logger.warning("readiness check: admirald error", extra={"error": str(exc)})

@@ -77,7 +77,7 @@
    {% elif instance.domain and instance.status != "setup_failed" %}
    <p class="meta">Provisioning…</p>
    {% endif %}
-   <p class="meta">Tier: {{ instance.tier_name }} · Storage: {{ instance.storage_status }} · Next billing: {{ instance.next_billing_at or "-" }}</p>
+   <p class="meta">Tier: {{ instance.tier_name }} · Availability: {{ instance.effective_availability|title }}{% if instance.availability_reason %} ({{ instance.availability_reason }}){% endif %} · Storage: {{ instance.storage_status }} · Next billing: {{ instance.next_billing_at or "-" }}</p>
   <a href="{{ url_for('client.instance_detail', instance_id=instance.instance_id) }}" class="secondary">Manage</a>
   </article>
  {% else %}

@@ -47,6 +47,11 @@
     <span class="stat-label">Remote state</span>
     <span class="stat-value status-pill tone-{{ remote_tone }}">{% if remote_state %}{{ remote_state.technical_status }}{% else %}-{% endif %}</span>
   </div>
+  <div class="stat-card">
+    <span class="stat-label">Worker availability</span>
+    <span class="stat-value status-pill tone-{{ availability_tone }}">{% if remote_state %}{{ remote_state.effective_availability|default("unknown")|title }}{% else %}Unable to verify{% endif %}</span>
+    {% if remote_state and remote_state.availability_reason %}<span class="meta">{{ remote_state.availability_reason }}</span>{% endif %}
+  </div>
 </section>
 
 {% if instance.status == "initializing" %}

@@ -200,7 +200,7 @@ def client(app):
             "status": "queued",
         }
     )
-    admiral_client.provision_app = lambda app_slug, tier_name, customer_id: {
+    admiral_client.provision_app = lambda app_slug, tier_name, customer_id, idempotency_key: {
         "operation_id": "op_provision",
         "instance_id": "inst_provision",
         "status": "queued",

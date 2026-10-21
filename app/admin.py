@@ -1234,7 +1234,12 @@ def create_test_instance():
         domain = f"{sub.external_id}.test.qa.admiral.test"
 
         try:
-            result = provision_app(app_slug, tier_name, customer_id="test")
+            result = provision_app(
+                app_slug,
+                tier_name,
+                customer_id="test",
+                idempotency_key=f"harbor-test-{sub.external_id}",
+            )
             operation_id = result.get("operation_id", "")
             if not operation_id:
                 raise AdmiralAPIError("No operation_id in provision response")

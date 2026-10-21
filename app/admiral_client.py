@@ -24,7 +24,7 @@ def _verify():
     return True  # system CA bundle by default
 
 
-def _headers(customer_id=None):
+def _headers(customer_id):
     token = current_app.config.get("ADMIRAL_HARBOR_API_TOKEN", "").strip()
     if not token:
         raise AdmiralAPIError("ADMIRAL_HARBOR_API_TOKEN is not configured")
@@ -38,13 +38,15 @@ def _headers(customer_id=None):
     return headers
 
 
-def _request(method, path, payload=None, params=None, timeout=60, customer_id=None):
+def _request(method, path, payload=None, params=None, timeout=60, *, customer_id, extra_headers=None):
     url = current_app.config["ADMIRAL_API_URL"] + path
+    headers = _headers(customer_id)
+    headers.update(extra_headers or {})
     try:
         response = requests.request(
             method,
             url,
-            headers=_headers(customer_id),
+            headers=headers,
             json=payload,
             params=params,
             timeout=timeout,
@@ -71,11 +73,11 @@ def _request(method, path, payload=None, params=None, timeout=60, customer_id=No
 
 
 def list_apps():
-    return _request("GET", "/api/v1/apps", timeout=30)
+    return _request("GET", "/api/v1/apps", timeout=30, customer_id=None)
 
 
 def get_app(slug):
-    app = _request("GET", f"/api/v1/apps/{slug}", timeout=30)
+    app = _request("GET", f"/api/v1/apps/{slug}", timeout=30, customer_id=None)
     app["tiers"] = normalize_tiers(parse_tiers_from_yaml(app.get("raw_yaml", "")))
     app["requires_billing"] = any(not t.get("free") and t["price_monthly_cents"] > 0 for t in app["tiers"])
     return app
@@ -143,7 +145,9 @@ def get_instance_credentials(instance_id, customer_id):
     return result
 
 
-def provision_app(app_slug, tier_name, customer_id):
+def provision_app(app_slug, tier_name, customer_id, idempotency_key):
+    if not idempotency_key:
+        raise AdmiralAPIError("Provision idempotency key is required")
     return _request(
         "POST",
         "/api/v1/customer-apps",
@@ -153,6 +157,7 @@ def provision_app(app_slug, tier_name, customer_id):
             "customer_id": customer_id,
         },
         customer_id=customer_id,
+        extra_headers={"Idempotency-Key": idempotency_key},
     )
 
 
@@ -213,7 +218,7 @@ def restore_backup(backup_id, instance_id, service, customer_id, source=None, ve
 
 
 def get_catalog():
-    return _request("GET", "/api/v1/apps/catalog", timeout=30)
+    return _request("GET", "/api/v1/apps/catalog", timeout=30, customer_id=None)
 
 
 def validate_provisioning(app_slug, tier_id, expected_revision=0, expected_checksum=""):
@@ -226,6 +231,7 @@ def validate_provisioning(app_slug, tier_id, expected_revision=0, expected_check
             "expected_checksum": expected_checksum,
         },
         timeout=30,
+        customer_id=None,
     )
 
 
@@ -238,6 +244,7 @@ def update_availability(app_slug, availability, reason=""):
             "reason": reason,
         },
         timeout=30,
+        customer_id=None,
     )
 
 

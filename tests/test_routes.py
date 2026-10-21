@@ -66,7 +66,7 @@ def test_app_detail_neutralizes_unsafe_markdown_links(client, app):
     with app.app_context():
         catalog_app = db.session.query(CatalogApp).filter_by(upstream_app_id="wordpress").one()
         catalog_app.description_md = (
-            "[encoded](javascript%3Aalert%281%29) " "[mixed](JaVaScRiPt:alert(1)) [safe](https://example.com)"
+            "[encoded](javascript%3Aalert%281%29) [mixed](JaVaScRiPt:alert(1)) [safe](https://example.com)"
         )
         db.session.commit()
 
@@ -352,8 +352,8 @@ def test_provision_from_order_is_idempotent(client, app, monkeypatch):
 
     calls = []
 
-    def provision(app_slug, tier_name, customer_id):
-        calls.append((app_slug, tier_name, customer_id))
+    def provision(app_slug, tier_name, customer_id, idempotency_key):
+        calls.append((app_slug, tier_name, customer_id, idempotency_key))
         return {"credentials": [], "operation_id": "op_once", "instance_id": "inst_once"}
 
     monkeypatch.setattr("app.client.admiral_client.provision_app", provision)
@@ -383,6 +383,7 @@ def test_provision_from_order_is_idempotent(client, app, monkeypatch):
 
         assert first[0] == second[0] == "inst_once"
         assert len(calls) == 1
+        assert calls[0][3] == f"harbor-order-{order.id}"
         assert db.session.query(CustomerApp).filter_by(instance_id="inst_once").count() == 1
 
 

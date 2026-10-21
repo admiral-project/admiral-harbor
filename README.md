@@ -79,6 +79,15 @@ authoritative and environment variables are not used as per-field fallbacks.
 Environment variables remain available for development and test bootstrap
 when no database configuration exists.
 
+The effective public URL is read from the `HarborMeta` setting first, then
+falls back to `HARBOR_EXTERNAL_URL` and finally the development default. This
+single value is used for redirects and emailed links.
+
+The operator backup detail route is `GET /admin/backups/<backup_id>` and
+requires the owning `instance_id` query parameter. Without `?instance_id=...`,
+Harbor redirects to the backup list because Admiral scopes backup access to an
+instance and customer.
+
 The configuration defaults are intentionally safe for local development, but production must override the secret and database settings.
 
 ## Local Development

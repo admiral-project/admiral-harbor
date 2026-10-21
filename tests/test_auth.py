@@ -190,6 +190,16 @@ def test_send_confirmation_email_no_host(app):
         assert _send_confirmation_email(c, "token") is False
 
 
+def test_confirmation_url_uses_effective_external_url(app):
+    from app.auth import _confirmation_url
+    from app.settings import set_external_url
+
+    app.config["HARBOR_EXTERNAL_URL"] = "https://config.harbor.test"
+    with app.test_request_context():
+        set_external_url("https://db.harbor.test")
+        assert _confirmation_url("token") == "https://db.harbor.test/auth/confirm/token"
+
+
 def test_send_confirmation_email_with_ssl(app):
     from app.auth import _send_confirmation_email
 

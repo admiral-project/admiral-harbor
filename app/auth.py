@@ -34,6 +34,7 @@ from app.identity import (
 )
 from app.models import AuditLog, Customer
 from app.rate_limit import RateLimiter
+from app.settings import get_external_url
 from app.security import validate_password_strength
 from app.validation import is_valid_email
 
@@ -60,7 +61,7 @@ def _token_hash(token):
 
 
 def _confirmation_url(token):
-    external_base = current_app.config.get("HARBOR_EXTERNAL_URL", "").rstrip("/")
+    external_base = get_external_url().rstrip("/")
     path = url_for("auth.confirm_email", token=token)
     if external_base:
         return f"{external_base}{path}"
