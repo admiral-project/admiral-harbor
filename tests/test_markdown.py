@@ -18,6 +18,19 @@ def test_render_markdown_basic():
     assert '<a href="https://google.com">Google</a>' in res
 
 
+def test_render_markdown_rejects_encoded_and_mixed_case_executable_urls():
+    for bad_url in (
+        "javascript%3Aalert%281%29",
+        "JaVaScRiPt:alert(1)",
+        "java%73cript%3Aalert%281%29",
+    ):
+        res = render_markdown(f"[probe]({bad_url})")
+        assert "javascript" not in res.lower()
+        assert 'href="#harmful-link"' in res
+
+    assert '<a href="https://example.com">ok</a>' in render_markdown("[ok](https://example.com)")
+
+
 def test_render_markdown_empty_and_none():
     # None input should return empty Markup
     assert render_markdown(None) == Markup("")

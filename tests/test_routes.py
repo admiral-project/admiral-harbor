@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 from app.extensions import db
 from app.models import (
+    CatalogApp,
     CustomerApp,
     HarborPayPalConfig,
     Invoice,
@@ -59,6 +60,36 @@ def test_app_detail_page(client):
     body = response.get_data(as_text=True)
     assert "<strong>WordPress</strong>" in body
     assert '<a href="https://example.com">backups</a>' in body
+
+
+def test_app_detail_neutralizes_unsafe_markdown_links(client, app):
+    with app.app_context():
+        catalog_app = db.session.query(CatalogApp).filter_by(upstream_app_id="wordpress").one()
+        catalog_app.description_md = (
+            "[encoded](javascript%3Aalert%281%29) "
+            "[mixed](JaVaScRiPt:alert(1)) [safe](https://example.com)"
+        )
+        db.session.commit()
+
+    response = client.get("/apps/wordpress")
+    body = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert "javascript" not in body.lower()
+    assert body.count('href="#harmful-link"') == 2
+    assert '<a href="https://example.com">safe</a>' in body
+
+
+def test_customer_cannot_edit_catalog_markdown(client, app):
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    response = client.post(
+        "/admin/apps/wordpress",
+        data={"description_md": "[unsafe](javascript%3Aalert%281%29)"},
+    )
+    assert response.status_code == 403
+
+    with app.app_context():
+        catalog_app = db.session.query(CatalogApp).filter_by(upstream_app_id="wordpress").one()
+        assert "javascript" not in catalog_app.description_md.lower()
 
 
 def test_client_dashboard(client):
