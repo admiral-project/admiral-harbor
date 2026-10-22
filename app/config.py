@@ -17,6 +17,7 @@ class Config:
     # resolved relative to app.root_path, which is the app/ package.
     ALEMBIC = {
         "script_location": "../migrations/versions",
+        "path_separator": "os",
     }
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "HARBOR_DATABASE_URL",

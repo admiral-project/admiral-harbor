@@ -1488,7 +1488,7 @@ def create_user():
 @admin_required
 def user_detail(user_id):
     """View admin user details."""
-    user = db.session.query(HarborAdminUser).get_or_404(user_id)
+    user = db.get_or_404(HarborAdminUser, user_id)
     return render_template("admin_user_detail.html", user=user)
 
 
@@ -1496,7 +1496,7 @@ def user_detail(user_id):
 @admin_required
 def edit_user(user_id):
     """Edit admin user."""
-    user = db.session.query(HarborAdminUser).get_or_404(user_id)
+    user = db.get_or_404(HarborAdminUser, user_id)
     if request.method == "POST":
         old_username = user.username
         username = request.form.get("username", "").strip()
@@ -1554,7 +1554,7 @@ def edit_user(user_id):
 @admin_required
 def delete_user(user_id):
     """Delete admin user."""
-    user = db.session.query(HarborAdminUser).get_or_404(user_id)
+    user = db.get_or_404(HarborAdminUser, user_id)
 
     # Prevent self-deletion
     current_username = session.get("admin_username", "")
@@ -1587,7 +1587,7 @@ def delete_user(user_id):
 @admin_required
 def toggle_user_active(user_id):
     """Toggle active/inactive for an admin user."""
-    user = db.session.query(HarborAdminUser).get_or_404(user_id)
+    user = db.get_or_404(HarborAdminUser, user_id)
 
     # Prevent deactivating yourself
     current_username = session.get("admin_username", "")
@@ -1653,7 +1653,7 @@ def customers_list():
 @admin_required
 def customer_detail(customer_id):
     """View customer details."""
-    customer = db.session.query(Customer).get_or_404(customer_id)
+    customer = db.get_or_404(Customer, customer_id)
     subscriptions = (
         db.session.query(Subscription)
         .filter_by(customer_email=customer.email)
@@ -1671,7 +1671,7 @@ def customer_detail(customer_id):
 @admin_required
 def toggle_customer_active(customer_id):
     """Block or unblock a customer."""
-    customer = db.session.query(Customer).get_or_404(customer_id)
+    customer = db.get_or_404(Customer, customer_id)
     customer.is_active = not customer.is_active
     customer.blocked_at = datetime.now(UTC) if not customer.is_active else None
     status = "blocked" if not customer.is_active else "unblocked"
@@ -1702,7 +1702,7 @@ def review_user():
 @bp.route("/review-user/<int:customer_id>/approve", methods=["POST"])
 @admin_required
 def approve_reviewed_user(customer_id):
-    customer = db.session.query(Customer).get_or_404(customer_id)
+    customer = db.get_or_404(Customer, customer_id)
     customer.signup_status = "active"
     customer.is_active = True
     customer.blocked_at = None
@@ -1726,7 +1726,7 @@ def approve_reviewed_user(customer_id):
 @bp.route("/review-user/<int:customer_id>/reject", methods=["POST"])
 @admin_required
 def reject_reviewed_user(customer_id):
-    customer = db.session.query(Customer).get_or_404(customer_id)
+    customer = db.get_or_404(Customer, customer_id)
     reason = request.form.get("rejection_reason", "").strip()
     customer.signup_status = "rejected"
     customer.is_active = False
