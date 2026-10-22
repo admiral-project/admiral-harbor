@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ipaddress
+import os
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -128,7 +129,8 @@ def _is_allowed_ip(remote_addr):
             return True
         if addr == ipaddress.ip_address("::1"):
             return True
-        if addr in ipaddress.ip_network("10.99.0.0/16"):
+        wireguard_subnet = os.environ.get("ADMIRAL_WIREGUARD_SUBNET", "10.99.0.0/24")
+        if addr in ipaddress.ip_network(wireguard_subnet, strict=False):
             return True
     except ValueError:
         return False

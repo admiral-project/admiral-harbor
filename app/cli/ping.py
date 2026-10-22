@@ -28,7 +28,10 @@ def handle_ping():
         print("\u2717 ADMIRAL_HARBOR_API_TOKEN not configured in harbor.env")
         sys.exit(1)
 
-    addrs = ["127.0.0.1", "10.99.0.1"]
+    addrs = ["127.0.0.1"]
+    configured_host = urlparse(current_app.config["ADMIRAL_API_URL"]).hostname
+    if configured_host and configured_host not in addrs:
+        addrs.append(configured_host)
     headers = {
         "Authorization": f"Bearer {token}",
         "X-Admiral-Operator": "admiral-harbor",
@@ -55,5 +58,5 @@ def handle_ping():
             print(f"\u2717 admirald at {url} returned HTTP {e.response.status_code}: {e.response.text.strip()}")
             sys.exit(1)
 
-    print(f"\u2717 admirald unreachable at {addrs} port {port} (tried 127.0.0.1 and 10.99.0.1)")
+    print(f"\u2717 admirald unreachable at {addrs} port {port}")
     sys.exit(1)

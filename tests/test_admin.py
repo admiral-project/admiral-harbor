@@ -26,6 +26,49 @@ def test_admin_login_and_dashboard(client):
     assert b"Dashboard Administrativo" in response.data
 
 
+def test_public_staff_reply_requires_csrf_and_renders_message_as_text(client, app):
+    from app.models import StaffReply, SupportIncident
+
+    with app.app_context():
+        ticket = SupportIncident(
+            incident_id="inc_csrf_reply",
+            instance_id="inst_123",
+            customer_email="user@example.com",
+            subject="CSRF reply test",
+            description="Test ticket",
+            priority="medium",
+        )
+        db.session.add(ticket)
+        db.session.commit()
+        ticket_id = ticket.id
+
+    client.post("/admin/login", data={"username": "testadmin", "password": "secret"})
+    app.config["HARBOR_CSRF_CHECK_IN_TESTS"] = True
+    detail = client.get("/admin/tickets/inc_csrf_reply")
+    assert detail.status_code == 200
+    csrf_token = detail.headers["X-CSRF-Token"]
+
+    rejected = client.post(
+        "/admin/tickets/inc_csrf_reply/reply",
+        data={"message": "must be rejected"},
+    )
+    assert rejected.status_code == 403
+
+    accepted = client.post(
+        "/admin/tickets/inc_csrf_reply/reply",
+        data={"message": "<script>alert(3)</script>", "csrf_token": csrf_token},
+    )
+    assert accepted.status_code == 302
+
+    rendered = client.get("/admin/tickets/inc_csrf_reply")
+    assert rendered.status_code == 200
+    assert b"&lt;script&gt;alert(3)&lt;/script&gt;" in rendered.data
+    assert b"<script>alert(3)</script>" not in rendered.data
+    with app.app_context():
+        reply = db.session.query(StaffReply).filter_by(ticket_id=ticket_id).one()
+        assert reply.message == "<script>alert(3)</script>"
+
+
 def test_admin_login_rate_limited(client):
     for _ in range(5):
         response = client.post(

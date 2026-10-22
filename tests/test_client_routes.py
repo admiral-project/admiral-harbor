@@ -515,6 +515,13 @@ def test_client_support_detail_not_found_and_replies(client, app):
         db.session.add(ticket)
         db.session.commit()
         db.session.add(StaffReply(ticket_id=ticket.id, staff_username="support", message="Staff public reply"))
+        db.session.add(
+            StaffReply(
+                ticket_id=ticket.id,
+                staff_username="support",
+                message="<script>alert(2)</script>",
+            )
+        )
         db.session.commit()
         ticket_id = ticket.id
 
@@ -527,6 +534,8 @@ def test_client_support_detail_not_found_and_replies(client, app):
     assert b'name="csrf_token"' in response.data
     assert b"Private staff note" not in response.data
     assert b"Staff public reply" in response.data
+    assert b"&lt;script&gt;alert(2)&lt;/script&gt;" in response.data
+    assert b"<script>alert(2)</script>" not in response.data
 
     # Empty reply
     response = client.post(f"/client/support/{ticket_id}/reply", data={"message": ""}, follow_redirects=True)

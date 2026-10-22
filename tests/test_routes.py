@@ -38,6 +38,15 @@ def test_health_rejects_external_ip(client):
     assert response.json == {"status": "forbidden"}
 
 
+def test_health_accepts_configured_wireguard_subnet(client, monkeypatch):
+    monkeypatch.setenv("ADMIRAL_WIREGUARD_SUBNET", "192.168.44.0/24")
+    response = client.get(
+        "/health",
+        environ_overrides={"REMOTE_ADDR": "192.168.44.7"},
+    )
+    assert response.status_code == 200
+
+
 def test_index(client):
     response = client.get("/")
     assert response.status_code == 200
