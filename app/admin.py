@@ -79,6 +79,12 @@ from app.security import validate_password_strength
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
+def _redirect_after_post(endpoint, **values):
+    response = current_app.response_class(b"", status=303)
+    response.headers["Location"] = url_for(endpoint, **values)
+    return response
+
+
 def _harbor_customer_id(customer_email):
     if not customer_email:
         raise AdmiralAPIError("Harbor customer identity is unavailable")
@@ -1323,7 +1329,7 @@ def sync_catalog():
         db.session.commit()
         flash(f"Catalog sync failed: {result.get('error', 'Unknown error')}", "error")
 
-    return redirect(url_for("admin.dashboard"))
+    return _redirect_after_post("admin.dashboard")
 
 
 @bp.route("/catalog/sync-history")
@@ -1719,7 +1725,7 @@ def approve_reviewed_user(customer_id):
     )
     db.session.commit()
     flash(f"Customer {customer.email} approved.", "success")
-    return redirect(url_for("admin.review_user"))
+    return _redirect_after_post("admin.review_user")
 
 
 @bp.route("/review_user/<int:customer_id>/reject", methods=["POST"])

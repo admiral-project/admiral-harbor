@@ -502,7 +502,11 @@ def test_review_user_routes(client, app):
     assert b"review_cust" in response.data
 
     # Approve customer
-    response = client.post(f"/admin/review-user/{cust_id}/approve", follow_redirects=True)
+    response = client.post(f"/admin/review-user/{cust_id}/approve")
+    assert response.status_code == 303
+    assert response.data == b""
+    assert response.headers["Content-Length"] == "0"
+    response = client.get(response.headers["Location"])
     assert response.status_code == 200
 
     with app.app_context():
@@ -645,7 +649,11 @@ def test_catalog_sync_and_availability(client, monkeypatch):
 
     monkeypatch.setattr("app.catalog_service.sync_catalog", fake_sync)
 
-    response = client.post("/admin/catalog/sync", follow_redirects=True)
+    response = client.post("/admin/catalog/sync")
+    assert response.status_code == 303
+    assert response.data == b""
+    assert response.headers["Content-Length"] == "0"
+    response = client.get(response.headers["Location"])
     assert response.status_code == 200
 
     # Set availability
