@@ -109,7 +109,7 @@
           <h2>Backups & Restore</h2>
           <p class="meta">Create backups, upload external archives and request restore operations.</p>
         </div>
-        {% if remote_state and remote_state.get('manual_backups_allowed') %}
+        {% if remote_state and remote_state.get('backup_database_allowed') %}
         <form method="post" action="{{ url_for('client.instance_action', instance_id=instance.instance_id) }}">
           <input type="hidden" name="action" value="backup">
           <input type="hidden" name="service" value="db">

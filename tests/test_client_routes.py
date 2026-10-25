@@ -67,6 +67,48 @@ def test_client_instance_detail(client):
     assert b'name="attachment"' not in response.data
 
 
+def test_client_instance_detail_hides_database_backup_when_tier_disallows_it(client, monkeypatch):
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    monkeypatch.setattr(
+        "app.client.admiral_client.get_customer_app",
+        lambda instance_id, customer_id: {
+            "id": instance_id,
+            "technical_status": "running",
+            "manual_backups_allowed": True,
+            "backup_database_allowed": False,
+            "backup_volumes_allowed": True,
+            "restore_allowed": True,
+        },
+    )
+
+    response = client.get("/client/instances/inst_123")
+
+    assert response.status_code == 200
+    assert b"Request backup" not in response.data
+    assert b"Request restore" in response.data
+
+
+def test_client_instance_detail_hides_database_backup_when_manual_backups_are_disabled(client, monkeypatch):
+    client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
+    monkeypatch.setattr(
+        "app.client.admiral_client.get_customer_app",
+        lambda instance_id, customer_id: {
+            "id": instance_id,
+            "technical_status": "running",
+            "manual_backups_allowed": False,
+            "backup_database_allowed": False,
+            "backup_volumes_allowed": True,
+            "restore_allowed": False,
+        },
+    )
+
+    response = client.get("/client/instances/inst_123")
+
+    assert response.status_code == 200
+    assert b"Request backup" not in response.data
+    assert b'name="source_kind"' not in response.data
+
+
 def test_client_support(client):
     client.post("/auth/login", json={"email": "user@example.com", "password": "secret"})
     response = client.get("/client/support")
