@@ -2,7 +2,9 @@
 
 Customer portal and commercial operations app for the Admiral platform.
 
-`admiral-harbor` is in active development. It is part of the normal single-node installation flow, but it is not production ready.
+`admiral-harbor` is a functional beta component and is part of the normal
+single-node and dedicated-Portal installation flows. End-to-end verification
+of real PayPal payments remains a prerequisite for the 1.0 release.
 
 The codebase provides:
 
@@ -11,7 +13,8 @@ The codebase provides:
 - application catalog browsing
 - dashboard and instance views
 - support incident flows
-- admin workspace for operators
+- customer support, subscription, and billing administration; infrastructure
+  administration belongs to Flagship and is outside Harbor's role
 - catalog synchronization from `admirald`
 - periodic reconciliation of overdue subscriptions and instance state
 
